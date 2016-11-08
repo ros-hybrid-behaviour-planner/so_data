@@ -31,7 +31,7 @@ class SoListener():
         self.buffer.storeData(data) 
         #rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data) #print everything in future 
 
-if __name__ == '__main__':
-    rospy.init_node('listener', anonymous=True) 
-    listener = SoListener()
-    listener.run()
+#if __name__ == '__main__':
+#    rospy.init_node('listener', anonymous=True)
+#    listener = SoListener()
+#    listener.run()
