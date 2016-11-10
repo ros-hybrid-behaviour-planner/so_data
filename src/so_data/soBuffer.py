@@ -18,7 +18,9 @@ class SoBuffer():
 
     def storeData(self, msg):
         self.data.append(msg)
-        rospy.loginfo(self.data[-1].data) #print everything in future 
+
+    def getData(self):
+        return self.data
  
 
 
