@@ -34,6 +34,7 @@ class SoListener():
         rospy.loginfo(self.buffer.getLastGradient())
 
     def get_gradient_distance(self, pose):
-        self._gradpos = self.buffer.getLastGradient().p
-        distance = [(self._gradpos.x - pose.x), (self._gradpos.y - pose.y)]
-        return distance
+        self._gradpos = self.buffer.getLastGradient()
+        if self._gradpos:
+            distance = [(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)]
+            return distance

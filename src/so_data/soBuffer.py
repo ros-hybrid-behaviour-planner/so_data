@@ -23,4 +23,5 @@ class SoBuffer():
         return self.data
 
     def getLastGradient(self):
-        return self.data[-1]
+        if self.data:
+            return self.data[-1]
