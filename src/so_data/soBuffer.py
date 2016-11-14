@@ -27,6 +27,7 @@ class SoBuffer():
         self.data = deque([])
         self._permanent = permanent
         self._current_pose = Pose()
+        self._aggregation = False
 
     def pose_callback(self, pose):
         '''
@@ -47,7 +48,8 @@ class SoBuffer():
         if not self._permanent:
             self.prune_buffer()
 
-        #self.aggregate_data()
+        if self._aggregation:
+            self.aggregate_data()
 
     def get_data(self):
         '''
@@ -65,6 +67,7 @@ class SoBuffer():
             elif rospy.Time.now() - self.data[-1].stamp < rospy.Duration(self._duration):
                 return self.data[-1]
 
+
     def prune_buffer(self):
         '''
         remove outdated data from buffer
@@ -80,7 +83,7 @@ class SoBuffer():
         '''
         self.data.clear()
 
-    def aggregate_data(self): #does not work like this in the whole setting  
+    def aggregate_data(self): #does not work like this in the whole setting
         '''
         aggregation of data - keep info with closest source / both for repulsion and attraction
         :param pose: current position of robot
@@ -91,14 +94,14 @@ class SoBuffer():
             closest_repulsive = soMessage()
             for element in self.data:
                 if element.info == 1.0:
-                    if closest_attractive == soMessage():
+                    if closest_attractive.info == 0.0: #first element to be considered
                         closest_attractive = element
                         distance_attractive = self.get_gradient_distance(closest_attractive.p)
                     elif self.get_gradient_distance(element.p) < distance_attractive:
                         closest_attractive = element
                         distance_attractive = self.get_gradient_distance(closest_attractive.p)
                 if element.info == -1.0:
-                    if closest_repulsive == None:
+                    if closest_repulsive.info == 0.0:
                         closest_repulsive = element
                         distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
                     elif self.get_gradient_distance(element.p) < distance_repulsive:
@@ -107,9 +110,10 @@ class SoBuffer():
             self.data.clear()
 
             #keep only aggregated elements
-            self.data.append(closest_attractive)
-            self.data.append(closest_repulsive)
-
+            if closest_attractive.info == 1.0:
+                self.data.append(closest_attractive)
+            if closest_repulsive.info == -1.0:
+                self.data.append(closest_repulsive)
 
     def get_gradient_distance(self, gradpos):
         '''

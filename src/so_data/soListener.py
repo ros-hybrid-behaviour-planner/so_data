@@ -42,4 +42,6 @@ class SoListener():
         if self._gradpos:
             distance = [(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)]
             return distance
+        else:
+            return [0.0, 0.0]
 
