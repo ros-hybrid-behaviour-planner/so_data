@@ -11,15 +11,15 @@ from so_data.msg import *
 
 class SoListener():
     '''
-    This class is the liestener to request and receive data from 
+    This class is the listener to request and receive data from
     the soData topic 
     '''
-    def __init__(self):
+    def __init__(self, pose_sensor):
         '''
         Constructor
         Creates subscriber to receive data from soData 
         '''
-        self.buffer = soBuffer.SoBuffer(2.0)
+        self.buffer = soBuffer.SoBuffer(2.0, pose_sensor)
         self._sub = rospy.Subscriber("soData", soMessage, self.callback)
 
     def callback(self, msg):
@@ -31,10 +31,15 @@ class SoListener():
         self.buffer.store_data(msg)
 
     def print_data(self):
-        rospy.loginfo(self.buffer.get_last_gradient())
+        rospy.loginfo(self.buffer.get_data())
 
     def get_gradient_distance(self, pose):
+        '''
+        :param pose: current position of robot
+        :return: x- and y-distance from robot to last received gradient
+        '''
         self._gradpos = self.buffer.get_last_gradient()
         if self._gradpos:
             distance = [(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)]
             return distance
+

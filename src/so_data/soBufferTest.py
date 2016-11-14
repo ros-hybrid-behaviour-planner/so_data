@@ -13,7 +13,28 @@ import rospy
 
 
 class soBufferTest(unittest.TestCase):
+
+    def test_store_data(self):
+        '''
+        test store_data method
+        '''
+        buffer = soBuffer.SoBuffer(2.0)
+        self._msg = soMessage()
+        self._msg.p = Pose(2,2,0,0,0)
+        self._msg.info = 1.0
+        self._msg.stamp = rospy.Time.now() + rospy.Duration(1)
+        testlist = deque([])
+        testlist.append(self._msg)
+        buffer.store_data(self._msg)
+        self._msg = soMessage()
+        self._msg.stamp = rospy.Time.now()
+        buffer.store_data(self._msg)
+        self.assertEqual(buffer.get_data(), testlist)
+
     def test_prune_buffer(self):
+        '''
+        test prune_buffer method
+        '''
         buffer = soBuffer.SoBuffer(2.0)
         self._msg = soMessage()
         self._msg.p = Pose(2, 2, 0, 0, 0)
@@ -28,19 +49,36 @@ class soBufferTest(unittest.TestCase):
         self.assertEqual(buffer.get_data(), testlist)
 
 
-
-    def test_store_data(self):
+    def test_aggregate_data(self):
+        '''
+        test aggregate_data method
+        '''
         buffer = soBuffer.SoBuffer(2.0)
         self._msg = soMessage()
-        self._msg.p = Pose(2,2,0,0,0)
+        self._msg.p = Pose(5, 5, 0, 0, 0)
         self._msg.info = 1.0
-        self._msg.stamp = rospy.Time.now() + rospy.Duration(1)
-        testlist = deque([])
-        testlist.append(self._msg)
-        buffer.store_data(self._msg)
-        self._msg = soMessage()
         self._msg.stamp = rospy.Time.now()
         buffer.store_data(self._msg)
+        self._msg = soMessage()
+        self._msg.p = Pose(2, 2, 0, 0, 0)
+        self._msg.stamp = rospy.Time.now()
+        self._msg.info = 1.0
+        buffer.store_data(self._msg)
+        testlist = deque([])
+        testlist.append(self._msg)
+        self._msg = soMessage()
+        self._msg.p = Pose(7, 7, 0, 0, 0)
+        self._msg.info = -1.0
+        self._msg.stamp = rospy.Time.now()
+        buffer.store_data(self._msg)
+        buffer.aggregate_data()
+        self._msg = soMessage()
+        self._msg.p = Pose(3, 4, 0, 0, 0)
+        self._msg.info = -1.0
+        self._msg.stamp = rospy.Time.now()
+        buffer.store_data(self._msg)
+        buffer.aggregate_data()
+        testlist.append(self._msg)
         self.assertEqual(buffer.get_data(), testlist)
 
 # run tests - start roscore before running tests
