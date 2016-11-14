@@ -1,3 +1,9 @@
+'''
+Created on 14.11.2016
+
+@author: kaiser
+'''
+
 import soBuffer
 from collections import deque
 import unittest
@@ -37,7 +43,7 @@ class soBufferTest(unittest.TestCase):
         buffer.store_data(self._msg)
         self.assertEqual(buffer.get_data(), testlist)
 
-# run tests
+# run tests - start roscore before running tests
 if __name__ == "__main__":
     rospy.init_node('test')
     unittest.main()
