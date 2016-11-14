@@ -43,8 +43,7 @@ class SoBuffer():
         '''
         remove outdated data from buffer
         '''
-        time = rospy.Time.now()
-        while self.data and time - self.data[0].stamp > rospy.Duration(self._duration):
-           self.data.popleft()
+        while self.data and rospy.Time.now() - self.data[0].stamp > rospy.Duration(self._duration):
+            self.data.popleft()
 
 
