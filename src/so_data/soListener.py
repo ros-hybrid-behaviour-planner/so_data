@@ -28,13 +28,13 @@ class SoListener():
         :return:
         '''
         #rospy.loginfo(msg)
-        self.buffer.storeData(msg)
+        self.buffer.store_data(msg)
 
     def print_data(self):
-        rospy.loginfo(self.buffer.getLastGradient())
+        rospy.loginfo(self.buffer.get_last_gradient())
 
     def get_gradient_distance(self, pose):
-        self._gradpos = self.buffer.getLastGradient()
+        self._gradpos = self.buffer.get_last_gradient()
         if self._gradpos:
             distance = [(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)]
             return distance
