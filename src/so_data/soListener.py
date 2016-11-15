@@ -36,11 +36,11 @@ class SoListener():
     def get_gradient_distance(self, pose):
         '''
         :param pose: current position of robot
-        :return: x- and y-distance from robot to last received gradient
+        :return: x- and y-distance from robot to last received gradient multiplied with info (repulsive/attractive) 
         '''
-        self._gradpos = self.buffer.get_last_gradient()
+        self._gradpos = self.buffer.get_current_gradient()
         if self._gradpos:
-            distance = [(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)]
+            distance = [self._gradpos.info * (self._gradpos.p.x - pose.x), self._gradpos.info * (self._gradpos.p.y - pose.y)]
             return distance
         else:
             return [0.0, 0.0]

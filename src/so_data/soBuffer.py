@@ -14,7 +14,7 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, duration, pose_sensor = None, permanent = False):
+    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True):
         '''
         :param duration: how long data is kept in buffer
         '''
@@ -27,7 +27,8 @@ class SoBuffer():
         self.data = deque([])
         self._permanent = permanent
         self._current_pose = Pose()
-        self._aggregation = False
+        self._aggregation = aggregation
+        self._current_gradient = None #soMessage()
 
     def pose_callback(self, pose):
         '''
@@ -41,7 +42,7 @@ class SoBuffer():
         :param msg: soMessage
         :return:
         '''
-        if not self.data or self.data[-1].stamp < msg.stamp:
+        if not self.data: # or self.data[-1].stamp < msg.stamp:
             self.data.append(msg)
 
         # delete all outdated data if data is not stored permanently
@@ -49,7 +50,7 @@ class SoBuffer():
             self.prune_buffer()
 
         if self._aggregation:
-            self.aggregate_data()
+            self.aggregate_min()
 
     def get_data(self):
         '''
@@ -57,15 +58,18 @@ class SoBuffer():
         '''
         return self.data
 
-    def get_last_gradient(self):
+    def get_current_gradient(self):
         '''
         :return: last received gradient
         '''
-        if self.data:
-            if self._permanent:
-                return self.data[-1]
-            elif rospy.Time.now() - self.data[-1].stamp < rospy.Duration(self._duration):
-                return self.data[-1]
+
+        return self._current_gradient
+
+        #if self.data:
+        #    if self._permanent:
+        #        return self.data[-1]
+        #    elif rospy.Time.now() - self.data[-1].stamp < rospy.Duration(self._duration):
+        #        return self.data[-1]
 
 
     def prune_buffer(self):
@@ -83,7 +87,7 @@ class SoBuffer():
         '''
         self.data.clear()
 
-    def aggregate_data(self): #does not work like this in the whole setting
+    def aggregate_data(self): #does not work like this in the whole setting maybe CHECK
         '''
         aggregation of data - keep info with closest source / both for repulsion and attraction
         :param pose: current position of robot
@@ -114,6 +118,24 @@ class SoBuffer():
                 self.data.append(closest_attractive)
             if closest_repulsive.info == -1.0:
                 self.data.append(closest_repulsive)
+
+
+    def aggregate_min(self):
+        '''
+        keep only closest gradient info
+        :return:
+        '''
+        if self.data:
+            for element in self.data:
+                if self._current_gradient  and \
+                            self.get_gradient_distance(element.p) < self.get_gradient_distance(self._current_gradient.p):
+                        self._current_gradient = element
+                elif not self._current_gradient:
+                    self._current_gradient = element
+            self.data.clear()
+
+
+
 
     def get_gradient_distance(self, gradpos):
         '''

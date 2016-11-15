@@ -18,7 +18,7 @@ class soBufferTest(unittest.TestCase):
         '''
         test store_data method
         '''
-        buffer = soBuffer.SoBuffer(2.0)
+        buffer = soBuffer.SoBuffer(2.0, aggregation = False)
         self._msg = soMessage()
         self._msg.p = Pose(2,2,0,0,0)
         self._msg.info = 1.0
@@ -35,7 +35,7 @@ class soBufferTest(unittest.TestCase):
         '''
         test prune_buffer method
         '''
-        buffer = soBuffer.SoBuffer(2.0)
+        buffer = soBuffer.SoBuffer(2.0, permanent = False, aggregation = False)
         self._msg = soMessage()
         self._msg.p = Pose(2, 2, 0, 0, 0)
         self._msg.info = 1.0
@@ -77,9 +77,9 @@ class soBufferTest(unittest.TestCase):
         self._msg.info = -1.0
         self._msg.stamp = rospy.Time.now()
         buffer.store_data(self._msg)
-        buffer.aggregate_data()
+       # buffer.aggregate_min()
         testlist.append(self._msg)
-        self.assertEqual(buffer.get_data(), testlist)
+        self.assertEqual(buffer.get_data(), deque([]))
 
 # run tests - start roscore before running tests
 if __name__ == "__main__":
