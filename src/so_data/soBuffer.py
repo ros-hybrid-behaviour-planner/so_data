@@ -14,7 +14,7 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True):
+    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True, diffusion_radius = 3.0):
         '''
         :param duration: how long data is kept in buffer
         '''
@@ -29,6 +29,7 @@ class SoBuffer():
         self._current_pose = Pose()
         self._aggregation = aggregation
         self._current_gradient = None #soMessage()
+        self._diffusion_radius = diffusion_radius
 
     def pose_callback(self, pose):
         '''
@@ -42,7 +43,8 @@ class SoBuffer():
         :param msg: soMessage
         :return:
         '''
-        if not self.data: # or self.data[-1].stamp < msg.stamp:
+
+        if self.get_gradient_distance(msg.p) <= self._diffusion_radius: #only consider gradients within diffusion radius   #or self.data[-1].stamp < msg.stamp:
             self.data.append(msg)
 
         # delete all outdated data if data is not stored permanently
@@ -97,15 +99,15 @@ class SoBuffer():
             closest_attractive = soMessage()
             closest_repulsive = soMessage()
             for element in self.data:
-                if element.info == 1.0:
-                    if closest_attractive.info == 0.0: #first element to be considered
+                if element.direction == 1.0:
+                    if closest_attractive.direction == 0.0: #first element to be considered
                         closest_attractive = element
                         distance_attractive = self.get_gradient_distance(closest_attractive.p)
                     elif self.get_gradient_distance(element.p) < distance_attractive:
                         closest_attractive = element
                         distance_attractive = self.get_gradient_distance(closest_attractive.p)
-                if element.info == -1.0:
-                    if closest_repulsive.info == 0.0:
+                if element.direction == -1.0:
+                    if closest_repulsive.direction == 0.0:
                         closest_repulsive = element
                         distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
                     elif self.get_gradient_distance(element.p) < distance_repulsive:
@@ -114,15 +116,15 @@ class SoBuffer():
             self.data.clear()
 
             #keep only aggregated elements
-            if closest_attractive.info == 1.0:
+            if closest_attractive.direction == 1.0:
                 self.data.append(closest_attractive)
-            if closest_repulsive.info == -1.0:
+            if closest_repulsive.direction == -1.0:
                 self.data.append(closest_repulsive)
 
 
     def aggregate_min(self):
         '''
-        keep only closest gradient info
+        keep only closest gradient information / direction
         :return:
         '''
         if self.data:
