@@ -4,4 +4,5 @@ time stamp #consists of stamp.secs and stamp.nsecs
 
 #decide which kind of data to be send 
 string data 
-float32 direction
+float32 direction # repulsion / attraction
+float32 diffusion # how far information will be spread

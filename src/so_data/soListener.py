@@ -14,12 +14,12 @@ class SoListener():
     This class is the listener to request and receive data from
     the soData topic 
     '''
-    def __init__(self, pose_sensor, diffusion_radius):
+    def __init__(self, pose_sensor):
         '''
         Constructor
         Creates subscriber to receive data from soData 
         '''
-        self.buffer = soBuffer.SoBuffer(2.0, pose_sensor, diffusion_radius=diffusion_radius)
+        self.buffer = soBuffer.SoBuffer(2.0, pose_sensor)
         self._sub = rospy.Subscriber("soData", soMessage, self.callback)
 
     def callback(self, msg):

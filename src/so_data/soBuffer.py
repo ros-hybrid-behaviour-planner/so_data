@@ -14,7 +14,7 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True, diffusion_radius = 3.0):
+    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True):
         '''
         :param duration: how long data is kept in buffer
         '''
@@ -29,7 +29,6 @@ class SoBuffer():
         self._current_pose = Pose()
         self._aggregation = aggregation
         self._current_gradient = None #soMessage()
-        self._diffusion_radius = diffusion_radius
 
     def pose_callback(self, pose):
         '''
@@ -44,7 +43,7 @@ class SoBuffer():
         :return:
         '''
 
-        if self.get_gradient_distance(msg.p) <= self._diffusion_radius: #only consider gradients within diffusion radius   #or self.data[-1].stamp < msg.stamp:
+        if self.get_gradient_distance(msg.p) <= msg.diffusion: #only consider gradients within diffusion radius   #or self.data[-1].stamp < msg.stamp:
             self.data.append(msg)
 
         # delete all outdated data if data is not stored permanently
