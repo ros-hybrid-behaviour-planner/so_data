@@ -143,5 +143,4 @@ class SoBuffer():
         :param gradient pose
         :return: euclidian distance robot to last received gradient
         '''
-
         return np.linalg.norm([(gradpos.x - self._current_pose.x), (gradpos.y - self._current_pose.y)])

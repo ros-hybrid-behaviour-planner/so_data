@@ -6,8 +6,8 @@ Created on 03.11.2016
 
 import rospy 
 import soBuffer
-import math
-from so_data.msg import * 
+from so_data.msg import *
+import numpy as np
 
 class SoListener():
     '''
@@ -45,3 +45,24 @@ class SoListener():
         else:
             return [0.0, 0.0]
 
+
+    def get_relative_gradient_distance(self, pose):
+        '''
+        :param pose: current position of the robot
+        :return: distance to gradient in a range from 0 to 1
+        '''
+
+        self._gradpos = self.buffer.get_current_gradient()
+        if self._gradpos:
+            #normalize distance to value between 0 and 1
+            distance = self.buffer.get_gradient_distance(self._gradpos.p) / self._gradpos.diffusion
+            #distance = 1 - distance
+            #if distance < 0:
+            #    distance = self._gradpos.diffusion
+            if self._gradpos.direction == -1.0:
+                distance = 1- distance
+                #np.linalg.norm([(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)])/self._gradpos.diffusion
+            #print np.linalg.norm([(self._gradpos.p.x - pose.x), (self._gradpos.p.y - pose.y)])
+            #print self._gradpos.diffusion
+            #print distance
+            return distance
