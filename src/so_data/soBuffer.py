@@ -131,6 +131,7 @@ class SoBuffer():
                 if self._current_gradient  and \
                             self.get_gradient_distance(element.p) < self.get_gradient_distance(self._current_gradient.p):
                         self._current_gradient = element
+
                 elif not self._current_gradient:
                     self._current_gradient = element
             self.data.clear()
