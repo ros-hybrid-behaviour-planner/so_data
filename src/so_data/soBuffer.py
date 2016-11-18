@@ -28,7 +28,7 @@ class SoBuffer():
         self._permanent = permanent
         self._current_pose = Pose()
         self._aggregation = aggregation
-        self._current_gradient = None #soMessage()
+        self._current_gradient = soMessage()
 
     def pose_callback(self, pose):
         '''
@@ -47,8 +47,8 @@ class SoBuffer():
             self.data.append(msg)
 
         # delete all outdated data if data is not stored permanently
-        if not self._permanent:
-            self.prune_buffer()
+        #if not self._permanent:
+        #    self.prune_buffer()
 
         if self._aggregation:
             self.aggregate_min()
@@ -128,11 +128,11 @@ class SoBuffer():
         '''
         if self.data:
             for element in self.data:
-                if self._current_gradient  and \
+                if self._current_gradient.direction != 0 and \
                             self.get_gradient_distance(element.p) < self.get_gradient_distance(self._current_gradient.p):
                         self._current_gradient = element
 
-                elif not self._current_gradient:
+                elif self._current_gradient.direction == 0:
                     self._current_gradient = element
             self.data.clear()
 
