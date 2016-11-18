@@ -79,7 +79,7 @@ class GradientSensor(SimpleTopicSensor):
         This method is to refresh the _value.
         '''
         self.buffer.store_data(newValue)
-        self._latestValue = self.buffer.get_current_gradient() #newValue
+        self._latestValue = self.buffer.get_current_gradient()
 
     def subscription_callback(self, msg):
         self.update(msg)
