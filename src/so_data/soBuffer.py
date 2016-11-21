@@ -128,11 +128,11 @@ class SoBuffer():
         '''
         if self.data:
             for element in self.data:
-                if self._current_gradient.direction != 0 and \
+                if self._current_gradient.diffusion != 0 and \
                             self.get_gradient_distance(element.p) < self.get_gradient_distance(self._current_gradient.p):
                         self._current_gradient = element
 
-                elif self._current_gradient.direction == 0:
+                elif self._current_gradient.diffusion == 0.0: #no diffusion radius == no gradient
                     self._current_gradient = element
             self.data.clear()
 

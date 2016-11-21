@@ -41,10 +41,16 @@ class SoListener():
         '''
         self._gradpos = self.buffer.get_current_gradient()
         if self._gradpos:
+
             distance = [self._gradpos.direction * (self._gradpos.p.x - pose.x), self._gradpos.direction * (self._gradpos.p.y - pose.y)]
+
             return distance
         else:
             return [0.0, 0.0]
+
+    @property
+    def gradient(self):
+        return self.buffer.get_current_gradient()
 
 
     def get_relative_gradient_distance(self, pose):
