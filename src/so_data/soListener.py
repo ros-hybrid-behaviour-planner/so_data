@@ -8,7 +8,7 @@ import rospy
 import soBuffer
 from so_data.msg import *
 import numpy as np
-from behaviour_components.sensors import SimpleTopicSensor, PassThroughTopicSensor
+from behaviour_components.sensors import SimpleTopicSensor
 
 class SoListener():
     '''
@@ -34,40 +34,10 @@ class SoListener():
     def print_data(self):
         rospy.loginfo(self.buffer.get_data())
 
-    def get_gradient_distance(self, pose):
-        '''
-        :param pose: current position of robot
-        :return: x- and y-distance from robot to last received gradient multiplied with info (repulsive/attractive)
-        '''
-        self._gradpos = self.buffer.get_current_gradient()
-        if self._gradpos:
-
-            distance = [self._gradpos.direction * (self._gradpos.p.x - pose.x), self._gradpos.direction * (self._gradpos.p.y - pose.y)]
-
-            return distance
-        else:
-            return [0.0, 0.0]
 
     @property
     def gradient(self):
         return self.buffer.get_current_gradient()
-
-
-    def get_relative_gradient_distance(self, pose):
-        '''
-        :param pose: current position of the robot
-        :return: distance to gradient in a range from 0 to 1
-        '''
-
-        self._gradpos = self.buffer.get_current_gradient()
-        if self._gradpos:
-            #normalize distance to value between 0 and 1
-            distance = self.buffer.get_gradient_distance(self._gradpos.p) / self._gradpos.diffusion
-            #if distance < 0:
-            #    distance = self._gradpos.diffusion
-            if self._gradpos.direction == -1.0:
-                distance = 1- distance
-            return distance
 
 
 
