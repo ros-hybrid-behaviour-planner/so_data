@@ -14,21 +14,23 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, duration, pose_sensor = None, permanent = True, aggregation = True):
+    def __init__(self, duration, pose_sensor, aggregation = True, evaporation_factor = 0.8, evaporation_time = 5):
         '''
         :param duration: how long data is kept in buffer
         '''
 
-        if pose_sensor:
-            rospy.Subscriber(pose_sensor, Pose, self.pose_callback)
+        rospy.Subscriber(pose_sensor, Pose, self.pose_callback)
 
         self._duration = duration
         #store data - use of deque to be able to add/delete from both ends
         self.data = deque([])
-        self._permanent = permanent
+        self._current_gradient = soMessage()
+
         self._current_pose = Pose()
         self._aggregation = aggregation
-        self._current_gradient = soMessage()
+        self._evaporation_factor = evaporation_factor #evaporation factor between [0, 1] - 0 means data is lost after 1 iteration, 1 means data is permanent
+        self._evaporation_time = evaporation_time # delta time when evaporation is applied
+        self._last_evaporation = rospy.Time.now() # last time evaporation was applied
 
     def pose_callback(self, pose):
         '''
@@ -52,6 +54,13 @@ class SoBuffer():
 
         if self._aggregation:
             self.aggregate_min()
+
+        self.evaporation()
+
+        #delete outdated gradients
+        if self.get_gradient_distance(self._current_gradient.p) >= self._current_gradient.diffusion:  # only consider gradients within diffusion radius
+            self._current_gradient = soMessage()
+
 
     def get_data(self):
         '''
@@ -88,37 +97,37 @@ class SoBuffer():
         '''
         self.data.clear()
 
-    def aggregate_data(self): #does not work like this in the whole setting maybe CHECK
-        '''
-        aggregation of data - keep info with closest source / both for repulsion and attraction
-        :param pose: current position of robot
-        :return:
-        '''
-        if self.data:
-            closest_attractive = soMessage()
-            closest_repulsive = soMessage()
-            for element in self.data:
-                if element.direction == 1.0:
-                    if closest_attractive.direction == 0.0: #first element to be considered
-                        closest_attractive = element
-                        distance_attractive = self.get_gradient_distance(closest_attractive.p)
-                    elif self.get_gradient_distance(element.p) < distance_attractive:
-                        closest_attractive = element
-                        distance_attractive = self.get_gradient_distance(closest_attractive.p)
-                if element.direction == -1.0:
-                    if closest_repulsive.direction == 0.0:
-                        closest_repulsive = element
-                        distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
-                    elif self.get_gradient_distance(element.p) < distance_repulsive:
-                        closest_repulsive = element
-                        distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
-            self.data.clear()
+    #def aggregate_data(self): #does not work like this in the whole setting maybe CHECK
+    #    '''
+    #    aggregation of data - keep info with closest source / both for repulsion and attraction
+    #    :param pose: current position of robot
+    #    :return:
+    #    '''
+    #    if self.data:
+    #        closest_attractive = soMessage()
+    #        closest_repulsive = soMessage()
+    #        for element in self.data:
+    #            if element.direction == 1.0:
+    #                if closest_attractive.direction == 0.0: #first element to be considered
+    #                    closest_attractive = element
+    #                    distance_attractive = self.get_gradient_distance(closest_attractive.p)
+    #                elif self.get_gradient_distance(element.p) < distance_attractive:
+    #                    closest_attractive = element
+    #                    distance_attractive = self.get_gradient_distance(closest_attractive.p)
+    #            if element.direction == -1.0:
+    #                if closest_repulsive.direction == 0.0:
+    #                    closest_repulsive = element
+    #                    distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
+    #                elif self.get_gradient_distance(element.p) < distance_repulsive:
+    #                    closest_repulsive = element
+    #                    distance_repulsive = self.get_gradient_distance(closest_repulsive.p)
+    #        self.data.clear()
 
-            #keep only aggregated elements
-            if closest_attractive.direction == 1.0:
-                self.data.append(closest_attractive)
-            if closest_repulsive.direction == -1.0:
-                self.data.append(closest_repulsive)
+    #        #keep only aggregated elements
+    #        if closest_attractive.direction == 1.0:
+    #            self.data.append(closest_attractive)
+    #        if closest_repulsive.direction == -1.0:
+    #            self.data.append(closest_repulsive)
 
 
     def aggregate_min(self):
@@ -145,3 +154,15 @@ class SoBuffer():
         :return: euclidian distance robot to last received gradient
         '''
         return np.linalg.norm([(gradpos.x - self._current_pose.x), (gradpos.y - self._current_pose.y)])
+
+    def evaporation(self):
+        '''
+        evaporate current stored gradient
+        :return:
+        '''
+        diff = rospy.Time.now() - self._last_evaporation
+
+        if diff > rospy.Duration(self._evaporation_time):
+            n = diff.secs // self._evaporation_time #no remainders
+            self._current_gradient.diffusion = self._evaporation_factor ** n * self._current_gradient.diffusion
+            self._last_evaporation = rospy.Time.now()
