@@ -20,7 +20,7 @@ class SoListener():
         Constructor
         Creates subscriber to receive data from soData 
         '''
-        self.buffer = soBuffer.SoBuffer(2.0, pose_sensor)
+        self.buffer = soBuffer.SoBuffer(pose_sensor)
         self._sub = rospy.Subscriber("soData", soMessage, self.callback)
 
     def callback(self, msg):
@@ -48,7 +48,7 @@ class GradientSensor(SimpleTopicSensor):
     def __init__(self, name, pose_sensor, topic="/soData", message_type = None,  initial_value = None, create_log = False):
         super(GradientSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)
 
-        self.buffer = soBuffer.SoBuffer(2.0, pose_sensor)
+        self.buffer = soBuffer.SoBuffer(pose_sensor)
 
     def update(self, newValue):
         '''
