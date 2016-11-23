@@ -12,23 +12,24 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, pose_sensor, aggregation = True, evaporation_factor = 0.8, evaporation_time = 5):
+    def __init__(self, pose_sensor, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0):
         '''
-        :param duration: how long data is kept in buffer
+        :param pose_sensor: topic name of the pose sensor
+        :param aggregation: True/False - indicator if aggregation should be applied
+        :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
+                (0 - data is lost after 1 iteration, 1 - data is stored permanently)
+        :param evaporation_time: delta time when evaporation should be applied in secs
+        :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         '''
-
         rospy.Subscriber(pose_sensor, Pose, self.pose_callback)
 
         self.data = []
-
         self._current_gradient = soMessage()
-
         self._current_pose = Pose()
         self._aggregation = aggregation
-        self._evaporation_factor = evaporation_factor #evaporation factor between [0, 1] - 0 means data is lost after 1 iteration, 1 means data is permanent
-        self._evaporation_time = evaporation_time # delta time when evaporation is applied
-        self._last_evaporation = rospy.Time.now() # last time evaporation was applied
-        self._min_diffusion = 1.0 # gradients with smaller diffusion radii will be deleted
+        self._evaporation_factor = evaporation_factor
+        self._evaporation_time = evaporation_time
+        self._min_diffusion = min_diffusion
 
     def pose_callback(self, pose):
         '''
@@ -39,15 +40,11 @@ class SoBuffer():
     def store_data(self, msg):
         '''
         store received soMessage
-        :param msg: soMessage
+        :param msg: received gradient (soMessage)
         :return:
         '''
 
-        # delete outdated gradients
-        if self._current_gradient.diffusion != 0 and self.get_gradient_distance(self._current_gradient.p) >= self._current_gradient.diffusion:
-            self._current_gradient = soMessage()
-
-        # Check whether gradient at the same position exists, if yes keep gradient with bigger diffusion radius #TODO aggregate two gradients at the same position? e.g. combine
+        # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
 
         # flag to indicate whether an element with same position was already found
         found = False
@@ -62,7 +59,6 @@ class SoBuffer():
         if not found:
             self.data.append(msg)
 
-
     def get_data(self):
         '''
         :return: buffer content
@@ -74,17 +70,19 @@ class SoBuffer():
         :return: last received gradient
         '''
 
+        # delete gradient when robot left it's diffusion radius
+        if self._current_gradient.diffusion != 0 and self.get_gradient_distance(self._current_gradient.p) > self._current_gradient.diffusion:
+            self._current_gradient = soMessage()
+
         # evaporate & aggregate data
-        if self._evaporation_factor != 1.0: #if factor == 1, the diffusion would stay the same
-            self.evaporation()
+        if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
+            self.evaporate_gradient()
             self.evaporate_buffer()
 
         if self._aggregation:
             self.aggregate_min()
 
         return self._current_gradient
-
-
 
     def clear_buffer(self):
         '''
@@ -93,7 +91,14 @@ class SoBuffer():
         '''
         self.data.clear()
 
+    def get_gradient_distance(self, gradpos):
+        '''
+        :param gradient pose
+        :return: euclidian distance robot to last received gradient
+        '''
+        return np.linalg.norm([(gradpos.x - self._current_pose.x), (gradpos.y - self._current_pose.y)])
 
+    # AGGREGATION
     def aggregate_min(self):
         '''
         keep only closest gradient information / direction
@@ -113,14 +118,8 @@ class SoBuffer():
                 #self._current_gradient = deepcopy(self._current_gradient)
 
 
-    def get_gradient_distance(self, gradpos):
-        '''
-        :param gradient pose
-        :return: euclidian distance robot to last received gradient
-        '''
-        return np.linalg.norm([(gradpos.x - self._current_pose.x), (gradpos.y - self._current_pose.y)])
-
-    def evaporation(self):
+    # EVAPORATION
+    def evaporate_gradient(self):
         '''
         evaporate current gradient
         :return:
@@ -135,22 +134,25 @@ class SoBuffer():
 
             #  check if robot left diffusion radius
             if self.get_gradient_distance(
-                    self._current_gradient.p) >= self._current_gradient.diffusion:
+                    self._current_gradient.p) > self._current_gradient.diffusion:
                 self._current_gradient = soMessage() #reset
 
+            # gradient smaller than minimum diffusion radius
+            if self._current_gradient.diffusion < self._min_diffusion:
+                self._current_gradient = soMessage()
 
     def evaporate_buffer(self):
         '''
         evaporate buffer data
         :return:
         '''
-        for element in self.data:
-            diff = rospy.Time.now() - element.stamp
+        for i in xrange(len(self.data) -1, -1, -1): # go in reverse order
+            diff = rospy.Time.now() - self.data[i].stamp
 
             if diff >= rospy.Duration(self._evaporation_factor):
                 n = diff.secs // self._evaporation_time
-                element.diffusion *= self._evaporation_factor ** n
-                element.stamp += rospy.Duration(n*self._evaporation_time)
+                self.data[i].diffusion *= self._evaporation_factor ** n
+                self.data[i].stamp += rospy.Duration(n*self._evaporation_time)
 
-                if element.diffusion < self._min_diffusion:
-                    del self.data[self.data.value(element)]
+                if self.data[i].diffusion < self._min_diffusion:
+                    del self.data[i] # delete element from list
