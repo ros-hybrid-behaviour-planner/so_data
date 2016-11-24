@@ -1,8 +1,10 @@
-#add location and time for evaporation/aggregation etc. 
-Pose p 
-time stamp #consists of stamp.secs and stamp.nsecs 
+Vector p  # gradient center
 
-#decide which kind of data to be send 
-string data 
-int32 direction # repulsion / attraction
+time stamp
+
+int32 attraction # repulsion / attraction
 float32 diffusion # how far information will be spread
+
+# to define a gradient sector
+float32 angle
+Vector direction

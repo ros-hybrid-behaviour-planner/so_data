@@ -5,7 +5,7 @@ Created on 07.11.2016
 '''
 
 import rospy
-from so_data.msg import Pose, soMessage
+from so_data.msg import soMessage
 import numpy as np
 
 class SoBuffer():
@@ -61,6 +61,7 @@ class SoBuffer():
 
     def get_current_gradient(self, pose):
         '''
+        :parameter: pose: Pose Message with position of robot
         :return: last received gradient
         '''
 
@@ -87,8 +88,8 @@ class SoBuffer():
 
     def get_gradient_distance(self, gradpos, pose):
         '''
-        :param gradpos: pose of the gradient to be investigated
-        :param pose: pose of the robot
+        :param gradpos: pose of the gradient to be investigated (Vector)
+        :param pose: pose of the robot (Pose)
         :return: euclidian distance robot to last received gradient
         '''
         return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
