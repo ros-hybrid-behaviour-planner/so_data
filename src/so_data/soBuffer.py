@@ -12,7 +12,7 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0):
+    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0, view_distance=2.0):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -29,6 +29,7 @@ class SoBuffer():
         self._evaporation_factor = evaporation_factor
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
+        self._view_distance = view_distance
 
 
     def store_data(self, msg):
@@ -100,10 +101,12 @@ class SoBuffer():
         if self.data:
             for element in self.data:
 
-                if tmp_grad.diffusion != 0.0 and self.get_gradient_distance(element.p, pose) <= element.diffusion and \
-                                        self.get_gradient_distance(element.p, pose)/element.diffusion <= \
-                                        self.get_gradient_distance(tmp_grad.p, pose)/tmp_grad.diffusion:
-                   tmp_grad = element
+                # TODO: think about usage of absolute distance or relative distance (divide by diffusion radius) as strengths could indicate as well importance of gradient
+                # check if gradient is within view of robot and closer than the currently considered gradient
+                if tmp_grad.diffusion != 0.0 and \
+                                self.get_gradient_distance(element.p, pose) <= element.diffusion + self._view_distance \
+                        and self.get_gradient_distance(element.p, pose) <= self.get_gradient_distance(tmp_grad.p, pose):
+                    tmp_grad = element
 
                 elif tmp_grad.diffusion == 0.0: #no diffusion radius == no gradient
                     tmp_grad = element
@@ -151,11 +154,15 @@ class SoBuffer():
                         vector_attraction.y += gradient.p.y - pose.y
 
                     # aggregate repulsive gradients
-                    if gradient.attraction == -1: #TODO: zero distance (division)
+                    if gradient.attraction == -1:
                         # based on repulsion vector of the paper
                         dist = self.get_gradient_distance(gradient.p, pose)
-                        vector_repulsion.x += (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist)
-                        vector_repulsion.y += (gradient.diffusion - dist) * ((pose.y - gradient.p.y) / dist)
+                        if dist > 0.0:
+                            vector_repulsion.x += (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist)
+                            vector_repulsion.y += (gradient.diffusion - dist) * ((pose.y - gradient.p.y) / dist)
+                        else: # ToDo: think about enhancement
+                            vector_repulsion.x += (2 * np.random.random_sample() - 1) * gradient.diffusion
+                            vector_repulsion.y += (2 * np.random.random_sample() - 1) * gradient.diffusion
 
         # vector addition to combine repulsion and attraction
         vector_gradient.x = vector_attraction.x + vector_repulsion.x
