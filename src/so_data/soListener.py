@@ -16,13 +16,13 @@ class GradientSensor(SimpleTopicSensor):
     def __init__(self, name, topic=None, message_type=None,  initial_value=None, create_log = False):
         super(GradientSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)
 
-        self.buffer = soBuffer.SoBuffer()
+        self._buffer = soBuffer.SoBuffer()
 
     def update(self, newValue):
         '''
         This method is to refresh the _value.
         '''
-        self._latestValue = self.buffer.get_current_gradient(newValue)
+        self._latestValue = self._buffer.get_current_gradient(newValue)
 
     def subscription_callback(self, msg):
         self.update(msg)
