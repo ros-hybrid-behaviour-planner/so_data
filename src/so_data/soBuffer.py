@@ -117,8 +117,9 @@ class SoBuffer():
                 distance.y = tmp_grad.attraction * (tmp_grad.p.y - pose.y)
             elif tmp_grad.attraction == -1:
                 dist = self.get_gradient_distance(tmp_grad.p, pose)
-                distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist)
-                distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist)
+                if dist > 0:
+                    distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist)
+                    distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist)
             distance.z = 0
             self._current_gradient = distance
 
