@@ -48,14 +48,14 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation = False, evaporation_factor=1.0)
 
         # distance > diffusion radius
-        gradient = soMessage(Vector(3,3,0), rospy.Time.now(), 1, 3.0, 0, Vector())
-        bffr._current_gradient = gradient
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), soMessage())
+        gradient = soMessage(Vector(5,5,0), rospy.Time.now(), 1, 3.0, 0, Vector())
+        bffr.store_data(gradient)
+        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(0,0,0))
 
         # distance < diffusion radius
         gradient = soMessage(Vector(2,2,0), rospy.Time.now(), 1, 3.0, 0, Vector())
-        bffr._current_gradient = gradient
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), gradient)
+        bffr.store_data(gradient)
+        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(2/3.0,2/3.0,0))
 
     def test_get_gradient_distance(self):
         '''
@@ -77,30 +77,7 @@ class soBufferTest(unittest.TestCase):
         gradient = soMessage(Vector(1,1,0), rospy.Time.now(), 1, 5.0, 0, Vector())
         bffr.store_data(deepcopy(gradient))
 
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)) , gradient)
-
-    def test_evaporation_gradient(self):
-        '''
-        test evaporation of current gradient
-        :return:
-        '''
-        bffr = soBuffer.SoBuffer(aggregation = False, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0)
-
-        gradient = soMessage(Vector(1,1,0), rospy.Time.now() - rospy.Duration(10), 1, 5.0, 0, Vector())
-        bffr._current_gradient = deepcopy(gradient)
-        bffr.evaporate_gradient(Pose(0,0,0,0,0))
-
-        # evaporation effects
-        gradient.diffusion *= 0.8 * 0.8
-        gradient.stamp += rospy.Duration(10)
-
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), gradient)
-
-        gradient.stamp -= rospy.Duration(30)
-        bffr._current_gradient = deepcopy(gradient)
-        bffr.evaporate_gradient(Pose(0,0,0,0,0))
-
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), soMessage())
+        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)) , Vector(1/5.0, 1/5.0, 0))
 
     def test_evaporation_buffer(self):
         '''
@@ -150,12 +127,34 @@ class soBufferTest(unittest.TestCase):
         for d in data:
             bffr.store_data(deepcopy(d))
 
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), soMessage(Vector(3,3,0), now, 1, 3.0 * (0.8 ** 3), 0, Vector()))
+        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(3,3,0))
 
         for element in bffr.data:
             element.stamp -= rospy.Duration(10)
 
-        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), soMessage(Vector(4,4,0), now, 1, 5.0 * (0.8 ** 2) * (0.8 **2), 0, Vector()))
+        # TODO: change
+        self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(0,0,0))
+
+    #def test_aggregate_several(self):
+    #    bffr = soBuffer.SoBuffer(aggregation=False, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0)
+
+    #    now = rospy.Time.now()
+
+        #data = [soMessage(Vector(1, 1, 0), now, -1, 2.0, 0, Vector()),
+        #            soMessage(Vector(0, 3, 0), now, 1, 4.0, 0, Vector()),
+        #        ]
+
+    #    data = [soMessage(Vector(1, 1, 0), now, -1, 2.0, 0, Vector()),
+    #             soMessage(Vector(0, 3, 0), now, 1, 4.0, 0, Vector()),
+    #             soMessage(Vector(-1, 2, 0), now, -1, 3.0, 0, Vector()),
+    #            ]
+
+
+    #    for d in data:
+    #            bffr.store_data(deepcopy(d))
+
+    #    bffr.aggregate_several(Pose(0,0,0,0,0))
+
 
 
 # run tests - start roscore before running tests

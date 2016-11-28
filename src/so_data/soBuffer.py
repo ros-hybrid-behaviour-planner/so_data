@@ -70,8 +70,7 @@ class SoBuffer():
         if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
             self.evaporate_buffer()
 
-        if self._aggregation:
-            self.aggregate_min(pose)
+        self.aggregate_nearest_repulsion(pose)
 
         return self._current_gradient
 
@@ -94,7 +93,7 @@ class SoBuffer():
     def aggregate_min(self, pose): #TODO: unit test
         '''
         follow higher gradient values (= gradient with shortest relative distance)
-        :return:
+        sets current gradient to direction vector (length <= 1)
         '''
         tmp_grad = soMessage()
         gradients = []
@@ -119,21 +118,48 @@ class SoBuffer():
         else:
             distance = Vector()
             if tmp_grad.attraction == 1:
-                distance.x = tmp_grad.attraction * (tmp_grad.p.x - pose.x)
-                distance.y = tmp_grad.attraction * (tmp_grad.p.y - pose.y)
+                distance.x = tmp_grad.attraction * (tmp_grad.p.x - pose.x) / tmp_grad.diffusion
+                distance.y = tmp_grad.attraction * (tmp_grad.p.y - pose.y) / tmp_grad.diffusion
             elif tmp_grad.attraction == -1: # similar to repulsion vector calculation in basic mechanisms
                 dist = self.get_gradient_distance(tmp_grad.p, pose)
                 if dist > 0:
-                    distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist)
-                    distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist)
+                    distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist) / tmp_grad.diffusion
+                    distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist) / tmp_grad.diffusion
                 elif distance == 0:
                     # create random vector with length = repulsion radius
                     rand = np.random.random_sample()
-                    distance.x = (2 * np.random.randint(2) - 1) * rand * tmp_grad.diffusion
-                    distance.y = (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * tmp_grad.diffusion
+                    distance.x = ((2 * np.random.randint(2) - 1) * rand * tmp_grad.diffusion) / tmp_grad.diffusion
+                    distance.y = (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * tmp_grad.diffusion / tmp_grad.diffusion
 
             self._current_gradient = distance
 
+
+
+    def unit_vector(self, vector):
+        """ Returns the unit vector of the vector.  """
+        return vector / np.linalg.norm(vector)
+
+    def angle_between(self, v1, v2):
+        """ Returns the directed angle in radians between vectors 'v1' and 'v2' - only working in 2D!::
+
+                >>> angle_between((1, 0), (0, 1))
+                1.5707963267948966
+                >>> angle_between((0, 1), (1, 0))
+                -1.5707963267948966
+                >>> angle_between((1, 0), (1, 0))
+                0.0
+                >>> angle_between((1, 0), (-1, 0))
+                3.141592653589793
+        """
+        v1_u = self.unit_vector(v1)
+        v2_u = self.unit_vector(v2)
+        # det needs square matrix as input!
+        angle = np.math.atan2(np.linalg.det([v1_u, v2_u]), np.dot(v1_u, v2_u))
+
+        if np.isnan(angle):
+            return 0.0
+
+        return angle
 
     def aggregate_nearest_repulsion(self, pose): # TODO unit test
         '''
@@ -146,12 +172,10 @@ class SoBuffer():
         gradients = []
         vector_attraction = Vector()
         vector_repulsion = Vector()
-        vector_gradient = Vector()
 
         if self.data:
             for element in self.data:
                 #store all elements which are within reach of the robot
-                # TODO only gradients which are in a certain view angle of the robot? (Simulation specific?!?)
                 if self.get_gradient_distance(element.p, pose) <= element.diffusion + self._view_distance:
                       gradients.append(element)
 
@@ -163,29 +187,67 @@ class SoBuffer():
                         if tmp_grad.diffusion != 0.0 and \
                                 self.get_gradient_distance(gradient.p, pose)/gradient.diffusion < \
                                                 self.get_gradient_distance(tmp_grad.p, pose)/tmp_grad.diffusion:
-                            vector_attraction.x = gradient.p.x - pose.x
-                            vector_attraction.y = gradient.p.y - pose.y
+                            vector_attraction.x = (gradient.p.x - pose.x) / gradient.diffusion
+                            vector_attraction.y = (gradient.p.y - pose.y) / gradient.diffusion
+                            tmp_grad = gradient
+                        elif tmp_grad.diffusion == 0.0:
+                            vector_attraction.x = (gradient.p.x - pose.x) / gradient.diffusion
+                            vector_attraction.y = (gradient.p.y - pose.y) / gradient.diffusion
                             tmp_grad = gradient
 
                     # aggregate repulsive gradients
+                    count = 0
                     if gradient.attraction == -1:
                         # based on repulsion vector of the paper
                         dist = self.get_gradient_distance(gradient.p, pose)
-                        if dist > 0.0 and dist <= gradient.diffusion:
-                            #in case that distance is 0, don't add repulsion vector, as moving in direction of attractive gradient will result in leaving repulsive gradient
-                            vector_repulsion.x += (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist)
-                            vector_repulsion.y += (gradient.diffusion - dist) * ((pose.y - gradient.p.y) / dist)
-                       # elif dist == 0.0: 
-                       #     vector_repulsion.x += (2 * np.random.random_sample() - 1) * gradient.diffusion
-                       #     vector_repulsion.y += (2 * np.random.random_sample() - 1) * gradient.diffusion
+                        if 0.0 < dist <= gradient.diffusion:
+                            vector_repulsion.x += (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist) / gradient.diffusion
+                            vector_repulsion.y += (gradient.diffusion - dist) * ((pose.y - gradient.p.y) / dist) / gradient.diffusion
+                            count += 1
 
-        # vector addition to combine repulsion and attraction
-        vector_gradient.x = vector_attraction.x + vector_repulsion.x
-        vector_gradient.y = vector_attraction.y + vector_repulsion.y
+                        # try to move s.t. repulsive gradient is avoided completely when nearby repulsive gradient is sensed
+                        elif dist > gradient.diffusion:
 
-        #TODO: vectors in opposite directions (repulsion and attraction) - how to handle this one
+                            deltax = gradient.p.x - pose.x
+                            deltay = gradient.p.y - pose.y
 
-        self._current_gradient = vector_gradient
+                            angle = np.arctan(gradient.diffusion/dist)
+
+                            if np.absolute(pose.theta) < angle:
+                                if self.angle_between([deltax, deltay], [vector_attraction.x, vector_attraction.y]) < 0.0:
+                                    angle *= -1
+                                vector_repulsion.x += (deltax * np.cos(angle) - deltay * np.sin(angle)) / dist
+                                vector_repulsion.y += (deltax* np.sin(angle) + deltay * np.cos(angle)) / dist
+
+                            count += 1
+
+            # ensure repulsive gradient length [0, 1]
+            if count > 0:
+                vector_repulsion.x /= count
+                vector_repulsion.y /= count
+
+            # only one repulsive gradient with dist robot - gradient == 0, add random vactor
+            if count == 0 and tmp_grad.diffusion == 0.0:
+                vector_repulsion.x += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
+                vector_repulsion.y += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
+
+        # repulsion and attraction are (nearly) directly opposing each other
+        if self.angle_between([vector_attraction.x, vector_attraction.y],
+                                             [vector_repulsion.x, vector_repulsion.y]) == np.pi:
+            angle = np.arccos(1 - np.linalg.norm([vector_repulsion.x, vector_repulsion.y]))
+            deltax = vector_repulsion.x
+            deltay = vector_repulsion.y
+
+            vector_repulsion.x = np.cos(angle) - np.sin(angle) #np.cos(angle)
+            vector_repulsion.y = np.sin(angle) + np.cos(angle)
+
+            # vector addition to combine repulsion and attraction
+ #       if np.linalg.norm([vector_attraction.x, vector_attraction.y]) > 1 - np.linalg.norm([vector_repulsion.x, vector_repulsion.y]):
+
+        vector_attraction.x += vector_repulsion.x
+        vector_attraction.y += vector_repulsion.y
+
+        self._current_gradient = vector_attraction
 
 
     # EVAPORATION
