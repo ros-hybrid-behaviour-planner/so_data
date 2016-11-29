@@ -272,12 +272,12 @@ class SoBuffer():
         :return:
         '''
         for i in xrange(len(self.data) -1, -1, -1): # go in reverse order
-            diff = rospy.Time.now() - self.data[i].stamp
+            diff = rospy.Time.now() - self.data[i].header.stamp
 
             if diff >= rospy.Duration(self._evaporation_time):
                 n = diff.secs // self._evaporation_time
                 self.data[i].diffusion *= self._evaporation_factor ** n
-                self.data[i].stamp += rospy.Duration(n*self._evaporation_time)
+                self.data[i].header.stamp += rospy.Duration(n*self._evaporation_time)
 
                 if self.data[i].diffusion < self._min_diffusion:
                     del self.data[i] # delete element from list

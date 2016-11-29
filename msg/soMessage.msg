@@ -1,6 +1,6 @@
-Vector p  # gradient center
+Header header # standard ROS header
 
-time stamp
+Vector p  # gradient center
 
 int32 attraction # repulsion / attraction
 float32 diffusion # how far information will be spread
