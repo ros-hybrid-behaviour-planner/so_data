@@ -7,12 +7,13 @@ Created on 07.11.2016
 import rospy
 from so_data.msg import soMessage, Vector
 import numpy as np
+import copy
 
 class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0, view_distance=2.0):
+    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0, view_distance=2.0, id=''):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -24,13 +25,14 @@ class SoBuffer():
         rospy.Subscriber('soData', soMessage, self.store_data)
 
         self.data = []
+        self.own_pos = [] # store own last positions
         self._current_gradient = Vector()
         self._aggregation = aggregation #aggregation has somehow always to be true, so change that maybe to different options
         self._evaporation_factor = evaporation_factor
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._view_distance = view_distance
-
+        self._id = id
 
     def store_data(self, msg):
         '''
@@ -41,18 +43,20 @@ class SoBuffer():
 
         # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
 
-        # flag to indicate whether an element with same position was already found
-        found = False
-
+        # store own position data
+        if msg.header.frame_id == self._id:
+            self.own_pos.append(msg)
+            if len(self.own_pos) > 2:
+                del self.own_pos[0]
+        else:
         # Aggregation of data with same content (position), but different diffusion radii
-        for element in self.data:
-            if element.p.x == msg.p.x and element.p.y == msg.p.y:
-                if msg.diffusion >= element.diffusion: #keep data with max diffusion radius
-                    del self.data[self.data.index(element)]
-                    self.data.append(msg)
-                found = True
-
-        if not found:
+            for element in self.data:
+                if msg.header.frame_id:
+                    if element.header.frame_id == msg.header.frame_id:
+                        del self.data[self.data.index(element)]
+                elif not msg.header.frame_id and element.p.x == msg.p.x and element.p.y == msg.p.y:
+                    if msg.diffusion >= element.diffusion: #keep data with max diffusion radius
+                        del self.data[self.data.index(element)]
             self.data.append(msg)
 
     def get_data(self):
@@ -71,15 +75,9 @@ class SoBuffer():
             self.evaporate_buffer()
 
         self.aggregate_nearest_repulsion(pose)
+        #self.aggregate_min(pose)
 
         return self._current_gradient
-
-    def clear_buffer(self):
-        '''
-        delete all buffer elements
-        :return:
-        '''
-        self.data.clear()
 
     def get_gradient_distance(self, gradpos, pose):
         '''
@@ -125,7 +123,7 @@ class SoBuffer():
                 if dist > 0:
                     distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist) / tmp_grad.diffusion
                     distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist) / tmp_grad.diffusion
-                elif distance == 0:
+                elif dist == 0:
                     # create random vector with length = repulsion radius
                     rand = np.random.random_sample()
                     distance.x = ((2 * np.random.randint(2) - 1) * rand * tmp_grad.diffusion) / tmp_grad.diffusion
@@ -161,7 +159,7 @@ class SoBuffer():
 
         return angle
 
-    def aggregate_nearest_repulsion(self, pose): # TODO unit test
+    def aggregate_nearest_repulsion(self, pose): # TODO unit test!!!
         '''
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
@@ -173,6 +171,8 @@ class SoBuffer():
         gradients_repulsive = []
         vector_attraction = Vector()
         vector_repulsion = Vector()
+        tmp_grad = soMessage()
+        zero_flag = False
 
         if self.data:
             for element in self.data:
@@ -184,7 +184,6 @@ class SoBuffer():
                         gradients_repulsive.append(element)
 
         if gradients_attractive:
-            tmp_grad = soMessage()
             for gradient in gradients_attractive:
                     # find nearest attractive gradient
                     if tmp_grad.diffusion != 0.0 and \
@@ -204,7 +203,9 @@ class SoBuffer():
                 count = 0
                 # based on repulsion vector of the paper
                 dist = self.get_gradient_distance(gradient.p, pose)
-                if 0.0 < dist <= gradient.diffusion:
+                if dist == 0.0:
+                    zero_flag = True
+                elif 0.0 < dist <= gradient.diffusion:
 
                     tmp = Vector()
                     tmp.x = (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist)
@@ -230,14 +231,13 @@ class SoBuffer():
                         vector_repulsion.y += tmp.y / gradient.diffusion
                     count += 1
 
-                # try to move s.t. repulsive gradient is avoided completely when nearby repulsive gradient is sensed
-                elif dist > gradient.diffusion: #TODO: only if gradient is in same direction as attractive goal
-                    deltax = gradient.p.x - pose.x
-                    deltay = gradient.p.y - pose.y
+                elif dist > gradient.diffusion:
+                    deltax = pose.x - gradient.p.x
+                    deltay = pose.x - gradient.p.x
 
                     angle = np.arccos(dist/gradient.diffusion)
 
-                    if np.absolute(pose.theta) < angle:
+                    if np.absolute(pose.theta) < angle: #TODO: check this condition
                         if self.angle_between([deltax, deltay], [vector_attraction.x, vector_attraction.y]) < 0.0:
                             angle *= -1
                         vector_repulsion.x += (deltax * np.cos(angle) - deltay * np.sin(angle)) / dist
@@ -251,10 +251,9 @@ class SoBuffer():
                 vector_repulsion.y /= count
 
             # only one repulsive gradient with dist robot - gradient == 0, add random vector
-            if count == 0 and tmp_grad.diffusion == 0.0:
+            elif zero_flag and tmp_grad.diffusion == 0.0:
                 vector_repulsion.x += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
                 vector_repulsion.y += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
-
 
             # vector addition to combine repulsion and attraction
         # f np.linalg.norm([vector_attraction.x, vector_attraction.y]) > 1 - np.linalg.norm([vector_repulsion.x, vector_repulsion.y]):
