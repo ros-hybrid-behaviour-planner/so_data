@@ -9,6 +9,7 @@ from so_data.msg import soMessage, Vector
 import numpy as np
 import copy
 
+
 class SoBuffer():
     '''
     This class is the buffer for received self-organization data
@@ -43,7 +44,8 @@ class SoBuffer():
 
         # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
 
-        # store own position data
+        # store own position data (last two values)
+        # ToDo Add check that received data is newer than stored data
         if msg.header.frame_id == self._id:
             self.own_pos.append(msg)
             if len(self.own_pos) > 2:
@@ -86,6 +88,32 @@ class SoBuffer():
         :return: euclidian distance robot to last received gradient
         '''
         return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
+
+    def calc_attractive_gradient(self, gradient, pose):
+        '''
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return:
+        '''
+
+        v = Vector()
+
+        # distance goal - agent
+        d = self.get_gradient_distance(gradient.p, pose)
+        # angle between agent and goal
+        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
+
+        if d < gradient.goal_radius:
+            v.x = 0
+            v.y = 0
+        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
+            v.x = (d - gradient.goal_radius) * np.cos(angle)
+            v.y = (d - gradient.goal_radius) * np.sin(angle)
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = gradient.diffusion * np.cos(angle)
+            v.y = gradient.diffusion * np.sin(angle)
+
+        return v
 
     # AGGREGATION
     def aggregate_min(self, pose): #TODO: unit test
@@ -159,6 +187,7 @@ class SoBuffer():
 
         return angle
 
+
     def aggregate_nearest_repulsion(self, pose): # TODO unit test!!!
         '''
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
@@ -172,6 +201,7 @@ class SoBuffer():
         vector_attraction = Vector()
         vector_repulsion = Vector()
         tmp_grad = soMessage()
+        tmp_att = 0
         zero_flag = False
 
         if self.data:
@@ -186,16 +216,13 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                     # find nearest attractive gradient
-                    if tmp_grad.diffusion != 0.0 and \
-                            self.get_gradient_distance(gradient.p, pose)/gradient.diffusion < \
-                                             self.get_gradient_distance(tmp_grad.p, pose)/tmp_grad.diffusion:
-                        vector_attraction.x = (gradient.p.x - pose.x) / gradient.diffusion
-                        vector_attraction.y = (gradient.p.y - pose.y) / gradient.diffusion
-                        tmp_grad = gradient
-                    elif tmp_grad.diffusion == 0.0:
-                        vector_attraction.x = (gradient.p.x - pose.x) / gradient.diffusion
-                        vector_attraction.y = (gradient.p.y - pose.y) / gradient.diffusion
-                        tmp_grad = gradient
+                    grad = self.calc_attractive_gradient(gradient, pose)
+                    att = np.linalg.norm([grad.x, grad.y])
+                    if att > tmp_att:
+                        vector_attraction.x = grad.x
+                        vector_attraction.y = grad.y
+                        tmp_att = att
+
 
         # aggregate repulsive gradients
         if gradients_repulsive:
