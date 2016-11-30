@@ -226,9 +226,7 @@ class SoBuffer():
         gradients_repulsive = []
         vector_attraction = Vector()
         vector_repulsion = Vector()
-        tmp_grad = soMessage()
         tmp_att = 0
-        zero_flag = False
 
         if self.data:
             for element in self.data:
@@ -255,60 +253,17 @@ class SoBuffer():
             for gradient in gradients_repulsive:
 
                 grad = self.calc_repulsive_gradient(gradient, pose)
-                rep = np.linalg.norm([grad.x, grad.y])
 
-                vector_repulsion.x += grad.x
-                vector_repulsion.y += grad.y
-
-                #count = 0
-                # based on repulsion vector of the paper
-                #dist = self.get_gradient_distance(gradient.p, pose)
-
-                #if 0.0 < dist <= gradient.diffusion + gradient.goal_radius:
-
-
-
-                    #if np.pi - np.pi/6 <= self.angle_between([vector_attraction.x, vector_attraction.y],
-                    #                         [tmp.x, tmp.y]) <= np.pi + np.pi/6:
-                    #    angle = np.arccos(dist/gradient.diffusion)
-                    #    tmp.x += (pose.x - gradient.p.x)
-                    #    tmp.y += (pose.y - gradient.p.y)
-
-                    #    vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
-                    #    vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
-                    #elif np.linalg.norm([tmp.x, tmp.y]) == 0.0:
-                    #    angle = np.arccos(dist / gradient.diffusion)
-                    #    tmp.x += (pose.x - gradient.p.x)
-                    #    tmp.y += (pose.y - gradient.p.y)
-
-                    #    vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
-                    #    vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
-                    #else:
-                    #    vector_repulsion.x += tmp.x / gradient.diffusion
-                    #    vector_repulsion.y += tmp.y / gradient.diffusion
-                    #count += 1
-
-                #elif dist > gradient.diffusion + gradient.goal_radius:
-                #    deltax = pose.x - gradient.p.x
-                #    deltay = pose.x - gradient.p.x
-
-                #    angle = np.arccos(dist/gradient.diffusion)
-
-                #    if np.absolute(pose.theta) < angle: #TODO: check this condition
-                #        if self.angle_between([deltax, deltay], [vector_attraction.x, vector_attraction.y]) < 0.0:
-                #            angle *= -1
-                #        vector_repulsion.x += (deltax * np.cos(angle) - deltay * np.sin(angle)) / dist
-                #        vector_repulsion.y += (deltax * np.sin(angle) + deltay * np.cos(angle)) / dist
-
-                #        count += 1
-
-            # ensure repulsive gradient length [0, 1]
-            #if count > 0:
-            #    vector_repulsion.x /= count
-            #    vector_repulsion.y /= count
-
-            # vector addition to combine repulsion and attraction
-        # f np.linalg.norm([vector_attraction.x, vector_attraction.y]) > 1 - np.linalg.norm([vector_repulsion.x, vector_repulsion.y]):
+                # robot position is within repulsion goal radius
+                if grad.x == np.inf or grad.x == -1 * np.inf:
+                    # Todo: adjust, somehow give it extra strenghts / priority, maybe let robot move in direction of attractive gradient if one is availble, but with strength s.t. outside of repulsive area is reached
+                    # different approach for collision avoidance robots and goal following?
+                    rand = np.random.random_sample()
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (gradient.goal_radius + gradient.diffusion)
+                else:
+                    vector_repulsion.x += grad.x
+                    vector_repulsion.y += grad.y
 
         vector_attraction.x += vector_repulsion.x
         vector_attraction.y += vector_repulsion.y
