@@ -93,7 +93,7 @@ class SoBuffer():
         '''
         :param gradient: position of the goal
         :param pose: position of the robot
-        :return:
+        :return: attractive vector
         '''
 
         v = Vector()
@@ -114,6 +114,32 @@ class SoBuffer():
             v.y = gradient.diffusion * np.sin(angle)
 
         return v
+
+    def calc_repulsive_gradient(self, gradient, pose):
+        '''
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: repulsive vector
+        '''
+        v = Vector()
+
+        # distance goal - agent
+        d = self.get_gradient_distance(gradient.p, pose)
+        # angle between agent and goal
+        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
+
+        if d < gradient.goal_radius:
+            v.x = -1 * np.sign(np.cos(angle)) * np.inf
+            v.y = -1 * np.sign(np.sin(angle)) * np.inf
+        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
+            v.x = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.cos(angle)
+            v.y = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.sin(angle)
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = 0
+            v.y = 0
+
+        return v
+
 
     # AGGREGATION
     def aggregate_min(self, pose): #TODO: unit test
@@ -227,60 +253,59 @@ class SoBuffer():
         # aggregate repulsive gradients
         if gradients_repulsive:
             for gradient in gradients_repulsive:
-                count = 0
+
+                grad = self.calc_repulsive_gradient(gradient, pose)
+                rep = np.linalg.norm([grad.x, grad.y])
+
+                vector_repulsion.x += grad.x
+                vector_repulsion.y += grad.y
+
+                #count = 0
                 # based on repulsion vector of the paper
-                dist = self.get_gradient_distance(gradient.p, pose)
-                if dist == 0.0:
-                    zero_flag = True
-                elif 0.0 < dist <= gradient.diffusion:
+                #dist = self.get_gradient_distance(gradient.p, pose)
 
-                    tmp = Vector()
-                    tmp.x = (gradient.diffusion - dist) * ((pose.x - gradient.p.x) / dist)
-                    tmp.y = (gradient.diffusion - dist) * ((pose.y - gradient.p.y) / dist)
+                #if 0.0 < dist <= gradient.diffusion + gradient.goal_radius:
 
-                    if np.pi - np.pi/6 <= self.angle_between([vector_attraction.x, vector_attraction.y],
-                                             [tmp.x, tmp.y]) <= np.pi + np.pi/6:
-                        angle = np.arccos(dist/gradient.diffusion)
-                        tmp.x += (pose.x - gradient.p.x)
-                        tmp.y += (pose.y - gradient.p.y)
 
-                        vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
-                        vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
-                    elif np.linalg.norm([tmp.x, tmp.y]) == 0.0:
-                        angle = np.arccos(dist / gradient.diffusion)
-                        tmp.x += (pose.x - gradient.p.x)
-                        tmp.y += (pose.y - gradient.p.y)
 
-                        vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
-                        vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
-                    else:
-                        vector_repulsion.x += tmp.x / gradient.diffusion
-                        vector_repulsion.y += tmp.y / gradient.diffusion
-                    count += 1
+                    #if np.pi - np.pi/6 <= self.angle_between([vector_attraction.x, vector_attraction.y],
+                    #                         [tmp.x, tmp.y]) <= np.pi + np.pi/6:
+                    #    angle = np.arccos(dist/gradient.diffusion)
+                    #    tmp.x += (pose.x - gradient.p.x)
+                    #    tmp.y += (pose.y - gradient.p.y)
 
-                elif dist > gradient.diffusion:
-                    deltax = pose.x - gradient.p.x
-                    deltay = pose.x - gradient.p.x
+                    #    vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
+                    #    vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
+                    #elif np.linalg.norm([tmp.x, tmp.y]) == 0.0:
+                    #    angle = np.arccos(dist / gradient.diffusion)
+                    #    tmp.x += (pose.x - gradient.p.x)
+                    #    tmp.y += (pose.y - gradient.p.y)
 
-                    angle = np.arccos(dist/gradient.diffusion)
+                    #    vector_repulsion.x += (tmp.x * np.cos(angle) - tmp.y * np.sin(angle)) / gradient.diffusion
+                    #    vector_repulsion.y += (tmp.x * np.sin(angle) + tmp.y * np.cos(angle)) / gradient.diffusion
+                    #else:
+                    #    vector_repulsion.x += tmp.x / gradient.diffusion
+                    #    vector_repulsion.y += tmp.y / gradient.diffusion
+                    #count += 1
 
-                    if np.absolute(pose.theta) < angle: #TODO: check this condition
-                        if self.angle_between([deltax, deltay], [vector_attraction.x, vector_attraction.y]) < 0.0:
-                            angle *= -1
-                        vector_repulsion.x += (deltax * np.cos(angle) - deltay * np.sin(angle)) / dist
-                        vector_repulsion.y += (deltax * np.sin(angle) + deltay * np.cos(angle)) / dist
+                #elif dist > gradient.diffusion + gradient.goal_radius:
+                #    deltax = pose.x - gradient.p.x
+                #    deltay = pose.x - gradient.p.x
 
-                        count += 1
+                #    angle = np.arccos(dist/gradient.diffusion)
+
+                #    if np.absolute(pose.theta) < angle: #TODO: check this condition
+                #        if self.angle_between([deltax, deltay], [vector_attraction.x, vector_attraction.y]) < 0.0:
+                #            angle *= -1
+                #        vector_repulsion.x += (deltax * np.cos(angle) - deltay * np.sin(angle)) / dist
+                #        vector_repulsion.y += (deltax * np.sin(angle) + deltay * np.cos(angle)) / dist
+
+                #        count += 1
 
             # ensure repulsive gradient length [0, 1]
-            if count > 0:
-                vector_repulsion.x /= count
-                vector_repulsion.y /= count
-
-            # only one repulsive gradient with dist robot - gradient == 0, add random vector
-            elif zero_flag and tmp_grad.diffusion == 0.0:
-                vector_repulsion.x += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
-                vector_repulsion.y += (2 * np.random.random_sample() - 1) * gradient.diffusion / gradient.diffusion
+            #if count > 0:
+            #    vector_repulsion.x /= count
+            #    vector_repulsion.y /= count
 
             # vector addition to combine repulsion and attraction
         # f np.linalg.norm([vector_attraction.x, vector_attraction.y]) > 1 - np.linalg.norm([vector_repulsion.x, vector_repulsion.y]):
