@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   roscpp 
   std_msgs
+  geometry_msgs
   message_generation 
 )
 
@@ -47,7 +48,6 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
    DIRECTORY msg FILES
-   Vector.msg
    Pose.msg
    PoseArray.msg
    soMessage.msg
@@ -71,6 +71,7 @@ add_message_files(
 generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_msgs
  )
 
 ################################################
@@ -105,7 +106,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES soData
-#  CATKIN_DEPENDS rospy std_msgs
+#  CATKIN_DEPENDS rospy std_msgs geometry_msgs
 #  DEPENDS system_lib
 )
 
