@@ -38,5 +38,10 @@ def angle_between(v1, v2):
 
     return angle
 
-
-
+def get_gradient_distance(gradpos, pose):
+    '''
+    :param gradpos: pose of the gradient to be investigated (Vector)
+    :param pose: pose of the robot (Pose)
+    :return: euclidian distance robot to last received gradient
+    '''
+    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])

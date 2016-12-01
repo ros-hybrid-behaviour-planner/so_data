@@ -17,7 +17,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     '''
     def __init__(self, aggregation=True, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near'):
+                 view_distance=2.0, id='', result='all', collision_avoidance='gradient'):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -26,8 +26,11 @@ class SoBuffer():
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         :param result: specifies vector which should be returned;
                 options: all = return vector considering all vectors of potential field
-                         min = return vector to nearest gradient
+                         max = return vector with max attraction / repulsion
                          near = return vector to nearest attractive vector avoiding obstacles
+        :param collision_avoidance
+                options: gradient = gradient / potential field approach to realize collision avoidance between neighbors
+                        repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
         '''
 
         rospy.Subscriber('soData', soMessage, self.store_data)
@@ -40,6 +43,7 @@ class SoBuffer():
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._view_distance = view_distance
+        self._collision_avoidance = collision_avoidance
         self._id = id
         self._result = result
 
@@ -106,22 +110,83 @@ class SoBuffer():
         #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
         #    self.evaporate_buffer()
 
-        if self._result == "near":
+        # vector based on gradients
+        if self._result == 'near':
             self.aggregate_nearest_repulsion(pose)
-        elif self._result == "min":
-            self.aggregate_min(pose)
-        elif self._result == "all":
+        elif self._result == 'max':
+            self.aggregate_max(pose)
+        elif self._result == 'all':
             self.aggregate_all(pose)
+
+        # Collision Avoidance between neighbors
+        if self._collision_avoidance == 'gradient':
+            collision = self.neighbor_repulsion(pose)
+            self._current_gradient.x += collision.x
+            self._current_gradient.y += collision.y
+        elif self._collision_avoidance == 'repulsion':
+            collision = self.repulsion_vector(pose)
+            self._current_gradient.x += collision.x
+            self._current_gradient.y += collision.y
 
         return self._current_gradient
 
 
     def neighbor_repulsion(self, pose):
+        repulsion = Vector3()
         if self.neighbors:
-            return
+            for val in self.neighbors.values():
+                # check if neighbor is in sight
+                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                        + self._view_distance:
+                    grad = self.calc_repulsive_gradient(val[-1], pose)
+                    # two robots are at the same position
+                    if grad.x == np.inf or grad.x == -1 * np.inf:
+                        rand = np.random.random_sample()
+                        repulsion.x += (2 * np.random.randint(2) - 1) * rand * (val[-1].goal_radius + val[-1].diffusion)
+                        repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
+                                   (val[-1].goal_radius + val[-1].diffusion)
+                    else:
+                        repulsion.x += grad.x
+                        repulsion.y += grad.y
+
+        return repulsion
+
+    def repulsion_vector(self, pose):
+        """
+        return a repulsion vector
+        :param ownpos (Pose.msg),
+         repulsion radius is set to view_distance
+        :return repulsion vector
+        """
+        # initialize vector
+        m = Vector3()
+
+        if self.neighbors:
+            for val in self.neighbors.values():
+                distance = calc.get_gradient_distance(val[-1].p, pose)
+                if calc.get_gradient_distance(val[-1].p, pose) < self._view_distance:
+                    # only robots within repulsion
+                    if distance != 0:
+                        diff = val[-1].diffusion + val[-1].goal_radius - distance
+                        m.x += (pose.x - val[-1].p.x) * diff / distance
+                        m.y += (pose.y - val[-1].p.y) * diff / distance
+                    elif distance == 0:
+                        # create random vector with length = repulsion radius
+                        rand = np.random.random_sample()
+                        m.x += (2 * np.random.randint(2) - 1) * rand * (val[-1].diffusion + val[-1].goal_radius)
+                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (val[-1].diffusion + val[-1].goal_radius)
+
+            # adjust vector length to be within repulsion Radius
+        norm = np.linalg.norm([m.x, m.y])
+        if norm > self._view_distance:
+            m.x = (val[-1].diffusion + val[-1].goal_radius) * m.x / norm
+            m.y = (val[-1].diffusion + val[-1].goal_radius) * m.y / norm
+
+        return m
+
 
     # AGGREGATION
-    def aggregate_min(self, pose): #TODO: unit test
+    def aggregate_max(self, pose): #TODO: unit test
         '''
         follow higher gradient values (= gradient with shortest relative distance)
         sets current gradient to direction vector (length <= 1)
@@ -134,7 +199,7 @@ class SoBuffer():
         if self.data:
             for element in self.data:
                 # check if gradient is within view of robot
-                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     gradients.append(element)
 
@@ -183,7 +248,7 @@ class SoBuffer():
         if self.data:
             for element in self.data:
                 #store all elements which are within reach of the robot
-                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     if element.attraction == 1:
                         gradients_attractive.append(element)
@@ -219,7 +284,7 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
-    def aggregate_all(self, pose):  # TODO unit test!!! Leads to planner errors
+    def aggregate_all(self, pose):  # TODO unit test!!!
         '''
         aggregate all vectors
         :param pose:
@@ -234,7 +299,7 @@ class SoBuffer():
         if self.data:
             for element in self.data:
                 # store all elements which are within reach of the robot
-                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     if element.attraction == 1:
                         gradients_attractive.append(element)
@@ -298,7 +363,7 @@ class SoBuffer():
         v = Vector3()
 
         # distance goal - agent
-        d = self.get_gradient_distance(gradient.p, pose)
+        d = calc.get_gradient_distance(gradient.p, pose)
         # angle between agent and goal
         angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
 
@@ -323,7 +388,7 @@ class SoBuffer():
         v = Vector3()
 
         # distance goal - agent
-        d = self.get_gradient_distance(gradient.p, pose)
+        d = calc.get_gradient_distance(gradient.p, pose)
         # angle between agent and goal
         angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
 
@@ -339,10 +404,3 @@ class SoBuffer():
 
         return v
 
-    def get_gradient_distance(self, gradpos, pose):
-        '''
-        :param gradpos: pose of the gradient to be investigated (Vector)
-        :param pose: pose of the robot (Pose)
-        :return: euclidian distance robot to last received gradient
-        '''
-        return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
