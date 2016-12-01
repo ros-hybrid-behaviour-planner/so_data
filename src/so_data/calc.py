@@ -5,16 +5,10 @@ Created on 01.12.2016
 '''
 
 import numpy as np
-from so_data.msg import Vector
+from geometry_msgs.msg import Vector3
 
 
-def get_gradient_distance(gradpos, pose):
-    '''
-    :param gradpos: pose of the gradient to be investigated (Vector)
-    :param pose: pose of the robot (Pose)
-    :return: euclidian distance robot to last received gradient
-    '''
-    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
+
 
 
 def unit_vector(vector):
@@ -44,55 +38,5 @@ def angle_between(v1, v2):
 
     return angle
 
-# Potential field calculations
-def calc_attractive_gradient(gradient, pose):
-    '''
-    :param gradient: position of the goal
-    :param pose: position of the robot
-    :return: attractive vector
-    '''
-
-    v = Vector()
-
-    # distance goal - agent
-    d = get_gradient_distance(gradient.p, pose)
-    # angle between agent and goal
-    angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
-
-    if d < gradient.goal_radius:
-        v.x = 0
-        v.y = 0
-    elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
-        v.x = (d - gradient.goal_radius) * np.cos(angle)
-        v.y = (d - gradient.goal_radius) * np.sin(angle)
-    elif d > gradient.goal_radius + gradient.diffusion:
-        v.x = gradient.diffusion * np.cos(angle)
-        v.y = gradient.diffusion * np.sin(angle)
-
-    return v
 
 
-def calc_repulsive_gradient(gradient, pose):
-    '''
-    :param gradient: position of the goal
-    :param pose: position of the robot
-    :return: repulsive vector
-    '''
-    v = Vector()
-
-    # distance goal - agent
-    d = get_gradient_distance(gradient.p, pose)
-    # angle between agent and goal
-    angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
-
-    if d < gradient.goal_radius:
-        v.x = -1 * np.sign(np.cos(angle)) * np.inf
-        v.y = -1 * np.sign(np.sin(angle)) * np.inf
-    elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
-        v.x = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.cos(angle)
-        v.y = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.sin(angle)
-    elif d > gradient.goal_radius + gradient.diffusion:
-        v.x = 0
-        v.y = 0
-
-    return v

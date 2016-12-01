@@ -5,17 +5,19 @@ Created on 07.11.2016
 '''
 
 import rospy
-from so_data.msg import soMessage, Vector
+from so_data.msg import soMessage
 import numpy as np
 import calc
+from geometry_msgs.msg import Vector3
+
 
 
 class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='all'):
+    def __init__(self, aggregation=True, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
+                 view_distance=2.0, id='', result='near'):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -32,7 +34,7 @@ class SoBuffer():
         self.data = []
         self.own_pos = [] # store own last positions
         self.neighbors = {} # empty dict
-        self._current_gradient = Vector()
+        self._current_gradient = Vector3()
         self._aggregation = aggregation #aggregation has somehow always to be true, so change that maybe to different options
         self._evaporation_factor = evaporation_factor
         self._evaporation_time = evaporation_time
@@ -60,24 +62,34 @@ class SoBuffer():
             self.own_pos.append(msg)
             if len(self.own_pos) > 2:
                 del self.own_pos[0]
-        else:
-        # Aggregation of data with same content (position), but different diffusion radii
+        elif msg.header.frame_id:
+            #Aggregation of data with same content (position), but different diffusion radii
             if msg.header.frame_id[:5] == 'robot': # store neighbors as key-value-pair
                 if msg.header.frame_id in self.neighbors:
-                    self.neighbors[msg.header.frame_id].append(msg)
+                    #check if data is newer
+                    if msg.header.stamp > self.neighbors[msg.header.frame_id][-1].header.stamp:
+                        self.neighbors[msg.header.frame_id].append(msg)
+                    if len(self.neighbors[msg.header.frame_id]) > 2:
+                        del self.neighbors[msg.header.frame_id][0]
                 else:
                     self.neighbors[msg.header.frame_id] = [msg]
-            elif not msg.header.frame_id:
-                if self.data:
-                    for element in self.data:
-                        if element.p.x == msg.p.x and element.p.y == msg.p.y:
-                            if msg.diffusion >= element.diffusion: #keep data with max diffusion radius
-                                del self.data[self.data.index(element)]
-                                self.data.append(msg)
-                        else:
+
+        elif not msg.header.frame_id:
+            found = False
+            if self.data:
+                for i in xrange(len(self.data) - 1, -1, -1):
+                    if self.data[i].p.x == msg.p.x and self.data[i].p.y == msg.p.y:
+                        found = True
+                        if msg.diffusion >= self.data[i].diffusion: #keep data with max diffusion radius
+                            del self.data[i]
                             self.data.append(msg)
-                else:
-                    self.data.append(msg)
+                        found = True
+            else:
+                self.data.append(msg)
+                found = True
+
+            if not found:
+                self.data.append(msg)
 
     def get_data(self):
         '''
@@ -101,9 +113,12 @@ class SoBuffer():
         elif self._result == "all":
             self.aggregate_all(pose)
 
-
         return self._current_gradient
 
+
+    def neighbor_repulsion(self, pose):
+        if self.neighbors:
+            return
 
     # AGGREGATION
     def aggregate_min(self, pose): #TODO: unit test
@@ -114,12 +129,12 @@ class SoBuffer():
 
         gradients = []
         tmp_att = 0
-        tmp_grad = Vector()
+        tmp_grad = Vector3()
 
         if self.data:
             for element in self.data:
                 # check if gradient is within view of robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     gradients.append(element)
 
@@ -128,9 +143,9 @@ class SoBuffer():
         if gradients:
             for gradient in gradients:
                 if gradient.attraction == 1:
-                    grad = calc.calc_attractive_gradient(gradient, pose)
+                    grad = self.calc_attractive_gradient(gradient, pose)
                 else:
-                    grad = calc.calc_repulsive_gradient(gradient, pose)
+                    grad = self.calc_repulsive_gradient(gradient, pose)
 
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     att = np.inf
@@ -161,14 +176,14 @@ class SoBuffer():
 
         gradients_attractive = []
         gradients_repulsive = []
-        vector_attraction = Vector()
-        vector_repulsion = Vector()
+        vector_attraction = Vector3()
+        vector_repulsion = Vector3()
         tmp_att = 0
 
         if self.data:
             for element in self.data:
                 #store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     if element.attraction == 1:
                         gradients_attractive.append(element)
@@ -178,23 +193,22 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                     # find nearest attractive gradient
-                    grad = calc.calc_attractive_gradient(gradient, pose)
-                    att = np.linalg.norm([grad.x, grad.y])
-                    if att > tmp_att:
-                        vector_attraction.x = grad.x
-                        vector_attraction.y = grad.y
-                        tmp_att = att
-
+                grad = self.calc_attractive_gradient(gradient, pose)
+                att = np.linalg.norm([grad.x, grad.y])
+                if att > tmp_att:
+                    vector_attraction.x = grad.x
+                    vector_attraction.y = grad.y
+                    tmp_att = att
 
         # aggregate repulsive gradients
         if gradients_repulsive:
             for gradient in gradients_repulsive:
-                grad = calc.calc_repulsive_gradient(gradient, pose)
+                grad = self.calc_repulsive_gradient(gradient, pose)
                 # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
-                        rand = np.random.random_sample()
-                        vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
-                        vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
+                    rand = np.random.random_sample()
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
                                               (gradient.goal_radius + gradient.diffusion)
                 else:
                     vector_repulsion.x += grad.x
@@ -205,7 +219,7 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
-    def aggregate_all(self, pose):  # TODO unit test!!!
+    def aggregate_all(self, pose):  # TODO unit test!!! Leads to planner errors
         '''
         aggregate all vectors
         :param pose:
@@ -214,13 +228,13 @@ class SoBuffer():
 
         gradients_attractive = []
         gradients_repulsive = []
-        vector_attraction = Vector()
-        vector_repulsion = Vector()
+        vector_attraction = Vector3()
+        vector_repulsion = Vector3()
 
         if self.data:
             for element in self.data:
                 # store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     if element.attraction == 1:
                         gradients_attractive.append(element)
@@ -230,14 +244,14 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                 # find nearest attractive gradient
-                grad = calc.calc_attractive_gradient(gradient, pose)
+                grad = self.calc_attractive_gradient(gradient, pose)
                 vector_attraction.x += grad.x
                 vector_attraction.y += grad.y
 
         # aggregate repulsive gradients
         if gradients_repulsive:
             for gradient in gradients_repulsive:
-                grad = calc.calc_repulsive_gradient(gradient, pose)
+                grad = self.calc_repulsive_gradient(gradient, pose)
                 # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     rand = np.random.random_sample()
@@ -271,3 +285,64 @@ class SoBuffer():
 
                 if self.data[i].diffusion < self._min_diffusion:
                     del self.data[i] # delete element from list
+
+
+    # Potential field calculations
+    def calc_attractive_gradient(self, gradient, pose):
+        '''
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: attractive vector
+        '''
+
+        v = Vector3()
+
+        # distance goal - agent
+        d = self.get_gradient_distance(gradient.p, pose)
+        # angle between agent and goal
+        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
+
+        if d < gradient.goal_radius:
+            v.x = 0
+            v.y = 0
+        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
+            v.x = (d - gradient.goal_radius) * np.cos(angle)
+            v.y = (d - gradient.goal_radius) * np.sin(angle)
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = gradient.diffusion * np.cos(angle)
+            v.y = gradient.diffusion * np.sin(angle)
+
+        return v
+
+    def calc_repulsive_gradient(self, gradient, pose):
+        '''
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: repulsive vector
+        '''
+        v = Vector3()
+
+        # distance goal - agent
+        d = self.get_gradient_distance(gradient.p, pose)
+        # angle between agent and goal
+        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
+
+        if d < gradient.goal_radius:
+            v.x = -1 * np.sign(np.cos(angle)) * np.inf
+            v.y = -1 * np.sign(np.sin(angle)) * np.inf
+        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
+            v.x = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.cos(angle)
+            v.y = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.sin(angle)
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = 0
+            v.y = 0
+
+        return v
+
+    def get_gradient_distance(self, gradpos, pose):
+        '''
+        :param gradpos: pose of the gradient to be investigated (Vector)
+        :param pose: pose of the robot (Pose)
+        :return: euclidian distance robot to last received gradient
+        '''
+        return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
