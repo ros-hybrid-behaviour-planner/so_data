@@ -14,7 +14,8 @@ class SoBuffer():
     '''
     This class is the buffer for received self-organization data
     '''
-    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0, view_distance=2.0, id=''):
+    def __init__(self, aggregation=True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0,
+                 view_distance=2.0, id=''):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -37,12 +38,16 @@ class SoBuffer():
 
     def store_data(self, msg):
         '''
-        store received soMessage
+        store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
         :return:
         '''
 
         # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
+
+        # evaporate & aggregate data
+        if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
+            self.evaporate_buffer()
 
         # store own position data (last two values)
         # ToDo Add check that received data is newer than stored data
@@ -70,14 +75,14 @@ class SoBuffer():
     def get_current_gradient(self, pose):
         '''
         :parameter: pose: Pose Message with position of robot
-        :return: last received gradient
+        :return: current gradient vector to follow based on settings
         '''
         # evaporate & aggregate data
-        if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
-            self.evaporate_buffer()
+        #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
+        #    self.evaporate_buffer()
 
-        self.aggregate_nearest_repulsion(pose)
-        #self.aggregate_min(pose)
+        #self.aggregate_nearest_repulsion(pose)
+        self.aggregate_min(pose)
 
         return self._current_gradient
 
@@ -147,43 +152,44 @@ class SoBuffer():
         follow higher gradient values (= gradient with shortest relative distance)
         sets current gradient to direction vector (length <= 1)
         '''
-        tmp_grad = soMessage()
+
         gradients = []
+        tmp_att = 0
+        tmp_grad = Vector()
 
         if self.data:
             for element in self.data:
                 # check if gradient is within view of robot
-                if self.get_gradient_distance(element.p, pose) <= element.diffusion + self._view_distance:
+                if self.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                        + self._view_distance:
                     gradients.append(element)
+
 
         # find gradient with highest value ( = closest relative distance)
         if gradients:
             for gradient in gradients:
-                if tmp_grad.diffusion != 0.0 and self.get_gradient_distance(gradient.p, pose)/gradient.diffusion <= \
-                        self.get_gradient_distance(tmp_grad.p, pose)/tmp_grad.diffusion:
-                    tmp_grad = gradient
-                elif tmp_grad.diffusion == 0.0:
-                    tmp_grad = gradient
+                if gradient.attraction == 1:
+                    grad = self.calc_attractive_gradient(gradient, pose)
+                else:
+                    grad = self.calc_repulsive_gradient(gradient, pose)
 
-        if tmp_grad.diffusion == 0.0:
-            self._current_gradient = Vector()
-        else:
-            distance = Vector()
-            if tmp_grad.attraction == 1:
-                distance.x = tmp_grad.attraction * (tmp_grad.p.x - pose.x) / tmp_grad.diffusion
-                distance.y = tmp_grad.attraction * (tmp_grad.p.y - pose.y) / tmp_grad.diffusion
-            elif tmp_grad.attraction == -1: # similar to repulsion vector calculation in basic mechanisms
-                dist = self.get_gradient_distance(tmp_grad.p, pose)
-                if dist > 0:
-                    distance.x = (tmp_grad.diffusion - dist) * ((pose.x - tmp_grad.p.x) / dist) / tmp_grad.diffusion
-                    distance.y = (tmp_grad.diffusion - dist) * ((pose.y - tmp_grad.p.y) / dist) / tmp_grad.diffusion
-                elif dist == 0:
-                    # create random vector with length = repulsion radius
-                    rand = np.random.random_sample()
-                    distance.x = ((2 * np.random.randint(2) - 1) * rand * tmp_grad.diffusion) / tmp_grad.diffusion
-                    distance.y = (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * tmp_grad.diffusion / tmp_grad.diffusion
+                if grad.x == np.inf or grad.x == -1 * np.inf:
+                    att = np.inf
+                else:
+                    att = np.linalg.norm([grad.x, grad.y])
 
-            self._current_gradient = distance
+                if att > tmp_att:
+                    if grad.x == np.inf or grad.x == -1 * np.inf:
+                        rand = np.random.random_sample()
+                        tmp_grad.x = (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
+                        tmp_grad.y = (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
+                                     (gradient.goal_radius + gradient.diffusion)
+                    else:
+                        tmp_grad = grad
+
+                    tmp_att = att
+
+            self._current_gradient = tmp_grad
 
 
 
@@ -251,16 +257,12 @@ class SoBuffer():
         # aggregate repulsive gradients
         if gradients_repulsive:
             for gradient in gradients_repulsive:
-
                 grad = self.calc_repulsive_gradient(gradient, pose)
-
-                # robot position is within repulsion goal radius
+                # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
-                    # Todo: adjust, somehow give it extra strenghts / priority, maybe let robot move in direction of attractive gradient if one is availble, but with strength s.t. outside of repulsive area is reached
-                    # different approach for collision avoidance robots and goal following?
-                    rand = np.random.random_sample()
-                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
-                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (gradient.goal_radius + gradient.diffusion)
+                        rand = np.random.random_sample()
+                        vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
+                        vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (gradient.goal_radius + gradient.diffusion)
                 else:
                     vector_repulsion.x += grad.x
                     vector_repulsion.y += grad.y
