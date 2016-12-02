@@ -18,11 +18,12 @@ class soBufferTest(unittest.TestCase):
         '''
         test store_data method
         '''
-        bffr = soBuffer.SoBuffer(aggregation=False)
+
+        # Test aggregation = max
+        bffr = soBuffer.SoBuffer(aggregation='max')
         testlist = []
 
         msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3())
-        testlist.append(msg)
         bffr.store_data(msg)
 
         msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3())
@@ -32,15 +33,66 @@ class soBufferTest(unittest.TestCase):
         msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3())
         bffr.store_data(msg)
 
-        #msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3())
-        #testlist.append(msg)
-        #bffr.store_data(msg)
+        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
 
-        #msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3())
-        #testlist.append(msg)
-        #bffr.store_data(msg)
+        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
 
         self.assertEqual(bffr.get_data(), testlist)
+
+        # Test aggregation = min
+        bffr = soBuffer.SoBuffer(aggregation='min')
+        testlist = []
+
+        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
+
+        # Test aggregation = avg
+        bffr = soBuffer.SoBuffer(aggregation='avg')
+        testlist = []
+
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3())
+        testlist.append(soMessage(None, Vector3(3, 3, 0), 1, 3.5, 1.0, 0, Vector3()))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3())
+        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 1.0, 0, Vector3()))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
+
 
     # def test_get_current_gradient(self):
     #     '''

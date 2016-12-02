@@ -15,8 +15,8 @@ class SoBuffer():
     """
     This class is the buffer for received self-organization data
     """
-    def __init__(self, aggregation='fusion', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='all', collision_avoidance='repulsion'):
+    def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
+                 view_distance=2.0, id='', result='avg', collision_avoidance='repulsion'):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -72,7 +72,7 @@ class SoBuffer():
             self._evaporate_buffer()
 
         # store own position data (last two values)
-        if msg.header.frame_id == self._id:
+        if self._id and msg.header.frame_id == self._id:
             self._own_pos.append(msg)
             if len(self._own_pos) > 2:
                 del self._own_pos[0]
@@ -89,6 +89,7 @@ class SoBuffer():
                     self._neighbors[msg.header.frame_id] = [msg]
 
         # ToDo Add check that received data is newer than stored data
+        # ToDo think about integrating goal radius as well
         elif not msg.header.frame_id:
             found = False
             if self._data:
@@ -108,19 +109,21 @@ class SoBuffer():
                             if msg.attraction == self._data[i].attraction:
                                 msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
                             else:
-                                diffusion = (msg.diffusion - self._data[i].diffusion) / 2
+                                diffusion = msg.diffusion - self._data[i].diffusion
                                 msg.diffusion = np.abs(np.absolute(diffusion))
                                 # change sign
                                 if np.sign(diffusion) < 0:
                                     msg.attraction *= -1
                             del self._data[i]
-                            self._data.append(msg)
+                            if msg.diffusion >= self._min_diffusion:
+                                self._data.append(msg)
             else:
                 self._data.append(msg)
                 found = True
 
             if not found:
                 self._data.append(msg)
+
 
     def get_data(self):
         """
@@ -138,7 +141,7 @@ class SoBuffer():
         #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
         #    self.evaporate_buffer()
 
-        # distance vector based on gradients - merges available information 
+        # distance vector based on gradients - merges available information
         if self._result == 'near':
             self._aggregate_nearest_repulsion(pose)
         elif self._result == 'max':
