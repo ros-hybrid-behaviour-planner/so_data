@@ -14,7 +14,7 @@ class GradientSensor(SimpleTopicSensor):
     "PassThrough" because the sensor just forwards the received msg
     """
     def __init__(self, name, id='', topic=None, message_type=None,  initial_value=None, create_log = False):
-        # buffer to store and handle gradient data 
+        # buffer to store and handle gradient data
         self._buffer = soBuffer.SoBuffer(id=id)
 
         super(GradientSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)

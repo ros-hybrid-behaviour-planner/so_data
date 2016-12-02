@@ -17,7 +17,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     '''
     def __init__(self, aggregation=True, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='all', collision_avoidance='gradient'):
+                 view_distance=2.0, id='', result='all', collision_avoidance='repulsion'):
         '''
         :param aggregation: True/False - indicator if aggregation should be applied
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
@@ -34,7 +34,7 @@ class SoBuffer():
         '''
 
         rospy.Subscriber('soData', soMessage, self.store_data)
-        self.data = []
+        self.data = [] # store incoming gradients
         self.own_pos = [] # store own last positions
         self.neighbors = {} # empty dict
         self._current_gradient = Vector3()
@@ -61,7 +61,6 @@ class SoBuffer():
             self.evaporate_buffer()
 
         # store own position data (last two values)
-        # ToDo Add check that received data is newer than stored data
         if msg.header.frame_id == self._id:
             self.own_pos.append(msg)
             if len(self.own_pos) > 2:
@@ -78,6 +77,7 @@ class SoBuffer():
                 else:
                     self.neighbors[msg.header.frame_id] = [msg]
 
+        # ToDo Add check that received data is newer than stored data
         elif not msg.header.frame_id:
             found = False
             if self.data:
@@ -120,7 +120,7 @@ class SoBuffer():
 
         # Collision Avoidance between neighbors
         if self._collision_avoidance == 'gradient':
-            collision = self.neighbor_repulsion(pose)
+            collision = self.gradient_repulsion(pose)
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
         elif self._collision_avoidance == 'repulsion':
@@ -131,7 +131,12 @@ class SoBuffer():
         return self._current_gradient
 
 
-    def neighbor_repulsion(self, pose):
+    def gradient_repulsion(self, pose):
+        '''
+        returns repulsion vector (collision avoidance between neighbors) based on potential field approach
+        :param pose:
+        :return:
+        '''
         repulsion = Vector3()
         if self.neighbors:
             for val in self.neighbors.values():
@@ -153,7 +158,7 @@ class SoBuffer():
 
     def repulsion_vector(self, pose):
         """
-        return a repulsion vector
+        return a repulsion vector based on formula presented by Fernandez-Marquez et al.
         :param ownpos (Pose.msg),
          repulsion radius is set to view_distance
         :return repulsion vector
@@ -167,16 +172,16 @@ class SoBuffer():
                 if calc.get_gradient_distance(val[-1].p, pose) < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
-                        diff = val[-1].diffusion + val[-1].goal_radius - distance
+                        diff = self._view_distance - distance
                         m.x += (pose.x - val[-1].p.x) * diff / distance
                         m.y += (pose.y - val[-1].p.y) * diff / distance
                     elif distance == 0:
                         # create random vector with length = repulsion radius
                         rand = np.random.random_sample()
-                        m.x += (2 * np.random.randint(2) - 1) * rand * (val[-1].diffusion + val[-1].goal_radius)
-                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (val[-1].diffusion + val[-1].goal_radius)
+                        m.x += (2 * np.random.randint(2) - 1) * rand * self._view_distance
+                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._view_distance
 
-            # adjust vector length to be within repulsion Radius
+        # adjust vector length to be within view Distance
         norm = np.linalg.norm([m.x, m.y])
         if norm > self._view_distance:
             m.x = (val[-1].diffusion + val[-1].goal_radius) * m.x / norm
