@@ -21,7 +21,7 @@ class SoBuffer():
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
                          * max = keep gradients with maximum diffusion radius
-                         * fusion = combine gradients
+                         * avg = combine gradients / average
         :type aggregation: str.
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
                 (0 - data is lost after 1 iteration, 1 - data is stored permanently)
@@ -103,7 +103,7 @@ class SoBuffer():
                             if msg.diffusion <= self._data[i].diffusion: #keep data with max diffusion radius
                                 del self._data[i]
                                 self._data.append(msg)
-                        elif self._aggregation == 'fusion':
+                        elif self._aggregation == 'avg':
                             # attraction is the same direction
                             if msg.attraction == self._data[i].attraction:
                                 msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
@@ -138,7 +138,7 @@ class SoBuffer():
         #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
         #    self.evaporate_buffer()
 
-        # vector based on gradients
+        # distance vector based on gradients - merges available information 
         if self._result == 'near':
             self._aggregate_nearest_repulsion(pose)
         elif self._result == 'max':
@@ -219,7 +219,7 @@ class SoBuffer():
         return m
 
 
-    # AGGREGATION - build potential field
+    # AGGREGATION - build potential field (merging of information)
     def _aggregate_max(self, pose): #TODO: unit test
         """
         follow higher gradient values (= gradient with shortest relative distance)
