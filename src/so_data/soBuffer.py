@@ -1,8 +1,7 @@
-'''
-Created on 07.11.2016
-
-@author: kaiser
-'''
+""" Created on 07.11.2016
+.. module:: soBuffer
+.. moduleauthor:: kaiser
+"""
 
 import rospy
 from so_data.msg import soMessage
@@ -13,28 +12,34 @@ from geometry_msgs.msg import Vector3
 
 
 class SoBuffer():
-    '''
+    """
     This class is the buffer for received self-organization data
-    '''
+    """
     def __init__(self, aggregation=True, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
                  view_distance=2.0, id='', result='all', collision_avoidance='repulsion'):
-        '''
-        :param aggregation: True/False - indicator if aggregation should be applied
+        """
+        :param aggregation: indicator if aggregation should be applied
+        :type aggregation: bool
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
                 (0 - data is lost after 1 iteration, 1 - data is stored permanently)
+        :type: evaporation_factor: float [0,1]
         :param evaporation_time: delta time when evaporation should be applied in secs
+        :type evaporation_time: int
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
+        :type min_diffusion: float
         :param result: specifies vector which should be returned;
-                options: all = return vector considering all vectors of potential field
-                         max = return vector with max attraction / repulsion
-                         near = return vector to nearest attractive vector avoiding obstacles
+                options: * all = return vector considering all vectors of potential field
+                         * max = return vector with max attraction / repulsion
+                         * near = return vector to nearest attractive vector avoiding obstacles
+        :type result: str.
         :param collision_avoidance
-                options: gradient = gradient / potential field approach to realize collision avoidance between neighbors
-                        repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
-        '''
+                options: * gradient = gradient / potential field approach to realize collision avoidance between neighbors
+                         * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
+        :type collision_avoidance: str.
+        """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
-        self.data = [] # store incoming gradients
+        self.data = [] # store incoming
         self.own_pos = [] # store own last positions
         self.neighbors = {} # empty dict
         self._current_gradient = Vector3()
@@ -48,11 +53,11 @@ class SoBuffer():
         self._result = result
 
     def store_data(self, msg):
-        '''
+        """
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
         :return:
-        '''
+        """
 
         # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
 
@@ -131,6 +136,7 @@ class SoBuffer():
         return self._current_gradient
 
 
+    # Collision avoidance between neighbors
     def gradient_repulsion(self, pose):
         '''
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
@@ -190,7 +196,7 @@ class SoBuffer():
         return m
 
 
-    # AGGREGATION
+    # AGGREGATION - build potential field
     def aggregate_max(self, pose): #TODO: unit test
         '''
         follow higher gradient values (= gradient with shortest relative distance)
@@ -207,7 +213,6 @@ class SoBuffer():
                 if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     gradients.append(element)
-
 
         # find gradient with highest value ( = closest relative distance)
         if gradients:
