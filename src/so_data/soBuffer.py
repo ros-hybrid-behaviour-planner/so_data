@@ -15,11 +15,14 @@ class SoBuffer():
     """
     This class is the buffer for received self-organization data
     """
-    def __init__(self, aggregation=True, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
+    def __init__(self, aggregation='fusion', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
                  view_distance=2.0, id='', result='all', collision_avoidance='repulsion'):
         """
-        :param aggregation: indicator if aggregation should be applied
-        :type aggregation: bool
+        :param aggregation: indicator which kind of aggregation should be applied
+                options: * min = keep gradients with minimum diffusion radius
+                         * max = keep gradients with maximum diffusion radius
+                         * fusion = combine gradients
+        :type aggregation: str.
         :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
                 (0 - data is lost after 1 iteration, 1 - data is stored permanently)
         :type: evaporation_factor: float [0,1]
@@ -92,10 +95,26 @@ class SoBuffer():
                 for i in xrange(len(self._data) - 1, -1, -1):
                     if self._data[i].p.x == msg.p.x and self._data[i].p.y == msg.p.y:
                         found = True
-                        if msg.diffusion >= self._data[i].diffusion: #keep data with max diffusion radius
+                        if self._aggregation == 'max':
+                            if msg.diffusion >= self._data[i].diffusion: #keep data with max diffusion radius
+                                del self._data[i]
+                                self._data.append(msg)
+                        elif self._aggregation == 'min':
+                            if msg.diffusion <= self._data[i].diffusion: #keep data with max diffusion radius
+                                del self._data[i]
+                                self._data.append(msg)
+                        elif self._aggregation == 'fusion':
+                            # attraction is the same direction
+                            if msg.attraction == self._data[i].attraction:
+                                msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
+                            else:
+                                diffusion = (msg.diffusion - self._data[i].diffusion) / 2
+                                msg.diffusion = np.abs(np.absolute(diffusion))
+                                # change sign
+                                if np.sign(diffusion) < 0:
+                                    msg.attraction *= -1
                             del self._data[i]
                             self._data.append(msg)
-                        found = True
             else:
                 self._data.append(msg)
                 found = True
@@ -104,16 +123,17 @@ class SoBuffer():
                 self._data.append(msg)
 
     def get_data(self):
-        '''
-        :return: buffer content
-        '''
+        """
+        :return buffer content
+        """
         return self._data
 
     def get_current_gradient(self, pose):
-        '''
-        :parameter: pose: Pose Message with position of robot
-        :return: current gradient vector to follow based on settings
-        '''
+        """
+        :param pose: Pose Message with position of robot
+        :return current gradient vector to follow based on settings
+        """
+
         # evaporate & aggregate data
         #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
         #    self.evaporate_buffer()
@@ -201,10 +221,10 @@ class SoBuffer():
 
     # AGGREGATION - build potential field
     def _aggregate_max(self, pose): #TODO: unit test
-        '''
+        """
         follow higher gradient values (= gradient with shortest relative distance)
         sets current gradient to direction vector (length <= 1)
-        '''
+        """
 
         gradients = []
         tmp_att = 0
@@ -245,12 +265,12 @@ class SoBuffer():
 
 
     def _aggregate_nearest_repulsion(self, pose): # TODO unit test!!!
-        '''
+        """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
         :param pose:
-        :return:
-        '''
+        :return
+        """
 
         gradients_attractive = []
         gradients_repulsive = []
@@ -298,11 +318,11 @@ class SoBuffer():
         self._current_gradient = vector_attraction
 
     def _aggregate_all(self, pose):  # TODO unit test!!!
-        '''
+        """
         aggregate all vectors
         :param pose:
         :return:
-        '''
+        """
 
         gradients_attractive = []
         gradients_repulsive = []
@@ -367,11 +387,11 @@ class SoBuffer():
 
     # Potential field calculations
     def _calc_attractive_gradient(self, gradient, pose):
-        '''
+        """
         :param gradient: position of the goal
         :param pose: position of the robot
         :return: attractive vector
-        '''
+        """
 
         v = Vector3()
 
@@ -393,11 +413,11 @@ class SoBuffer():
         return v
 
     def _calc_repulsive_gradient(self, gradient, pose):
-        '''
+        """
         :param gradient: position of the goal
         :param pose: position of the robot
         :return: repulsive vector
-        '''
+        """
         v = Vector3()
 
         # distance goal - agent
