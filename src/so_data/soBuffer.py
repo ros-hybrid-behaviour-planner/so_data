@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='avg', collision_avoidance='repulsion'):
+                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -46,17 +46,27 @@ class SoBuffer():
         self._data = [] # store incoming
         self._own_pos = [] # store own last positions
         self._neighbors = {} # empty dict
-        self.current_gradient = Vector3()
+        self._current_gradient = Vector3()
 
         # options
-        self._aggregation = aggregation #aggregation has somehow always to be true, so change that maybe to different options
+        if aggregation != 'all' and aggregation != 'max' and aggregation != 'near':
+            rospy.logerr("Wrong aggregation type in soBuffer. Set to max.")
+            self._aggregation = 'max'
+        else:
+            self._aggregation = aggregation
+
         self._evaporation_factor = evaporation_factor
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._view_distance = view_distance
         self._collision_avoidance = collision_avoidance
         self._id = id
-        self._result = result
+
+        if result != 'all' and result != 'max' and result != 'near':
+            rospy.logerr("Wrong return type in soBuffer. Set to near.")
+            self._result = 'near'
+        else:
+            self._result = result
 
     def store_data(self, msg):
         """
