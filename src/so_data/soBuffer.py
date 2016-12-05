@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
+                 view_distance=2.0, id='', result='near', collision_avoidance=''):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -59,7 +59,12 @@ class SoBuffer():
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._view_distance = view_distance
-        self._collision_avoidance = collision_avoidance
+        if collision_avoidance != 'repulsion' and collision_avoidance != 'gradient' and collision_avoidance != '':
+            rospy.logerr("No valid option for collision avoidance entered. Set to gradient.")
+            self._collision_avoidance = 'gradient'
+        else:
+            self._collision_avoidance = collision_avoidance
+
         self._id = id
 
         if result != 'all' and result != 'max' and result != 'near':
@@ -186,6 +191,7 @@ class SoBuffer():
                 if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
                         + self._view_distance:
                     grad = self._calc_repulsive_gradient(val[-1], pose)
+
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         rand = np.random.random_sample()
@@ -392,31 +398,42 @@ class SoBuffer():
                 if self._data[i].diffusion < self._min_diffusion:
                     del self._data[i] # delete element from list
 
-
-    # Potential field calculations
+    # Potential field calculations based on Balch and Hybinette Paper (doi:10.1109/ROBOT.2000.844042)
     def _calc_attractive_gradient(self, gradient, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
         :return: attractive vector
         """
-
         v = Vector3()
 
         # distance goal - agent
-        d = calc.get_gradient_distance(gradient.p, pose)
-        # angle between agent and goal
-        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
+        tmp = Vector3()
+        tmp.x = gradient.p.x - pose.x
+        tmp.y = gradient.p.y - pose.y
+        tmp.z = gradient.p.z - pose.z
 
-        if d < gradient.goal_radius:
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+
+        if d <= gradient.goal_radius:
             v.x = 0
             v.y = 0
-        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
-            v.x = (d - gradient.goal_radius) * np.cos(angle)
-            v.y = (d - gradient.goal_radius) * np.sin(angle)
+            v.z = 0
+        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+            # calculate norm vector for direction
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # calculate magnitude of vector
+            magnitude = (d - gradient.goal_radius) / gradient.diffusion
+            # calculate attraction vector
+            v.x = magnitude * tmp.x
+            v.y = magnitude * tmp.y
+            v.z = magnitude * tmp.z
         elif d > gradient.goal_radius + gradient.diffusion:
-            v.x = gradient.diffusion * np.cos(angle)
-            v.y = gradient.diffusion * np.sin(angle)
+            v.x = 1.0 * tmp.x
+            v.y = 1.0 * tmp.y
+            v.z = 1.0 * tmp.z
 
         return v
 
@@ -429,18 +446,32 @@ class SoBuffer():
         v = Vector3()
 
         # distance goal - agent
-        d = calc.get_gradient_distance(gradient.p, pose)
-        # angle between agent and goal
-        angle = np.math.atan2((gradient.p.y - pose.y), (gradient.p.x - pose.x))
 
-        if d < gradient.goal_radius:
-            v.x = -1 * np.sign(np.cos(angle)) * np.inf
-            v.y = -1 * np.sign(np.sin(angle)) * np.inf
-        elif gradient.goal_radius <= d <= gradient.goal_radius + gradient.diffusion:
-            v.x = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.cos(angle)
-            v.y = -1 * (gradient.goal_radius + gradient.diffusion - d) * np.sin(angle)
-        elif d > gradient.goal_radius + gradient.diffusion:
+        tmp = Vector3()
+        tmp.x = pose.x - gradient.p.x
+        tmp.y = pose.y - gradient.p.y
+        tmp.z = pose.z - gradient.p.z
+
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+
+        if d <= gradient.goal_radius: #infinitely large repulsion
+            v.x = np.inf
+            v.y = np.inf
+            v.z = np.inf
+        elif gradient.goal_radius < d <= gradient.diffusion + gradient.goal_radius:
+            # calculate norm vector for direction
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # calculate magnitude of vector
+            magnitude = (gradient.diffusion + gradient.goal_radius - d) / gradient.diffusion
+            # calculate repulsion vector
+            v.x = magnitude * tmp.x
+            v.y = magnitude * tmp.y
+            v.z = magnitude * tmp.z
+        elif d > gradient.diffusion + gradient.goal_radius:
             v.x = 0
+            v.y = 0
             v.y = 0
 
         return v
