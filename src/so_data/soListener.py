@@ -21,7 +21,7 @@ class GradientSensor(SimpleTopicSensor):
 
 
     def subscription_callback(self, msg):
-        tmp = self._buffer.get_current_gradient(msg)
+        tmp = self._buffer.get_current_gradient(msg.position)
         self.update(tmp)
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
         if self._iShouldCreateLog:

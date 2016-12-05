@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
+                 view_distance=2.0, id='', result='near', collision_avoidance=''):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -143,7 +143,7 @@ class SoBuffer():
 
     def get_current_gradient(self, pose):
         """
-        :param pose: Pose Message with position of robot
+        :param pose: Pose Message with position of robot (geometry msgs Pose)
         :return current gradient vector to follow based on settings
         """
 
