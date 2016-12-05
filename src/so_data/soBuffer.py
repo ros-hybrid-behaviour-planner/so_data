@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance=''):
+                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -217,18 +217,13 @@ class SoBuffer():
                         diff = self._view_distance - distance
                         m.x += (pose.x - val[-1].p.x) * diff / distance
                         m.y += (pose.y - val[-1].p.y) * diff / distance
+                        m.z += (pose.z - val[-1].p.z) * diff / distance
                     elif distance == 0:
                         # create random vector with length = repulsion radius
                         rand = np.random.random_sample()
                         m.x += (2 * np.random.randint(2) - 1) * rand * self._view_distance
                         m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._view_distance
-
-        # adjust vector length to be within view Distance
-        norm = np.linalg.norm([m.x, m.y])
-        if norm > self._view_distance:
-            m.x = self._view_distance * m.x / norm
-            m.y = self._view_distance * m.y / norm
-
+                        m.z += 0
         return m
 
 

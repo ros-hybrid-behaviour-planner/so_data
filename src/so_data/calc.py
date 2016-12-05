@@ -44,4 +44,4 @@ def get_gradient_distance(gradpos, pose):
     :param pose: pose of the robot (Pose)
     :return: euclidian distance robot to last received gradient
     '''
-    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y)])
+    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y), (gradpos.z - pose.z)])
