@@ -67,7 +67,7 @@ class SoBuffer():
 
         self._id = id
 
-        if result != 'all' and result != 'max' and result != 'near':
+        if result != 'all' and result != 'max' and result != 'near' and result != 'newest':
             rospy.logerr("Wrong return type in soBuffer. Set to near.")
             self._result = 'near'
         else:
@@ -104,33 +104,37 @@ class SoBuffer():
                     self._neighbors[msg.header.frame_id] = [msg]
 
         # ToDo Add check that received data is newer than stored data
-        # ToDo think about integrating goal radius as well
         elif not msg.header.frame_id:
             found = False
             if self._data:
                 for i in xrange(len(self._data) - 1, -1, -1):
                     if self._data[i].p.x == msg.p.x and self._data[i].p.y == msg.p.y:
                         found = True
-                        if self._aggregation == 'max':
-                            if msg.diffusion >= self._data[i].diffusion: #keep data with max diffusion radius
+                        if self._aggregation == 'max': # keep data with max diffusion radius
+                            if msg.diffusion + msg.goal_radius >= self._data[i].diffusion + self._data[i].goal_radius:
                                 del self._data[i]
                                 self._data.append(msg)
-                        elif self._aggregation == 'min':
-                            if msg.diffusion <= self._data[i].diffusion: #keep data with max diffusion radius
+                        elif self._aggregation == 'min': # keep data with min diffusion radius
+                            if msg.diffusion + msg.goal_radius <= self._data[i].diffusion + self._data[i]. goal_radius:
                                 del self._data[i]
                                 self._data.append(msg)
                         elif self._aggregation == 'avg':
                             # attraction is the same direction
                             if msg.attraction == self._data[i].attraction:
                                 msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
+                                msg.goal_radius = (msg.goal_radius + self._data[i].goal_radius) / 2
                             else:
-                                diffusion = msg.diffusion - self._data[i].diffusion
-                                msg.diffusion = np.abs(np.absolute(diffusion))
                                 # change sign
-                                if np.sign(diffusion) < 0:
+                                if self._data[i].diffusion + self._data[i].goal_radius > msg.diffusion + msg.goal_radius:
                                     msg.attraction *= -1
+                                msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
+                                msg.goal_radius = (msg.goal_radius + self._data[i].goal_radius) / 2
                             del self._data[i]
                             if msg.diffusion >= self._min_diffusion:
+                                self._data.append(msg)
+                        elif self._aggregation == 'newest': # keep last received gradient at one position
+                            if msg.header.stamp >= self._data[i].header.stamp:
+                                del self._data[i]
                                 self._data.append(msg)
             else:
                 self._data.append(msg)
