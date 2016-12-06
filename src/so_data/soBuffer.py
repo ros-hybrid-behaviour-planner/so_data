@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
+                 view_distance=2.0, id='', result='near', collision_avoidance='gradient'):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -205,9 +205,9 @@ class SoBuffer():
 
     def _repulsion_vector(self):
         """
-        return a repulsion vector based on formula presented by Fernandez-Marquez et al.
-        :param ownpos (Pose.msg),
-         repulsion radius is set to view_distance
+        return a repulsion vector based on formula presented by Fernandez-Marquez et al., use of received gradients (p)
+        for calculation
+        repulsion radius is set to view_distance
         :return repulsion vector
         """
         # initialize vector
