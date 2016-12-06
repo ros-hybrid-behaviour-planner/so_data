@@ -49,7 +49,7 @@ class SoBuffer():
         self._current_gradient = Vector3()
 
         # options
-        if aggregation != 'all' and aggregation != 'max' and aggregation != 'near':
+        if aggregation != 'min' and aggregation != 'max' and aggregation != 'avg' and aggregation != 'newest':
             rospy.logerr("Wrong aggregation type in soBuffer. Set to max.")
             self._aggregation = 'max'
         else:
@@ -67,7 +67,7 @@ class SoBuffer():
 
         self._id = id
 
-        if result != 'all' and result != 'max' and result != 'near' and result != 'newest':
+        if result != 'all' and result != 'max' and result != 'near':
             rospy.logerr("Wrong return type in soBuffer. Set to near.")
             self._result = 'near'
         else:
@@ -127,8 +127,8 @@ class SoBuffer():
                                 # change sign
                                 if self._data[i].diffusion + self._data[i].goal_radius > msg.diffusion + msg.goal_radius:
                                     msg.attraction *= -1
-                                msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
-                                msg.goal_radius = (msg.goal_radius + self._data[i].goal_radius) / 2
+                                msg.diffusion = np.absolute(msg.diffusion - self._data[i].diffusion)
+                                msg.goal_radius = np.absolute(msg.goal_radius - self._data[i].goal_radius)
                             del self._data[i]
                             if msg.diffusion >= self._min_diffusion:
                                 self._data.append(msg)
@@ -155,11 +155,6 @@ class SoBuffer():
         :param pose: Pose Message with position of robot (geometry msgs Pose)
         :return current gradient vector to follow based on settings
         """
-
-        # evaporate & aggregate data
-        #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
-        #    self.evaporate_buffer()
-
         # distance vector based on gradients - merges available information
         if self._result == 'near':
             self._aggregate_nearest_repulsion(pose)
@@ -386,6 +381,7 @@ class SoBuffer():
 
 
     # EVAPORATION
+    # TODO: think about integration of goal_radius (only in check of minimum diffusion radius, obviously)
     def _evaporate_buffer(self):
         '''
         evaporate buffer data
@@ -418,7 +414,6 @@ class SoBuffer():
         tmp.z = gradient.p.z - pose.z
 
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-
         if d <= gradient.goal_radius:
             v.x = 0
             v.y = 0
@@ -435,6 +430,11 @@ class SoBuffer():
             v.y = magnitude * tmp.y
             v.z = magnitude * tmp.z
         elif d > gradient.goal_radius + gradient.diffusion:
+            # calculate norm vector for direction
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # calculate attraction vector
             v.x = 1.0 * tmp.x
             v.y = 1.0 * tmp.y
             v.z = 1.0 * tmp.z
@@ -459,16 +459,21 @@ class SoBuffer():
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
 
         if d <= gradient.goal_radius: #infinitely large repulsion
-            v.x = np.inf
-            v.y = np.inf
-            v.z = np.inf
+            # calculate norm vector for direction
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # calculate repulsion vector
+            v.x = np.inf * tmp.x
+            v.y = np.inf * tmp.x
+            v.z = np.inf * tmp.x
         elif gradient.goal_radius < d <= gradient.diffusion + gradient.goal_radius:
             # calculate norm vector for direction
             tmp.x /= d
             tmp.y /= d
             tmp.z /= d
             # calculate magnitude of vector
-            magnitude = (gradient.diffusion + gradient.goal_radius - (d-gradient.goal_radius)) / gradient.diffusion
+            magnitude = (gradient.diffusion + gradient.goal_radius - d) / gradient.diffusion
             # calculate repulsion vector
             v.x = magnitude * tmp.x
             v.y = magnitude * tmp.y

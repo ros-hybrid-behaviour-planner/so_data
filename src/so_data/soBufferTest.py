@@ -6,10 +6,13 @@ Created on 14.11.2016
 
 import soBuffer
 import unittest
-from so_data.msg import soMessage, Pose
+import calc
+from so_data.msg import soMessage
 import rospy
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Point, Vector3
 from copy import deepcopy
+from std_msgs.msg import Header
+import numpy as np
 
 
 class soBufferTest(unittest.TestCase):
@@ -85,7 +88,7 @@ class soBufferTest(unittest.TestCase):
         bffr.store_data(msg)
 
         msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3())
-        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 1.0, 0, Vector3()))
+        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 0.0, 0, Vector3()))
         bffr.store_data(msg)
 
         msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3())
@@ -93,32 +96,143 @@ class soBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr.get_data(), testlist)
 
+        # Test aggregation = avg
+        bffr = soBuffer.SoBuffer(aggregation='newest')
+        testlist = []
+
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3())
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3())
+        testlist.append(msg)
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
+
+    def test_calc_attractive_gradient(self):
+        """
+        test _calc_attractive_gradient method for 2D and 3D
+        """
+        bffr = soBuffer.SoBuffer()
+
+        # 2D - D < r <= C
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 5.0, 1.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6*0.8, 0.8*0.8, 0))
+
+        # 2D - r > C
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 1.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
+
+        # 2D - r <= D
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 5.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0))
+
+        # 2D - r > C - non zero robot pose
+        gradient = soMessage(None, Vector3(4, 5, 0), 1, 2.0, 1.0, 0, Vector3())
+        pose = Point(1,1,0)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
+
+        # 3D - D < r <= C
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 6.0, 2.0, 0, Vector3())
+        pose = Point(1,2,4)
+        result = Vector3((2.0/7.0)*(5.0/6.0), (3.0/7.0)*(5.0/6.0), (6.0/7.0)*(5.0/6.0))
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
+
+        # 3D - r > C
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 2.0, 0, Vector3())
+        pose = Point(1,2,4)
+        result = Vector3((2.0/7.0), (3.0/7.0), (6.0/7.0))
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
+
+        # 3D - r <= D
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 7.0, 0, Vector3())
+        pose = Point(1, 2, 4)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0))
+
+    def test_calc_repulsive_gradient(self):
+        """
+        test _calc_repulsive_gradient method
+        """
+        bffr = soBuffer.SoBuffer()
+
+        # 2D - D < r <= C
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 5.0, 1.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-0.6*0.2, -0.8*0.2, 0))
+
+        # 2D - r > C
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 1.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+
+        # 2D - r <= D
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 5.0, 0, Vector3())
+        pose = Point(0,0,0)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1*np.inf))
+
+        # 2D - r > C - non zero robot pose
+        gradient = soMessage(None, Vector3(4, 5, 0), -1, 2.0, 1.0, 0, Vector3())
+        pose = Point(1,1,0)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+
+        # 3D - D < r <= C
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 6.0, 2.0, 0, Vector3())
+        pose = Point(1,2,4)
+        result = Vector3((-2.0/7.0)*(1.0/6.0), (-3.0/7.0)*(1.0/6.0), (-6.0/7.0)*(1.0/6.0))
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), result)
+
+        # 3D - r > C
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 2.0, 0, Vector3())
+        pose = Point(1,2,4)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+
+        # 3D - r <= D
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 7.0, 0, Vector3())
+        pose = Point(1, 2, 4)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1*np.inf))
+
 
     # def test_get_current_gradient(self):
     #     '''
     #     test gradient update of current gradient
     #     :return:
     #     '''
-    #     bffr = soBuffer.SoBuffer(aggregation = False, evaporation_factor=1.0)
+    #     bffr = soBuffer.SoBuffer(result='max', aggregation = 'max', evaporation_factor=1.0, collision_avoidance='')
     #
     #     # distance > diffusion radius
-    #     gradient = soMessage(Vector(5,5,0), rospy.Time.now(), 1, 3.0, 0, Vector())
+    #     gradient = soMessage(None, Vector3(5,5,0), 1, 3.0, 1.0, 0, Vector3())
     #     bffr.store_data(gradient)
-    #     self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(0,0,0))
+    #     self.assertEqual(bffr.get_current_gradient(Point(0,0,0)), Vector3(0,0,0))
     #
     #     # distance < diffusion radius
-    #     gradient = soMessage(Vector(2,2,0), rospy.Time.now(), 1, 3.0, 0, Vector())
+    #     gradient = soMessage(None, Vector3(2,2,0), 1, 3.0, 1.0, 0, Vector3())
     #     bffr.store_data(gradient)
-    #     self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(2/3.0,2/3.0,0))
-    #
-    # def test_get_gradient_distance(self):
-    #     '''
-    #     test calculation of euclidian distance current position - gradient position
-    #     :return:
-    #     '''
-    #     bffr = soBuffer.SoBuffer(aggregation = False)
-    #     self.assertEqual(bffr.get_gradient_distance(Vector(3,4,0), Pose(0,0,0,0,0)), 5.0)
-    #
+    #     self.assertEqual(bffr.get_current_gradient(Point(0,0,0)), Vector3(2/3.0,2/3.0,0))
+
+    def test_get_gradient_distance(self):
+         '''
+         test calculation of euclidian distance current position - gradient position
+         :return:
+         '''
+         self.assertEqual(calc.get_gradient_distance(Vector3(3,4,0), Point(0,0,0)), 5.0)
+
     # def test_aggregate_min(self):
     #     '''
     #     test of aggregation of data (closest gradient = current gradient)
@@ -133,35 +247,35 @@ class soBufferTest(unittest.TestCase):
     #
     #     self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)) , Vector(1/5.0, 1/5.0, 0))
     #
-    # def test_evaporation_buffer(self):
-    #     '''
-    #     test evaporation of buffer data
-    #     :return:
-    #     '''
-    #
-    #     bffr = soBuffer.SoBuffer(aggregation = False, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0)
-    #     now = rospy.Time.now()
-    #
-    #     data = [soMessage(Vector(1,1,0), now - rospy.Duration(50), 1, 4.0, 0, Vector()),
-    #             soMessage(Vector(2,2,0), now - rospy.Duration(20), 1, 4.0, 0, Vector()),
-    #             soMessage(Vector(3,3,0), now - rospy.Duration(15), 1, 4.0, 0, Vector()),
-    #             soMessage(Vector(4,4,0), now - rospy.Duration(10), 1, 4.0, 0, Vector()),
-    #             soMessage(Vector(5,5,0), now - rospy.Duration(5), 1, 4.0, 0, Vector()),
-    #             soMessage(Vector(6,6,0), now, 1, 4.0, 0, Vector())
-    #             ]
-    #
-    #     for d in data:
-    #         bffr.store_data(deepcopy(d))
-    #
-    #     bffr.evaporate_buffer()
-    #
-    #     data = [soMessage(Vector(2,2,0), now, 1, 4.0 * (0.8 ** 4), 0, Vector()),
-    #             soMessage(Vector(3,3,0), now, 1, 4.0 * (0.8 ** 3), 0, Vector()),
-    #             soMessage(Vector(4,4,0), now, 1, 4.0 * (0.8 ** 2), 0, Vector()),
-    #             soMessage(Vector(5,5,0), now, 1, 4.0 * 0.8, 0, Vector()),
-    #             soMessage(Vector(6,6,0), now, 1, 4.0, 0, Vector())]
-    #
-    #     self.assertEqual(bffr.get_data(), data)
+    def test_evaporation_buffer(self):
+        '''
+        test evaporation of buffer data
+        :return:
+        '''
+
+        bffr = soBuffer.SoBuffer(aggregation = 'max', evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0)
+        now = rospy.Time.now()
+
+        data = [soMessage(Header(None, now - rospy.Duration(35), None), Vector3(1,1,0), 1, 4.0, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now - rospy.Duration(20), None), Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now - rospy.Duration(15), None), Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now - rospy.Duration(10), None), Vector3(4,4,0), 1, 4.0, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now - rospy.Duration(5), None), Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3())
+                 ]
+
+        for d in data:
+            bffr.store_data(deepcopy(d))
+
+        bffr._evaporate_buffer()
+
+        data = [soMessage(Header(None, now, None), Vector3(2,2,0), 1, 4.0 * (0.8 ** 4), 1.0, 0, Vector3()),
+                 soMessage(Header(None, now, None), Vector3(3,3,0), 1, 4.0 * (0.8 ** 3), 1.0, 0, Vector3()),
+                 soMessage(Header(None, now, None), Vector3(4,4,0), 1, 4.0 * (0.8 ** 2), 1.0, 0, Vector3()),
+                 soMessage(Header(None, now, None), Vector3(5,5,0), 1, 4.0 * 0.8, 1.0, 0, Vector3()),
+                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3())]
+
+        self.assertEqual(bffr.get_data(), data)
     #
     # def test_get_current_gradient_full(self):
     #     '''
