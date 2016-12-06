@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='gradient'):
+                 view_distance=2.0, id='', result='near', collision_avoidance='repulsion'):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -169,7 +169,7 @@ class SoBuffer():
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
         elif self._collision_avoidance == 'repulsion':
-            collision = self._repulsion_vector(pose)
+            collision = self._repulsion_vector()
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
 
@@ -203,7 +203,7 @@ class SoBuffer():
 
         return repulsion
 
-    def _repulsion_vector(self, pose):
+    def _repulsion_vector(self):
         """
         return a repulsion vector based on formula presented by Fernandez-Marquez et al.
         :param ownpos (Pose.msg),
@@ -213,16 +213,16 @@ class SoBuffer():
         # initialize vector
         m = Vector3()
 
-        if self._neighbors:
+        if self._neighbors and self._own_pos:
             for val in self._neighbors.values():
-                distance = calc.get_gradient_distance(val[-1].p, pose)
-                if calc.get_gradient_distance(val[-1].p, pose) < self._view_distance:
+                distance = calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)
+                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
                         diff = self._view_distance - distance
-                        m.x += (pose.x - val[-1].p.x) * diff / distance
-                        m.y += (pose.y - val[-1].p.y) * diff / distance
-                        m.z += (pose.z - val[-1].p.z) * diff / distance
+                        m.x += (self._own_pos[-1].p.x - val[-1].p.x) * diff / distance
+                        m.y += (self._own_pos[-1].p.y - val[-1].p.y) * diff / distance
+                        m.z += (self._own_pos[-1].p.z - val[-1].p.z) * diff / distance
                     elif distance == 0:
                         # create random vector with length = repulsion radius
                         rand = np.random.random_sample()
