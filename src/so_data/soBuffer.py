@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance=''):
+                 view_distance=2.0, id='', result='near', collision_avoidance='', neighbor_storage_size=10):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -56,6 +56,7 @@ class SoBuffer():
             self._aggregation = aggregation
 
         self._evaporation_factor = evaporation_factor
+        self._neighbor_storage_size = neighbor_storage_size
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._view_distance = view_distance
@@ -89,7 +90,7 @@ class SoBuffer():
         # store own position data (last two values)
         if self._id and msg.header.frame_id == self._id:
             self._own_pos.append(msg)
-            if len(self._own_pos) > 2:
+            if len(self._own_pos) > self._neighbor_storage_size:
                 del self._own_pos[0]
         elif msg.header.frame_id:
             #Aggregation of data with same content (position), but different diffusion radii
@@ -98,7 +99,7 @@ class SoBuffer():
                     #check if data is newer
                     if msg.header.stamp > self._neighbors[msg.header.frame_id][-1].header.stamp:
                         self._neighbors[msg.header.frame_id].append(msg)
-                    if len(self._neighbors[msg.header.frame_id]) > 2:
+                    if len(self._neighbors[msg.header.frame_id]) > self._neighbor_storage_size:
                         del self._neighbors[msg.header.frame_id][0]
                 else:
                     self._neighbors[msg.header.frame_id] = [msg]
