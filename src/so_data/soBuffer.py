@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='', neighbor_storage_size=10):
+                 view_distance=2.0, id='', result='near', collision_avoidance='', neighbor_storage_size=2):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -39,6 +39,8 @@ class SoBuffer():
                 options: * gradient = gradient / potential field approach to realize collision avoidance between neighbors
                          * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
         :type collision_avoidance: str.
+        :param neighbor_storage_size: how many gradient messages per neighbor will be stored
+        :type neighbor_storage_size: int [0, inf.]
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
