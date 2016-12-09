@@ -401,7 +401,6 @@ class SoBuffer():
 
 
     # EVAPORATION
-    # TODO: think about integration of goal_radius (only in check of minimum diffusion radius, obviously)
     def _evaporate_buffer(self):
         '''
         evaporate buffer data
@@ -413,9 +412,11 @@ class SoBuffer():
             if diff >= rospy.Duration(self._evaporation_time):
                 n = diff.secs // self._evaporation_time
                 self._data[i].diffusion *= self._evaporation_factor ** n
+                self._data[i].goal_radius *= self._evaporation_factor ** n
                 self._data[i].header.stamp += rospy.Duration(n*self._evaporation_time)
 
-                if self._data[i].diffusion < self._min_diffusion:
+                # in case that gradient concentration is lower than minimum delete data
+                if self._data[i].diffusion + self._data[i].goal_radius < self._min_diffusion:
                     del self._data[i] # delete element from list
 
     # Potential field calculations based on Balch and Hybinette Paper (doi:10.1109/ROBOT.2000.844042)
@@ -470,7 +471,6 @@ class SoBuffer():
         v = Vector3()
 
         # distance goal - agent
-
         tmp = Vector3()
         tmp.x = pose.x - gradient.p.x
         tmp.y = pose.y - gradient.p.y
