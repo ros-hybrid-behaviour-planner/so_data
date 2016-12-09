@@ -16,7 +16,8 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='', neighbor_storage_size=2):
+                 view_distance=2.0, id='', result='near', collision_avoidance='gradient', repulsion_radius=2.0,
+                 neighbor_storage_size=2):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -39,6 +40,7 @@ class SoBuffer():
                 options: * gradient = gradient / potential field approach to realize collision avoidance between neighbors
                          * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
         :type collision_avoidance: str.
+        :param repulsion_radius: how strong repulsion is
         :param neighbor_storage_size: how many gradient messages per neighbor will be stored
         :type neighbor_storage_size: int [0, inf.]
         """
@@ -61,6 +63,7 @@ class SoBuffer():
         self._neighbor_storage_size = neighbor_storage_size
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
+        self._repulsion_radius = repulsion_radius
         self._view_distance = view_distance
         if collision_avoidance != 'repulsion' and collision_avoidance != 'gradient' and collision_avoidance != '':
             rospy.logerr("No valid option for collision avoidance entered. Set to gradient.")
@@ -183,6 +186,7 @@ class SoBuffer():
     def _gradient_repulsion(self, pose):
         '''
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
+        considers all neighbours that have a gradient reaching inside view distance / communication range of agent
         :param pose:
         :return:
         '''
@@ -197,12 +201,18 @@ class SoBuffer():
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         rand = np.random.random_sample()
-                        repulsion.x += (2 * np.random.randint(2) - 1) * rand * (val[-1].goal_radius + val[-1].diffusion)
-                        repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
-                                   (val[-1].goal_radius + val[-1].diffusion)
+                        repulsion.x += (2 * np.random.randint(2) - 1) * rand * self._repulsion_radius
+                        repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._repulsion_radius
                     else:
                         repulsion.x += grad.x
                         repulsion.y += grad.y
+
+        # limit repulsion vector to repulsion radius
+        d = calc.vector_length(repulsion)
+        if d > self._repulsion_radius:
+            repulsion.x *= self._repulsion_radius / d
+            repulsion.y *= self._repulsion_radius / d
+            repulsion.z *= self._repulsion_radius / d
 
         return repulsion
 
@@ -210,7 +220,6 @@ class SoBuffer():
         """
         return a repulsion vector based on formula presented by Fernandez-Marquez et al., use of received gradients (p)
         for calculation
-        repulsion radius is set to view_distance
         :return repulsion vector
         """
         # initialize vector
@@ -222,16 +231,24 @@ class SoBuffer():
                 if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
-                        diff = self._view_distance - distance
+                        diff = self._repulsion_radius - distance
                         m.x += (self._own_pos[-1].p.x - val[-1].p.x) * diff / distance
                         m.y += (self._own_pos[-1].p.y - val[-1].p.y) * diff / distance
                         m.z += (self._own_pos[-1].p.z - val[-1].p.z) * diff / distance
                     elif distance == 0:
                         # create random vector with length = repulsion radius
                         rand = np.random.random_sample()
-                        m.x += (2 * np.random.randint(2) - 1) * rand * self._view_distance
-                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._view_distance
+                        m.x += (2 * np.random.randint(2) - 1) * rand * self._repulsion_radius
+                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._repulsion_radius
                         m.z += 0
+
+        # max repulsion vector length = repulsion radius of robot
+        d = np.linalg.norm([m.x, m.y, m.z])
+        if d > self._repulsion_radius:
+            m.x *= self._repulsion_radius / d
+            m.y *= self._repulsion_radius / d
+            m.z *= self._repulsion_radius / d
+
         return m
 
 

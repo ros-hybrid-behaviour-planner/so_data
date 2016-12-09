@@ -8,11 +8,10 @@ import numpy as np
 from geometry_msgs.msg import Vector3
 
 
-
-
-
 def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
+    """
+    Returns the unit vector of the vector.
+    """
     return vector / np.linalg.norm(vector)
 
 
@@ -38,10 +37,19 @@ def angle_between(v1, v2):
 
     return angle
 
+
 def get_gradient_distance(gradpos, pose):
-    '''
+    """
     :param gradpos: pose of the gradient to be investigated (Vector)
     :param pose: pose of the robot (Pose)
     :return: euclidian distance robot to last received gradient
-    '''
+    """
     return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y), (gradpos.z - pose.z)])
+
+
+def vector_length(vector):
+    """
+    :param vector: Vector3
+    :return: vector length
+    """
+    return np.linalg.norm([vector.x, vector.y, vector.z])
