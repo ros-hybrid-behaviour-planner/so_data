@@ -26,21 +26,21 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation='max')
         testlist = []
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
@@ -50,22 +50,22 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation='min')
         testlist = []
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
         self.assertEqual(bffr.get_data(), testlist)
@@ -74,24 +74,24 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation='avg')
         testlist = []
 
-        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3())
-        testlist.append(soMessage(None, Vector3(3, 3, 0), 1, 3.5, 1.0, 0, Vector3()))
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3(), [])
+        testlist.append(soMessage(None, Vector3(3, 3, 0), 1, 3.5, 1.0, 0, Vector3(), []))
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3())
-        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 0.0, 0, Vector3()))
+        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3(), [])
+        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 0.0, 0, Vector3(), []))
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
         self.assertEqual(bffr.get_data(), testlist)
@@ -100,24 +100,24 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation='newest')
         testlist = []
 
-        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3())
+        msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 0, Vector3(), [])
         testlist.append(msg)
         bffr.store_data(msg)
 
@@ -130,39 +130,39 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer()
 
         # 2D - D < r <= C
-        gradient = soMessage(None, Vector3(3, 4, 0), 1, 5.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 5.0, 1.0, 0, Vector3(), [])
         pose = Point(0,0,0)
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6*0.8, 0.8*0.8, 0))
 
         # 2D - r > C
-        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 1.0, 0, Vector3(), [])
         pose = Point(0,0,0)
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
 
         # 2D - r <= D
-        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 5.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 5.0, 0, Vector3(), [])
         pose = Point(0,0,0)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0))
+        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0), [])
 
         # 2D - r > C - non zero robot pose
-        gradient = soMessage(None, Vector3(4, 5, 0), 1, 2.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(4, 5, 0), 1, 2.0, 1.0, 0, Vector3(), [])
         pose = Point(1,1,0)
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
 
         # 3D - D < r <= C
-        gradient = soMessage(None, Vector3(3, 5, 10), 1, 6.0, 2.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 6.0, 2.0, 0, Vector3(), [])
         pose = Point(1,2,4)
         result = Vector3((2.0/7.0)*(5.0/6.0), (3.0/7.0)*(5.0/6.0), (6.0/7.0)*(5.0/6.0))
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
 
         # 3D - r > C
-        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 2.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 2.0, 0, Vector3(), [])
         pose = Point(1,2,4)
         result = Vector3((2.0/7.0), (3.0/7.0), (6.0/7.0))
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
 
         # 3D - r <= D
-        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 7.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 7.0, 0, Vector3(), [])
         pose = Point(1, 2, 4)
         self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0))
 
@@ -173,38 +173,38 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer()
 
         # 2D - D < r <= C
-        gradient = soMessage(None, Vector3(3, 4, 0), -1, 5.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 5.0, 1.0, 0, Vector3(), [])
         pose = Point(0,0,0)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-0.6*0.2, -0.8*0.2, 0))
 
         # 2D - r > C
-        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 1.0, 0, Vector3(), [])
         pose = Point(0,0,0)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
 
         # 2D - r <= D
-        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 5.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 5.0, 0, Vector3(), [])
         pose = Point(0,0,0)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1*np.inf))
 
         # 2D - r > C - non zero robot pose
-        gradient = soMessage(None, Vector3(4, 5, 0), -1, 2.0, 1.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(4, 5, 0), -1, 2.0, 1.0, 0, Vector3(), [])
         pose = Point(1,1,0)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
 
         # 3D - D < r <= C
-        gradient = soMessage(None, Vector3(3, 5, 10), -1, 6.0, 2.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 6.0, 2.0, 0, Vector3(), [])
         pose = Point(1,2,4)
         result = Vector3((-2.0/7.0)*(1.0/6.0), (-3.0/7.0)*(1.0/6.0), (-6.0/7.0)*(1.0/6.0))
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), result)
 
         # 3D - r > C
-        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 2.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 2.0, 0, Vector3(), [])
         pose = Point(1,2,4)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
 
         # 3D - r <= D
-        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 7.0, 0, Vector3())
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 7.0, 0, Vector3(), [])
         pose = Point(1, 2, 4)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1*np.inf))
 
@@ -256,12 +256,12 @@ class soBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer(aggregation = 'max', evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0)
         now = rospy.Time.now()
 
-        data = [soMessage(Header(None, now - rospy.Duration(35), None), Vector3(1,1,0), 1, 4.0, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now - rospy.Duration(20), None), Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now - rospy.Duration(15), None), Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now - rospy.Duration(10), None), Vector3(4,4,0), 1, 4.0, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now - rospy.Duration(5), None), Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3())
+        data = [soMessage(Header(None, now - rospy.Duration(45), None), Vector3(1,1,0), 1, 4.0, 1.0, 0, Vector3(), []),
+                 soMessage(Header(None, now - rospy.Duration(20), None), Vector3(2,2,0), 1, 4.0, 1.0, 0, Vector3(), []),
+                 soMessage(Header(None, now - rospy.Duration(15), None), Vector3(3,3,0), 1, 4.0, 1.0, 0, Vector3(), []),
+                 soMessage(Header(None, now - rospy.Duration(10), None), Vector3(4,4,0), 1, 4.0, 1.0, 0, Vector3(), []),
+                 soMessage(Header(None, now - rospy.Duration(5), None), Vector3(5,5,0), 1, 4.0, 1.0, 0, Vector3(), []),
+                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3(), [])
                  ]
 
         for d in data:
@@ -269,13 +269,25 @@ class soBufferTest(unittest.TestCase):
 
         bffr._evaporate_buffer()
 
-        data = [soMessage(Header(None, now, None), Vector3(2,2,0), 1, 4.0 * (0.8 ** 4), 1.0, 0, Vector3()),
-                 soMessage(Header(None, now, None), Vector3(3,3,0), 1, 4.0 * (0.8 ** 3), 1.0, 0, Vector3()),
-                 soMessage(Header(None, now, None), Vector3(4,4,0), 1, 4.0 * (0.8 ** 2), 1.0, 0, Vector3()),
-                 soMessage(Header(None, now, None), Vector3(5,5,0), 1, 4.0 * 0.8, 1.0, 0, Vector3()),
-                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3())]
+        data = [ soMessage(Header(None, now, None), Vector3(2,2,0), 1, 4.0 * (0.8 ** 4), 1.0 * (0.8 ** 4), 0, Vector3(), []),
+                 soMessage(Header(None, now, None), Vector3(3,3,0), 1, 4.0 * (0.8 ** 3), 1.0 * (0.8 ** 3), 0, Vector3(), []),
+                 soMessage(Header(None, now, None), Vector3(4,4,0), 1, 4.0 * (0.8 ** 2), 1.0 * (0.8 ** 2), 0, Vector3(), []),
+                 soMessage(Header(None, now, None), Vector3(5,5,0), 1, 4.0 * 0.8, 1.0 * 0.8, 0, Vector3(), []),
+                 soMessage(Header(None, now, None), Vector3(6,6,0), 1, 4.0, 1.0, 0, Vector3(), [])]
 
         self.assertEqual(bffr.get_data(), data)
+
+    def test_repulsion_ge(self):
+        """
+        test repulsion vector calculation based on Ge
+        :return:
+        """
+        bffr = soBuffer.SoBuffer()
+        gradient = soMessage(None, Vector3(4, 2, 0), 1, 3.0, 1.0, 0, Vector3(), [])
+        goal = soMessage(None, Vector3(2, 2, 0), 1, 3.0, 1.0, 0, Vector3(), [])
+        pose = Point(3, 3, 0)
+        vector = bffr._calc_repulsive_gradient_ge(gradient, goal, pose)
+
     #
     # def test_get_current_gradient_full(self):
     #     '''

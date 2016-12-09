@@ -163,7 +163,7 @@ class SoBuffer():
         """
         # distance vector based on gradients - merges available information
         if self._result == 'near':
-            self._aggregate_nearest_repulsion(pose)
+            self._aggregate_nearest_ge(pose)
         elif self._result == 'max':
             self._aggregate_max(pose)
         elif self._result == 'all':
@@ -350,6 +350,63 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
+
+    def _aggregate_nearest_ge(self, pose): # TODO unit test!!!
+        """
+        aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
+        repulsive gradient sources
+        :param pose:
+        :return
+        """
+
+        gradients_attractive = []
+        gradients_repulsive = []
+        vector_attraction = Vector3()
+        vector_repulsion = Vector3()
+        tmp_att = -1
+        attractive_gradient = soMessage()
+
+        if self._data:
+            for element in self._data:
+                #store all elements which are within reach of the robot
+                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                        + self._view_distance:
+                    if element.attraction == 1:
+                        gradients_attractive.append(element)
+                    elif element.attraction == -1:
+                        gradients_repulsive.append(element)
+
+        if gradients_attractive:
+            for gradient in gradients_attractive:
+                    # find nearest attractive gradient
+                grad = self._calc_attractive_gradient(gradient, pose)
+                att = np.linalg.norm([grad.x, grad.y])
+                if att > tmp_att:
+                    vector_attraction.x = grad.x
+                    vector_attraction.y = grad.y
+                    tmp_att = att
+                    attractive_gradient = gradient
+
+        # aggregate repulsive gradients
+        if gradients_repulsive:
+            for gradient in gradients_repulsive:
+                grad = self._calc_repulsive_gradient_ge(gradient, attractive_gradient, pose)
+                # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
+                if grad.x == np.inf or grad.x == -1 * np.inf:
+                    rand = np.random.random_sample()
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
+                                              (gradient.goal_radius + gradient.diffusion)
+                else:
+                    vector_repulsion.x += grad.x
+                    vector_repulsion.y += grad.y
+
+        vector_attraction.x += vector_repulsion.x
+        vector_attraction.y += vector_repulsion.y
+
+        self._current_gradient = vector_attraction
+
+
     def _aggregate_all(self, pose):  # TODO unit test!!!
         """
         aggregate all vectors
@@ -505,3 +562,82 @@ class SoBuffer():
 
         return v
 
+
+
+    # second version of gradients based on Ge & Cui
+    def _calc_attractive_gradient_ge(self, gradient, pose):
+        """
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: attractive vector
+        """
+        v = Vector3()
+
+        # distance goal - agent
+        tmp = Vector3()
+        tmp.x = gradient.p.x - pose.x
+        tmp.y = gradient.p.y - pose.y
+        tmp.z = gradient.p.z - pose.z
+
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        if d <= gradient.goal_radius:
+            v.x = 0
+            v.y = 0
+            v.z = 0
+        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+            v.x = tmp.x
+            v.y = tmp.y
+            v.z = tmp.z
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
+            v.y = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
+            v.z = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
+
+        return v
+
+    def _calc_repulsive_gradient_ge(self, gradient, goal, pose):
+        """
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: repulsive vector
+        distance of influence of obstacle = goal_radius + diffusion
+        """
+        v = Vector3()
+
+        # distance obstacle - agent
+        tmp = Vector3()
+        tmp.x = pose.x - gradient.p.x
+        tmp.y = pose.y - gradient.p.y
+        tmp.z = pose.z - gradient.p.z
+
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        if d <= gradient.goal_radius:
+            v.x = -1.0 * np.inf
+            v.y = -1.0 * np.inf
+            v.z = -1.0 * np.inf
+        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+            # unit vector obstacle - agent
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # distance repulsive gradient - goal
+            d_goal = calc.get_gradient_distance(pose, goal.p)
+            # unit vector agent - goal
+            ag = Vector3()
+            ag.x = (goal.p.x - pose.x) / d_goal
+            ag.y = (goal.p.y - pose.y) / d_goal
+            ag.z = (goal.p.z - pose.z) / d_goal
+            # closest distance to obstacle  - diffusion
+            d_obs_diff = (1.0/(d - gradient.goal_radius)) - (1.0/gradient.diffusion)
+            n = 1.0
+            f_rep1 = d_obs_diff * ((d_goal**n) / ((d - gradient.goal_radius)**n))
+            f_rep2 = (n/2.0) * np.square(d_obs_diff) * (d_goal ** (n-1))
+            v.x = f_rep1 * tmp.x + f_rep2 * ag.x
+            v.y = f_rep1 * tmp.y + f_rep2 * ag.y
+            v.z = f_rep1 * tmp.z + f_rep2 * ag.z
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = 0
+            v.y = 0
+            v.z = 0
+
+        return v
