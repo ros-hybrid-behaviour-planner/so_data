@@ -379,7 +379,7 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                     # find nearest attractive gradient
-                grad = self._calc_attractive_gradient(gradient, pose)
+                grad = self._calc_attractive_gradient_ge(gradient, pose)
                 att = np.linalg.norm([grad.x, grad.y])
                 if att > tmp_att:
                     vector_attraction.x = grad.x
