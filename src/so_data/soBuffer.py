@@ -15,7 +15,7 @@ class SoBuffer():
     """
     This class is the buffer for received self-organization data
     """
-    def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
+    def __init__(self, aggregation='max', min_diffusion=0.1,
                  view_distance=2.0, id='', result='reach', collision_avoidance='', repulsion_radius=2.0,
                  store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
         """
@@ -24,11 +24,6 @@ class SoBuffer():
                          * max = keep gradients with maximum diffusion radius
                          * avg = combine gradients / average
         :type aggregation: str.
-        :param evaporation_factor: specifies how fast data evaporates, has to be between [0,1]
-                (0 - data is lost after 1 iteration, 1 - data is stored permanently)
-        :type: evaporation_factor: float [0,1]
-        :param evaporation_time: delta time when evaporation should be applied in secs
-        :type evaporation_time: int
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         :type min_diffusion: float
         :param result: specifies vector which should be returned;
@@ -48,13 +43,11 @@ class SoBuffer():
         :param framestorage: list of frame IDs which should be stored
                 options: * [] = all frame IDs will be stored
                          * [key1, key2, ...] = only gradients which have one of the specified frame IDs will be stored
+                         * 'None' has to be specified as the key for gradients without frameID
         :type framestorage: list of strings
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
-
-
-
 
         self._data = {} # store incoming, dict with frameIds and arrays of data
         # initialise dictionary with frame IDs/keys
@@ -74,10 +67,8 @@ class SoBuffer():
         else:
             self._aggregation = aggregation
 
-        self._evaporation_factor = evaporation_factor
         self._store_neighbors = store_neighbors
         self._neighbor_storage_size = neighbor_storage_size
-        self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
         self._repulsion_radius = repulsion_radius
         self._view_distance = view_distance
@@ -102,13 +93,14 @@ class SoBuffer():
         :return:
         """
 
-        # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
+        # evaporate stored data
+        self._evaporate_buffer()
+        # evaporate received data
+        msg = self._evaporate_msg(msg)
+        if not msg:
+            return
 
-        # evaporate & aggregate data
-        # TODO rework, in Abfrage verschieben probably
-        #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
-        #    self._evaporate_buffer()
-
+        # aggregate data
         # store msgs with no frame id with dictionary key 'None'
         if not msg.header.frame_id:
             msg.header.frame_id = 'None'
@@ -134,7 +126,7 @@ class SoBuffer():
                     self._neighbors[msg.header.frame_id] = [msg]
         else: # Aggregation of data with same content (position), but different diffusion radii
             # check if data with frame_id should be stored
-            if msg.header.frame_id in self._data: # ToDo Add check that received data is newer than stored data
+            if msg.header.frame_id in self._data:
                 found = False
                 if self._data[msg.header.frame_id]:
                     for i in xrange(len(self._data[msg.header.frame_id]) - 1, -1, -1):
@@ -191,6 +183,10 @@ class SoBuffer():
         :param pose: Pose Message with position of robot (geometry msgs Pose)
         :return current gradient vector to follow based on settings
         """
+
+        # apply evaporation before proceeding with calculations
+        self._evaporate_buffer()
+
         # distance vector based on gradients - merges available information
         if self._result == 'near':
             self._aggregate_nearest_repulsion(pose)
@@ -221,7 +217,6 @@ class SoBuffer():
         """
         gradients_attractive = []
         tmp_att = -1
-        attractive_gradient = soMessage()
 
         if self._data:
             for element in self._data['None']:
@@ -258,12 +253,12 @@ class SoBuffer():
 
     # Collision avoidance between neighbors
     def _gradient_repulsion(self, pose):
-        '''
+        """
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
         considers all neighbours that have a gradient reaching inside view distance / communication range of agent
         :param pose:
         :return:
-        '''
+        """
         repulsion = Vector3()
         if self._neighbors:
             for val in self._neighbors.values():
@@ -422,7 +417,6 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
-
     def _aggregate_nearest_ge(self, pose): # TODO unit test!!!
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
@@ -530,24 +524,42 @@ class SoBuffer():
 
     # EVAPORATION
     def _evaporate_buffer(self):
-        '''
-        evaporate buffer data
+        """
+        evaporate buffer data stored in self._data
+        neighbor data is not evaporated as it is considered being fixed
         :return:
-        '''
-        for i in xrange(len(self._data) -1, -1, -1): # go in reverse order
-            diff = rospy.Time.now() - self._data[i].header.stamp
+        """
+        for fid in self._data:
+            if fid in self._data and self._data[fid]:
+                for i in xrange(len(self._data[fid]) -1, -1, -1): # go in reverse order
+                    if self._data[fid][i].ev_time > 0:
+                        diff = rospy.Time.now() - self._data[fid][i].header.stamp
+                        if diff >= rospy.Duration(self._data[fid][i].ev_time):
+                            n = diff.secs // self._data[fid][i].ev_time
+                            self._data[fid][i].diffusion *= self._data[fid][i].ev_factor ** n
+                            self._data[fid][i].header.stamp += rospy.Duration(n*self._evaporation_time)
+                        # in case that gradient concentration is lower than minimum and no goal_radius exists, delete data
+                        if self._data[fid][i].goal_radius == 0.0 and self._data[fid][i].diffusion < self._min_diffusion:
+                            del self._data[fid][i] # remove element
 
-            if diff >= rospy.Duration(self._evaporation_time):
-                n = diff.secs // self._evaporation_time
-                self._data[i].diffusion *= self._evaporation_factor ** n
-                self._data[i].header.stamp += rospy.Duration(n*self._evaporation_time)
-
-                # in case that gradient concentration is lower than minimum delete data
-                if self._data[i].diffusion < self._min_diffusion:
-                    del self._data[i] # delete element from list
+    def _evaporate_msg(self, msg):
+        """
+        evaporate a single message
+        :param msg: gradient message
+        :return: evaporated message
+        """
+        if msg.ev_time > 0:
+            diff = rospy.Time.now() - msg.header.stamp
+            if diff >= rospy.Duration(msg.ev_time):
+                n = diff.secs // msg.ev_time
+                msg.diffusion *= msg.ev_factor ** n
+                msg.header.stamp += rospy.Duration(n*msg.ev_time)
+        if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
+            return msg
 
     # Potential field calculations based on Balch and Hybinette Paper (doi:10.1109/ROBOT.2000.844042)
-    def _calc_attractive_gradient(self, gradient, pose):
+    @staticmethod
+    def _calc_attractive_gradient(gradient, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
@@ -589,7 +601,8 @@ class SoBuffer():
 
         return v
 
-    def _calc_repulsive_gradient(self, gradient, pose):
+    @staticmethod
+    def _calc_repulsive_gradient(gradient, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
@@ -634,7 +647,8 @@ class SoBuffer():
 
 
     # second version of gradients based on Ge & Cui
-    def _calc_attractive_gradient_ge(self, gradient, pose):
+    @staticmethod
+    def _calc_attractive_gradient_ge(gradient, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
@@ -665,7 +679,8 @@ class SoBuffer():
 
         return v
 
-    def _calc_repulsive_gradient_ge(self, gradient, goal, pose):
+    @staticmethod
+    def _calc_repulsive_gradient_ge(gradient, goal, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
