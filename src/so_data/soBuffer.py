@@ -209,7 +209,7 @@ class SoBuffer():
 
         return self._current_gradient
 
-    def get_goal_reached(self, pose):
+    def get_goal_reached(self, pose, frameids=[]):
         """
         determines whether nearest attractive gradient was reached - especially for return == reach option
         :param pose: Pose Message with position of robot
@@ -218,13 +218,17 @@ class SoBuffer():
         gradients_attractive = []
         tmp_att = -1
 
-        if self._data:
-            for element in self._data['None']:
-                # store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
-                        + self._view_distance:
-                    if element.attraction == 1:
-                        gradients_attractive.append(element)
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                        if element.attraction == 1:
+                            gradients_attractive.append(element)
 
         if gradients_attractive:
             for gradient in gradients_attractive:
@@ -321,7 +325,7 @@ class SoBuffer():
         return m
 
     # AGGREGATION - build potential field (merging of information)
-    def _aggregate_max(self, pose): #TODO: unit test
+    def _aggregate_max(self, pose, frameids=[]): #TODO: unit test
         """
         follow higher gradient values (= gradient with shortest relative distance)
         sets current gradient to direction vector (length <= 1)
@@ -331,12 +335,16 @@ class SoBuffer():
         tmp_att = 0
         tmp_grad = Vector3()
 
-        if self._data:
-            for element in self._data:
-                # check if gradient is within view of robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
-                        + self._view_distance:
-                    gradients.append(element)
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                        gradients.append(element)
 
         # find gradient with highest value ( = closest relative distance)
         if gradients:
@@ -364,7 +372,7 @@ class SoBuffer():
 
             self._current_gradient = tmp_grad
 
-    def _aggregate_nearest_repulsion(self, pose): # TODO unit test!!!
+    def _aggregate_nearest_repulsion(self, pose, frameids=[]): # TODO unit test!!!
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
@@ -378,15 +386,19 @@ class SoBuffer():
         vector_repulsion = Vector3()
         tmp_att = 0
 
-        if self._data:
-            for element in self._data:
-                #store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
-                        + self._view_distance:
-                    if element.attraction == 1:
-                        gradients_attractive.append(element)
-                    elif element.attraction == -1:
-                        gradients_repulsive.append(element)
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                        if element.attraction == 1:
+                            gradients_attractive.append(element)
+                        elif element.attraction == -1:
+                            gradients_repulsive.append(element)
 
         if gradients_attractive:
             for gradient in gradients_attractive:
@@ -417,14 +429,13 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
-    def _aggregate_nearest_ge(self, pose): # TODO unit test!!!
+    def _aggregate_nearest_ge(self, pose, frameids=[]): # TODO unit test!!!
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
         :param pose:
         :return
         """
-
         gradients_attractive = []
         gradients_repulsive = []
         vector_attraction = Vector3()
@@ -432,15 +443,19 @@ class SoBuffer():
         tmp_att = -1
         attractive_gradient = soMessage()
 
-        if self._data:
-            for element in self._data['None']:
-                # store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
-                        + self._view_distance:
-                    if element.attraction == 1:
-                        gradients_attractive.append(element)
-                    elif element.attraction == -1:
-                        gradients_repulsive.append(element)
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                        if element.attraction == 1:
+                            gradients_attractive.append(element)
+                        elif element.attraction == -1:
+                            gradients_repulsive.append(element)
 
         if gradients_attractive:
             for gradient in gradients_attractive:
@@ -472,7 +487,7 @@ class SoBuffer():
 
         self._current_gradient = vector_attraction
 
-    def _aggregate_all(self, pose):  # TODO unit test!!!
+    def _aggregate_all(self, pose, frameids=[]):  # TODO unit test!!!
         """
         aggregate all vectors
         :param pose:
@@ -484,15 +499,19 @@ class SoBuffer():
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
 
-        if self._data:
-            for element in self._data:
-                # store all elements which are within reach of the robot
-                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
-                        + self._view_distance:
-                    if element.attraction == 1:
-                        gradients_attractive.append(element)
-                    elif element.attraction == -1:
-                        gradients_repulsive.append(element)
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                        if element.attraction == 1:
+                            gradients_attractive.append(element)
+                        elif element.attraction == -1:
+                            gradients_repulsive.append(element)
 
         if gradients_attractive:
             for gradient in gradients_attractive:
