@@ -13,15 +13,18 @@ class GradientSensor(SimpleTopicSensor):
     """
     "PassThrough" because the sensor just forwards the received msg
     """
-    def __init__(self, name, id='', topic=None, message_type=None,  initial_value=None, create_log = False):
+    def __init__(self, name, id='', topic=None, message_type=None,  initial_value=None, create_log = False,
+                 sensor_type='gradient'):
         # buffer to store and handle gradient data
         self._buffer = soBuffer.SoBuffer(id=id)
-
+        self._sensor_type = sensor_type
         super(GradientSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)
 
-
     def subscription_callback(self, msg):
-        tmp = self._buffer.get_current_gradient(msg.position)
+        if self._sensor_type == 'gradient' or not self._sensor_type:
+            tmp = self._buffer.get_current_gradient(msg.position)
+        elif self._sensor_type == 'bool':
+            tmp = self._buffer.get_goal_reached(msg.position)
         self.update(tmp)
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
         if self._iShouldCreateLog:
