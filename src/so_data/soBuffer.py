@@ -16,8 +16,8 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0,
-                 view_distance=2.0, id='', result='near', collision_avoidance='gradient', repulsion_radius=2.0,
-                 neighbor_storage_size=2):
+                 view_distance=2.0, id='', result='reach', collision_avoidance='', repulsion_radius=2.0,
+                 store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
         """
         :param aggregation: indicator which kind of aggregation should be applied
                 options: * min = keep gradients with minimum diffusion radius
@@ -41,13 +41,28 @@ class SoBuffer():
                          * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
         :type collision_avoidance: str.
         :param repulsion_radius: how strong repulsion is
+        :param store_neighbors: specifies whether data about neighbors is stored or not
+        :type store_neighbors: bool
         :param neighbor_storage_size: how many gradient messages per neighbor will be stored
         :type neighbor_storage_size: int [0, inf.]
+        :param framestorage: list of frame IDs which should be stored
+                options: * [] = all frame IDs will be stored
+                         * [key1, key2, ...] = only gradients which have one of the specified frame IDs will be stored
+        :type framestorage: list of strings
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
 
-        self._data = [] # store incoming
+
+
+
+        self._data = {} # store incoming, dict with frameIds and arrays of data
+        # initialise dictionary with frame IDs/keys
+        if framestorage:
+            for id in framestorage:
+                self._data[id] = []
+        self._frames = framestorage
+
         self._own_pos = [] # store own last positions
         self._neighbors = {} # empty dict
         self._current_gradient = Vector3()
@@ -60,6 +75,7 @@ class SoBuffer():
             self._aggregation = aggregation
 
         self._evaporation_factor = evaporation_factor
+        self._store_neighbors = store_neighbors
         self._neighbor_storage_size = neighbor_storage_size
         self._evaporation_time = evaporation_time
         self._min_diffusion = min_diffusion
@@ -73,7 +89,7 @@ class SoBuffer():
 
         self._id = id
 
-        if result != 'all' and result != 'max' and result != 'near':
+        if result != 'all' and result != 'max' and result != 'near' and result != 'reach':
             rospy.logerr("Wrong return type in soBuffer. Set to near.")
             self._result = 'near'
         else:
@@ -89,18 +105,26 @@ class SoBuffer():
         # Check whether gradient at the same position already exists, if yes keep gradient with bigger diffusion radius
 
         # evaporate & aggregate data
-        if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
-            self._evaporate_buffer()
+        # TODO rework, in Abfrage verschieben probably
+        #if self._evaporation_factor != 1.0: # factor of 1.0 means no evaporation
+        #    self._evaporate_buffer()
 
-        # store own position data (last two values)
-        if self._id and msg.header.frame_id == self._id:
-            self._own_pos.append(msg)
-            if len(self._own_pos) > self._neighbor_storage_size:
-                del self._own_pos[0]
-        elif msg.header.frame_id:
-            #Aggregation of data with same content (position), but different diffusion radii
-            if msg.header.frame_id[:5] == 'robot': # store neighbors as key-value-pair
-                if msg.header.frame_id in self._neighbors:
+        # store msgs with no frame id with dictionary key 'None'
+        if not msg.header.frame_id:
+            msg.header.frame_id = 'None'
+
+        # no frames specified - store everything; add key to dict
+        if not self._frames and msg.header.frame_id not in self._data and msg.header.frame_id[:5] != 'robot':
+            self._data[msg.header.frame_id] = []
+
+        #store own position and neighbor data
+        if msg.header.frame_id[:5] == 'robot':
+            if self._store_neighbors:
+                if self._id and msg.header.frame_id == self._id:
+                    self._own_pos.append(msg)
+                    if len(self._own_pos) > self._neighbor_storage_size:
+                        del self._own_pos[0]
+                elif msg.header.frame_id in self._neighbors:
                     #check if data is newer
                     if msg.header.stamp > self._neighbors[msg.header.frame_id][-1].header.stamp:
                         self._neighbors[msg.header.frame_id].append(msg)
@@ -108,47 +132,53 @@ class SoBuffer():
                         del self._neighbors[msg.header.frame_id][0]
                 else:
                     self._neighbors[msg.header.frame_id] = [msg]
+        else: # Aggregation of data with same content (position), but different diffusion radii
+            # check if data with frame_id should be stored
+            if msg.header.frame_id in self._data: # ToDo Add check that received data is newer than stored data
+                found = False
+                if self._data[msg.header.frame_id]:
+                    for i in xrange(len(self._data[msg.header.frame_id]) - 1, -1, -1):
+                        if self._data[msg.header.frame_id][i].p.x == msg.p.x and \
+                                        self._data[msg.header.frame_id][i].p.y == msg.p.y:
+                            found = True
+                            if self._aggregation == 'max': # keep data with max diffusion radius
+                                if msg.diffusion + msg.goal_radius >= self._data[msg.header.frame_id][i].diffusion \
+                                        + self._data[msg.header.frame_id][i].goal_radius:
+                                    del self._data[msg.header.frame_id][i]
+                                    self._data[msg.header.frame_id].append(msg)
+                            elif self._aggregation == 'min': # keep data with min diffusion radius
+                                if msg.diffusion + msg.goal_radius <= self._data[msg.header.frame_id][i].diffusion \
+                                        + self._data[msg.header.frame_id][i].goal_radius:
+                                    del self._data[msg.header.frame_id][i]
+                                    self._data[msg.header.frame_id].append(msg)
+                            elif self._aggregation == 'avg':
+                                # attraction is the same direction
+                                if msg.attraction == self._data[msg.header.frame_id][i].attraction:
+                                    msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][i].diffusion)/2
+                                    msg.goal_radius = (msg.goal_radius +
+                                                       self._data[msg.header.frame_id][i].goal_radius)/2
+                                else:
+                                    # change sign
+                                    if self._data[msg.header.frame_id][i].diffusion + \
+                                            self._data[msg.header.frame_id][i].goal_radius \
+                                            > msg.diffusion + msg.goal_radius:
+                                        msg.attraction *= -1
+                                    msg.diffusion = np.absolute(msg.diffusion
+                                                                - self._data[msg.header.frame_id][i].diffusion)
+                                    msg.goal_radius = np.absolute(msg.goal_radius -
+                                                                  self._data[msg.header.frame_id][i].goal_radius)
+                                del self._data[msg.header.frame_id][i]
+                                self._data[msg.header.frame_id].append(msg)
+                            elif self._aggregation == 'newest': # keep last received gradient at one position
+                                if msg.header.stamp >= self._data[msg.header.frame_id][i].header.stamp:
+                                    del self._data[msg.header.frame_id][i]
+                                    self._data[msg.header.frame_id][i].append(msg)
+                else:
+                    self._data[msg.header.frame_id].append(msg)
+                    found = True
 
-        # ToDo Add check that received data is newer than stored data
-        elif not msg.header.frame_id:
-            found = False
-            if self._data:
-                for i in xrange(len(self._data) - 1, -1, -1):
-                    if self._data[i].p.x == msg.p.x and self._data[i].p.y == msg.p.y:
-                        found = True
-                        if self._aggregation == 'max': # keep data with max diffusion radius
-                            if msg.diffusion + msg.goal_radius >= self._data[i].diffusion + self._data[i].goal_radius:
-                                del self._data[i]
-                                self._data.append(msg)
-                        elif self._aggregation == 'min': # keep data with min diffusion radius
-                            if msg.diffusion + msg.goal_radius <= self._data[i].diffusion + self._data[i]. goal_radius:
-                                del self._data[i]
-                                self._data.append(msg)
-                        elif self._aggregation == 'avg':
-                            # attraction is the same direction
-                            if msg.attraction == self._data[i].attraction:
-                                msg.diffusion = (msg.diffusion + self._data[i].diffusion) / 2
-                                msg.goal_radius = (msg.goal_radius + self._data[i].goal_radius) / 2
-                            else:
-                                # change sign
-                                if self._data[i].diffusion + self._data[i].goal_radius > msg.diffusion + msg.goal_radius:
-                                    msg.attraction *= -1
-                                msg.diffusion = np.absolute(msg.diffusion - self._data[i].diffusion)
-                                msg.goal_radius = np.absolute(msg.goal_radius - self._data[i].goal_radius)
-                            del self._data[i]
-                            if msg.diffusion >= self._min_diffusion:
-                                self._data.append(msg)
-                        elif self._aggregation == 'newest': # keep last received gradient at one position
-                            if msg.header.stamp >= self._data[i].header.stamp:
-                                del self._data[i]
-                                self._data.append(msg)
-            else:
-                self._data.append(msg)
-                found = True
-
-            if not found:
-                self._data.append(msg)
-
+                if not found:
+                    self._data[msg.header.frame_id].append(msg)
 
     def get_data(self):
         """
@@ -163,11 +193,13 @@ class SoBuffer():
         """
         # distance vector based on gradients - merges available information
         if self._result == 'near':
-            self._aggregate_nearest_ge(pose)
+            self._aggregate_nearest_repulsion(pose)
         elif self._result == 'max':
             self._aggregate_max(pose)
         elif self._result == 'all':
             self._aggregate_all(pose)
+        elif self._result == 'reach':
+            self._aggregate_nearest_ge(pose)
 
         # Collision Avoidance between neighbors
         if self._collision_avoidance == 'gradient':
@@ -181,6 +213,48 @@ class SoBuffer():
 
         return self._current_gradient
 
+    def get_goal_reached(self, pose):
+        """
+        determines whether nearest attractive gradient was reached - especially for return == reach option
+        :param pose: Pose Message with position of robot
+        :return: True/False (bool)
+        """
+        gradients_attractive = []
+        tmp_att = -1
+        attractive_gradient = soMessage()
+
+        if self._data:
+            for element in self._data['None']:
+                # store all elements which are within reach of the robot
+                if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                        + self._view_distance:
+                    if element.attraction == 1:
+                        gradients_attractive.append(element)
+
+        if gradients_attractive:
+            for gradient in gradients_attractive:
+                # find nearest attractive gradient
+                tmp = Vector3()
+                tmp.x = gradient.p.x - pose.x
+                tmp.y = gradient.p.y - pose.y
+                tmp.z = gradient.p.z - pose.z
+
+                # attraction = distance to goal area
+                att = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - gradient.goal_radius
+                if att < 0.0:
+                    att = 0.0
+
+                if att > tmp_att:
+                    tmp_att = att
+                elif att == 0.0:
+                    return False
+        else:
+                return False
+
+        if tmp_att == 0.0:
+            return False
+        else:
+            return True
 
     # Collision avoidance between neighbors
     def _gradient_repulsion(self, pose):
@@ -251,7 +325,6 @@ class SoBuffer():
 
         return m
 
-
     # AGGREGATION - build potential field (merging of information)
     def _aggregate_max(self, pose): #TODO: unit test
         """
@@ -295,7 +368,6 @@ class SoBuffer():
                     tmp_att = att
 
             self._current_gradient = tmp_grad
-
 
     def _aggregate_nearest_repulsion(self, pose): # TODO unit test!!!
         """
@@ -367,8 +439,8 @@ class SoBuffer():
         attractive_gradient = soMessage()
 
         if self._data:
-            for element in self._data:
-                #store all elements which are within reach of the robot
+            for element in self._data['None']:
+                # store all elements which are within reach of the robot
                 if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
                         + self._view_distance:
                     if element.attraction == 1:
@@ -378,7 +450,7 @@ class SoBuffer():
 
         if gradients_attractive:
             for gradient in gradients_attractive:
-                    # find nearest attractive gradient
+                # find nearest attractive gradient
                 grad = self._calc_attractive_gradient_ge(gradient, pose)
                 att = np.linalg.norm([grad.x, grad.y])
                 if att > tmp_att:
@@ -405,7 +477,6 @@ class SoBuffer():
         vector_attraction.y += vector_repulsion.y
 
         self._current_gradient = vector_attraction
-
 
     def _aggregate_all(self, pose):  # TODO unit test!!!
         """
@@ -469,11 +540,10 @@ class SoBuffer():
             if diff >= rospy.Duration(self._evaporation_time):
                 n = diff.secs // self._evaporation_time
                 self._data[i].diffusion *= self._evaporation_factor ** n
-                self._data[i].goal_radius *= self._evaporation_factor ** n
                 self._data[i].header.stamp += rospy.Duration(n*self._evaporation_time)
 
                 # in case that gradient concentration is lower than minimum delete data
-                if self._data[i].diffusion + self._data[i].goal_radius < self._min_diffusion:
+                if self._data[i].diffusion < self._min_diffusion:
                     del self._data[i] # delete element from list
 
     # Potential field calculations based on Balch and Hybinette Paper (doi:10.1109/ROBOT.2000.844042)
@@ -563,7 +633,6 @@ class SoBuffer():
         return v
 
 
-
     # second version of gradients based on Ge & Cui
     def _calc_attractive_gradient_ge(self, gradient, pose):
         """
@@ -580,11 +649,12 @@ class SoBuffer():
         tmp.z = gradient.p.z - pose.z
 
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-        if d <= gradient.goal_radius:
-            v.x = 0
-            v.y = 0
-            v.z = 0
-        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+        #if d <= gradient.goal_radius:
+        #    v.x = 0
+        #    v.y = 0
+        #    v.z = 0
+        #elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+        if d <= gradient.goal_radius + gradient.diffusion:
             v.x = tmp.x
             v.y = tmp.y
             v.z = tmp.z
@@ -635,6 +705,7 @@ class SoBuffer():
             v.x = f_rep1 * tmp.x + f_rep2 * ag.x
             v.y = f_rep1 * tmp.y + f_rep2 * ag.y
             v.z = f_rep1 * tmp.z + f_rep2 * ag.z
+
         elif d > gradient.goal_radius + gradient.diffusion:
             v.x = 0
             v.y = 0
