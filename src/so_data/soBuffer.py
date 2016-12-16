@@ -38,13 +38,16 @@ class SoBuffer():
         :param repulsion_radius: how strong repulsion is
         :param store_neighbors: specifies whether data about neighbors is stored or not
         :type store_neighbors: bool
-        :param neighbor_storage_size: how many gradient messages per neighbor will be stored
+        :param neighbor_storage_size: how many gradient messages per neighbor will be stored; robot frame ID considered
+                                      as being "robotX" with X being the robot's ID
         :type neighbor_storage_size: int [0, inf.]
         :param framestorage: list of frame IDs which should be stored
                 options: * [] = all frame IDs will be stored
                          * [key1, key2, ...] = only gradients which have one of the specified frame IDs will be stored
                          * 'None' has to be specified as the key for gradients without frameID
         :type framestorage: list of strings
+        :param id: should have the form 'robotX' with X being the robot's id; frame ID's in this form are considered
+                   as robot position data
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
@@ -92,14 +95,6 @@ class SoBuffer():
         :param msg: received gradient (soMessage)
         :return:
         """
-
-        # evaporate stored data
-        self._evaporate_buffer()
-        # evaporate received data
-        msg = self._evaporate_msg(msg)
-        if not msg:
-            return
-
         # aggregate data
         # store msgs with no frame id with dictionary key 'None'
         if not msg.header.frame_id:
@@ -126,6 +121,15 @@ class SoBuffer():
                     self._neighbors[msg.header.frame_id] = [msg]
         else: # Aggregation of data with same content (position), but different diffusion radii
             # check if data with frame_id should be stored
+
+            # evaporate stored data (only non-neighbor data)
+            self._evaporate_buffer()
+
+            # evaporate received data (only non-neighbor data)
+            msg = self._evaporate_msg(msg)
+            if not msg:
+                return
+
             if msg.header.frame_id in self._data:
                 found = False
                 if self._data[msg.header.frame_id]:
@@ -160,11 +164,14 @@ class SoBuffer():
                                     msg.goal_radius = np.absolute(msg.goal_radius -
                                                                   self._data[msg.header.frame_id][i].goal_radius)
                                 del self._data[msg.header.frame_id][i]
-                                self._data[msg.header.frame_id].append(msg)
+                                # store average element as long as it has a goal radius or a diffision radius larger
+                                # than the minimum required diffusion
+                                if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
+                                    self._data[msg.header.frame_id].append(msg)
                             elif self._aggregation == 'newest': # keep last received gradient at one position
                                 if msg.header.stamp >= self._data[msg.header.frame_id][i].header.stamp:
                                     del self._data[msg.header.frame_id][i]
-                                    self._data[msg.header.frame_id][i].append(msg)
+                                    self._data[msg.header.frame_id].append(msg)
                 else:
                     self._data[msg.header.frame_id].append(msg)
                     found = True
@@ -212,6 +219,8 @@ class SoBuffer():
     def get_goal_reached(self, pose, frameids=[]):
         """
         determines whether nearest attractive gradient was reached - especially for return == reach option
+        returns True in case that gradient was reached or no gradient to be reached was found
+        False otherweise
         :param pose: Pose Message with position of robot
         :return: True/False (bool)
         """
@@ -246,14 +255,14 @@ class SoBuffer():
                 if att > tmp_att:
                     tmp_att = att
                 elif att == 0.0:
-                    return False
+                    return True
         else:
-                return False
+                return True
 
         if tmp_att == 0.0:
-            return False
-        else:
             return True
+        else:
+            return False
 
     # Collision avoidance between neighbors
     def _gradient_repulsion(self, pose):
@@ -556,10 +565,14 @@ class SoBuffer():
                         if diff >= rospy.Duration(self._data[fid][i].ev_time):
                             n = diff.secs // self._data[fid][i].ev_time
                             self._data[fid][i].diffusion *= self._data[fid][i].ev_factor ** n
-                            self._data[fid][i].header.stamp += rospy.Duration(n*self._evaporation_time)
-                        # in case that gradient concentration is lower than minimum and no goal_radius exists, delete data
-                        if self._data[fid][i].goal_radius == 0.0 and self._data[fid][i].diffusion < self._min_diffusion:
-                            del self._data[fid][i] # remove element
+                            self._data[fid][i].header.stamp += rospy.Duration(n*self._data[fid][i].ev_time)
+                    else:  # delta t for evaporation = 0 and evaporation applies, set diffusion immediately to 0
+                        if self._data[fid][i].ev_factor < 1.0:
+                            self._data[fid][i].diffusion = 0.0
+
+                    # in case that gradient concentration is lower than minimum and no goal_radius exists, delete data
+                    if self._data[fid][i].goal_radius == 0.0 and self._data[fid][i].diffusion < self._min_diffusion:
+                        del self._data[fid][i] # remove element
 
     def _evaporate_msg(self, msg):
         """
@@ -573,6 +586,10 @@ class SoBuffer():
                 n = diff.secs // msg.ev_time
                 msg.diffusion *= msg.ev_factor ** n
                 msg.header.stamp += rospy.Duration(n*msg.ev_time)
+        else:  # delta t for evaporation = 0 and evaporation applies, set diffusion immediately to 0
+            if msg.ev_factor < 1.0:
+                msg.diffusion = 0
+
         if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
             return msg
 
