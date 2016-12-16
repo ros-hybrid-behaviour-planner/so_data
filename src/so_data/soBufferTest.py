@@ -424,17 +424,28 @@ class soBufferTest(unittest.TestCase):
         now = rospy.Time.now()
 
         # no gradients available
-        self.assertEqual(bffr.get_goal_reached(Point(0,0,0)), False)
+        self.assertEqual(bffr.get_goal_reached(Point(0,0,0)), True)
 
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
+        msg = soMessage(Header(None, now, 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 1.0, 0, 0,
+                    Vector3(), [])
+        bffr.store_data(msg)
+        msg = soMessage(Header(None, now, 'gradient'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0,
+                    Vector3(), [])
+        bffr.store_data(msg)
+        msg = soMessage(Header(None, now, 'rbo'), Vector3(0, 0, 0), 1, 4.0, 0, 1.0, 0, 0,
                     Vector3(), [])
         bffr.store_data(msg)
         # no gradients available
-        self.assertEqual(bffr.get_goal_reached(Point(0,0,0)), False)
-
-
-
-
+        self.assertEqual(bffr.get_goal_reached(Point(3,3,0)), False)
+        # gradient not within view distance
+        self.assertEqual(bffr.get_goal_reached(Point(9,9,0)), True)
+        # robot within goal area of attractive gradient
+        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0)), True)
+        # only consider frames with a certain ID
+        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0), frameids=['gradient']), False)
+        # only consider frames with several IDs
+        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0), frameids=['gradient', 'rbo']), False)
+        self.assertEqual(bffr.get_goal_reached(Point(0, 0, 0), frameids=['gradient', 'rbo']), True)
 
     # POTENTIAL FIELD VECTOR CALCULATIONS
     def test_calc_attractive_gradient(self):
@@ -522,16 +533,50 @@ class soBufferTest(unittest.TestCase):
         pose = Point(1, 2, 4)
         self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1 * np.inf))
 
-    def test_repulsion_ge(self): #TODO
+    def test_calc_attractive_gradient_ge(self):
+        """
+        test calc attractive gradient method based on Ge & Cui paper
+        :return:
+        """
+        # robot within diffusion radius + goal radius of gradient
+        gradient = soMessage(None, Vector3(3, 5, 10), -1, 10.0, 2.0, 1.0, 0, 0, Vector3(), [])
+        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(0,0,0)), Vector3(3, 5, 10))
+
+        # robot within goal radius of gradient
+        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(3,7,10)), Vector3(0, -2, 0))
+
+        # robot without radius + goal radius of gradient, but gradient is within view_distance
+        gradient = soMessage(None, Vector3(2, 3, 6), -1, 4.0, 2.0, 1.0, 0, 0, Vector3(), [])
+        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(0,0,0)),
+                         Vector3((2.0/7.0)*6.0, (3.0/7.0)*6.0, (6.0/7.0)*6.0))
+
+    def test_repulsion_ge(self):  
         """
         test repulsion vector calculation based on Ge
         :return:
         """
         bffr = soBuffer.SoBuffer()
-        gradient = soMessage(None, Vector3(4, 2, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        goal = soMessage(None, Vector3(2, 2, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(3, 3, 0)
-        vector = bffr._calc_repulsive_gradient_ge(gradient, goal, pose)
+        gradient = soMessage(None, Vector3(4, 2, 0), -1, 4.0, 2.0, 1.0, 0, 0, Vector3(), [])
+        goal = soMessage(None, Vector3(1, 0, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+
+        # diffusion and goal_radius of gradient shorter than distance
+        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(8,8,0)), Vector3())
+
+        # gradient within goal area of gradient
+        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(3,2,0)),
+                         Vector3(-np.inf, -np.inf, -np.inf))
+
+        # robot within reach of gradient
+        v = bffr._calc_repulsive_gradient_ge(gradient, goal, Point(1,-2,0))
+        v.x = round(v.x, 4)
+        v.y = round(v.y, 4)
+        v.z = round(v.z, 4)
+        self.assertEqual(v,
+                         Vector3(round((1.0 - 4.0)/5.0 * (1.0/3.0 - 1.0/4.0) * (2.0/3.0), 4),
+                                 round(0.5 * ((1.0/3.0 - 1.0/4.0)**2) + -0.8 * (1.0/3.0 - 1.0/4.0) * (2.0/3.0), 4),
+                                 0.0))
+
+
 
     #
     # def test_get_current_gradient_full(self):

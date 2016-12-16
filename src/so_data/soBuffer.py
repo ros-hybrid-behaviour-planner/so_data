@@ -699,19 +699,14 @@ class SoBuffer():
         tmp.z = gradient.p.z - pose.z
 
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-        #if d <= gradient.goal_radius:
-        #    v.x = 0
-        #    v.y = 0
-        #    v.z = 0
-        #elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
         if d <= gradient.goal_radius + gradient.diffusion:
             v.x = tmp.x
             v.y = tmp.y
             v.z = tmp.z
         elif d > gradient.goal_radius + gradient.diffusion:
-            v.x = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
-            v.y = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
-            v.z = tmp.x / d * (gradient.goal_radius + gradient.diffusion)
+            v.x = (tmp.x / d) * (gradient.goal_radius + gradient.diffusion)
+            v.y = (tmp.y / d) * (gradient.goal_radius + gradient.diffusion)
+            v.z = (tmp.z / d) * (gradient.goal_radius + gradient.diffusion)
 
         return v
 
