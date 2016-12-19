@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', min_diffusion=0.1,
-                 view_distance=2.0, id='', result='avoid', collision_avoidance='', repulsion_radius=2.0,
+                 view_distance=2.0, id='', result='reach', collision_avoidance='', repulsion_radius=2.0,
                  store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
         """
         :param aggregation: indicator which kind of aggregation should be applied
@@ -139,12 +139,12 @@ class SoBuffer():
                         if self._data[msg.header.frame_id][i].p.x == msg.p.x and \
                                         self._data[msg.header.frame_id][i].p.y == msg.p.y:
                             found = True
-                            if self._aggregation == 'max': # keep data with max diffusion radius
+                            if self._aggregation == 'max': # keep data with max diffusion / reach
                                 if msg.diffusion + msg.goal_radius >= self._data[msg.header.frame_id][i].diffusion \
                                         + self._data[msg.header.frame_id][i].goal_radius:
                                     del self._data[msg.header.frame_id][i]
                                     self._data[msg.header.frame_id].append(msg)
-                            elif self._aggregation == 'min': # keep data with min diffusion radius
+                            elif self._aggregation == 'min': # keep data with min diffusion / reach
                                 if msg.diffusion + msg.goal_radius <= self._data[msg.header.frame_id][i].diffusion \
                                         + self._data[msg.header.frame_id][i].goal_radius:
                                     del self._data[msg.header.frame_id][i]
@@ -166,11 +166,11 @@ class SoBuffer():
                                     msg.goal_radius = np.absolute(msg.goal_radius -
                                                                   self._data[msg.header.frame_id][i].goal_radius)
                                 del self._data[msg.header.frame_id][i]
-                                # store average element as long as it has a goal radius or a diffision radius larger
+                                # store average element as long as it has a goal radius or a diffusion radius larger
                                 # than the minimum required diffusion
                                 if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
                                     self._data[msg.header.frame_id].append(msg)
-                            elif self._aggregation == 'newest': # keep last received gradient at one position
+                            elif self._aggregation == 'newest':  # keep last received gradient at one position
                                 if msg.header.stamp >= self._data[msg.header.frame_id][i].header.stamp:
                                     del self._data[msg.header.frame_id][i]
                                     self._data[msg.header.frame_id].append(msg)
@@ -231,7 +231,7 @@ class SoBuffer():
         :return: True/False (bool)
         """
         gradients_attractive = []
-        tmp_att = -1
+        tmp_att = 2
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
@@ -247,23 +247,15 @@ class SoBuffer():
 
         if gradients_attractive:
             for gradient in gradients_attractive:
-                # find nearest attractive gradient
-                tmp = Vector3()
-                tmp.x = gradient.p.x - pose.x
-                tmp.y = gradient.p.y - pose.y
-                tmp.z = gradient.p.z - pose.z
-
                 # attraction = distance to goal area
-                att = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - gradient.goal_radius
-                if att < 0.0:
-                    att = 0.0
-
-                if att > tmp_att:
+                grad = self._calc_attractive_gradient_ge_norm(gradient, pose)
+                att = np.linalg.norm([grad.x, grad.y, grad.z])
+                # attraction smaller means distance closer - normalized value taken regarding
+                # diffusion radius + goal_radius
+                if att < tmp_att:
                     tmp_att = att
-                elif att == 0.0:
-                    return True
         else:
-                return True
+            return True
 
         if tmp_att == 0.0:
             return True
@@ -353,7 +345,7 @@ class SoBuffer():
     # AGGREGATION - build potential field (merging of information)
     def _aggregate_max(self, pose, frameids=[]): #TODO: unit test
         """
-        follow higher gradient values (= gradient with shortest relative distance)
+        follow higher gradient values (= gradient with shortest relative distance to gradient source)
         sets current gradient to direction vector (length <= 1)
         """
 
@@ -383,7 +375,11 @@ class SoBuffer():
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     att = np.inf
                 else:
-                    att = np.linalg.norm([grad.x, grad.y])
+                    att = np.linalg.norm([grad.x, grad.y, grad.z])
+                    # inverse attraction for attractive gradients as attraction decreases with getting closer to the
+                    # goal zone of the gradient
+                    if gradient.attraction == 1:
+                        att = 1 - att
 
                 if att > tmp_att:
                     if grad.x == np.inf or grad.x == -1 * np.inf:
@@ -434,10 +430,12 @@ class SoBuffer():
             for gradient in gradients_attractive:
                     # find nearest attractive gradient
                 grad = self._calc_attractive_gradient(gradient, pose)
-                att = np.linalg.norm([grad.x, grad.y])
-                if att > tmp_att:
+                att = np.linalg.norm([grad.x, grad.y, grad.z])
+                # attraction decreases with being closer to gradient source / goal area
+                if att < tmp_att:
                     vector_attraction.x = grad.x
                     vector_attraction.y = grad.y
+                    vector_attraction.z = grad.z
                     tmp_att = att
 
         # aggregate repulsive gradients
@@ -476,7 +474,7 @@ class SoBuffer():
         gradients_repulsive = []
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
-        tmp_att = -1
+        tmp_att = 2
         attractive_gradient = soMessage()
 
         # if no frameids are specified, use all data stored in buffer
@@ -496,11 +494,16 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                 # find nearest attractive gradient
-                grad = self._calc_attractive_gradient_ge(gradient, pose)
-                att = np.linalg.norm([grad.x, grad.y])
-                if att > tmp_att:
+                grad = self._calc_attractive_gradient_ge_norm(gradient, pose)
+                # returns value between 0 and 1
+                att = np.linalg.norm([grad.x, grad.y, grad.z])
+                # attraction smaller means distance closer - normalized value taken regarding
+                # diffusion radius + goal_radius
+                if att < tmp_att:
+                    grad = self._calc_attractive_gradient_ge(gradient, pose)
                     vector_attraction.x = grad.x
                     vector_attraction.y = grad.y
+                    vector_attraction.z = grad.z
                     tmp_att = att
                     attractive_gradient = gradient
 
@@ -765,6 +768,7 @@ class SoBuffer():
     @staticmethod
     def _calc_attractive_gradient_ge(gradient, pose):
         """
+        calculate attractive gradient based on Ge & Cui - no normalization of vectors!
         :param gradient: position of the goal
         :param pose: position of the robot
         :return: attractive vector
@@ -786,6 +790,39 @@ class SoBuffer():
             v.x = (tmp.x / d) * (gradient.goal_radius + gradient.diffusion)
             v.y = (tmp.y / d) * (gradient.goal_radius + gradient.diffusion)
             v.z = (tmp.z / d) * (gradient.goal_radius + gradient.diffusion)
+
+        return v
+
+    @staticmethod
+    def _calc_attractive_gradient_ge_norm(gradient, pose):
+        """
+        calculate attractive gradient based on Ge & Cui - normalized version for choosing max gradient to pursue
+        :param gradient: position of the goal
+        :param pose: position of the robot
+        :return: attractive vector
+        """
+        v = Vector3()
+
+        # distance goal - agent
+        tmp = Vector3()
+        tmp.x = gradient.p.x - pose.x
+        tmp.y = gradient.p.y - pose.y
+        tmp.z = gradient.p.z - pose.z
+
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+
+        if d <= gradient.goal_radius:
+            v.x = 0.0
+            v.y = 0.0
+            v.z = 0.0
+        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+            v.x = tmp.x / (gradient.goal_radius + gradient.diffusion)
+            v.y = tmp.y / (gradient.goal_radius + gradient.diffusion)
+            v.z = tmp.z / (gradient.goal_radius + gradient.diffusion)
+        elif d > gradient.goal_radius + gradient.diffusion:
+            v.x = tmp.x / d
+            v.y = tmp.y / d
+            v.z = tmp.z / d
 
         return v
 
@@ -824,9 +861,12 @@ class SoBuffer():
             ag.z = (goal.p.z - pose.z) / d_goal
             # closest distance to obstacle  - diffusion
             d_obs_diff = (1.0/(d - gradient.goal_radius)) - (1.0/gradient.diffusion)
+            # parameters
             n = 1.0
-            f_rep1 = d_obs_diff * ((d_goal**n) / ((d - gradient.goal_radius)**n))
-            f_rep2 = (n/2.0) * np.square(d_obs_diff) * (d_goal ** (n-1))
+            eta = 1.0
+            # weighting rep1 and rep2
+            f_rep1 = eta * d_obs_diff * ((d_goal**n) / ((d - gradient.goal_radius)**n))
+            f_rep2 = eta * (n/2.0) * np.square(d_obs_diff) * (d_goal ** (n-1))
             v.x = f_rep1 * tmp.x + f_rep2 * ag.x
             v.y = f_rep1 * tmp.y + f_rep2 * ag.y
             v.z = f_rep1 * tmp.z + f_rep2 * ag.z
