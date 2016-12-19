@@ -550,7 +550,7 @@ class soBufferTest(unittest.TestCase):
         self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(0,0,0)),
                          Vector3((2.0/7.0)*6.0, (3.0/7.0)*6.0, (6.0/7.0)*6.0))
 
-    def test_repulsion_ge(self):  
+    def test_repulsion_ge(self):
         """
         test repulsion vector calculation based on Ge
         :return:
