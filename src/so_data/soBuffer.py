@@ -350,7 +350,7 @@ class SoBuffer():
         """
 
         gradients = []
-        tmp_att = 0
+        tmp_att = -1
         tmp_grad = Vector3()
 
         # if no frameids are specified, use all data stored in buffer
@@ -410,7 +410,7 @@ class SoBuffer():
         gradients_repulsive = []
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
-        tmp_att = 0
+        tmp_att = 2
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
