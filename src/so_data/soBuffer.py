@@ -16,7 +16,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation='max', min_diffusion=0.1,
-                 view_distance=2.0, id='', result='reach', collision_avoidance='', repulsion_radius=2.0,
+                 view_distance=2.0, id='', result='avoid', collision_avoidance='', repulsion_radius=2.0,
                  store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
         """
         :param aggregation: indicator which kind of aggregation should be applied
@@ -26,10 +26,12 @@ class SoBuffer():
         :type aggregation: str.
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         :type min_diffusion: float
-        :param result: specifies vector which should be returned;
+        :param result: specifies vector which should be returned (gradients within view distance considered);
                 options: * all = return vector considering all vectors of potential field
                          * max = return vector with max attraction / repulsion
                          * near = return vector to nearest attractive vector avoiding obstacles
+                         * reach = return vector which enables to reach nearest attractive gradient
+                         * avoid = return vector leading away form all gradients
         :type result: str.
         :param collision_avoidance
                 options: * gradient = gradient / potential field approach to realize collision avoidance between neighbors
@@ -83,7 +85,7 @@ class SoBuffer():
 
         self._id = id
 
-        if result != 'all' and result != 'max' and result != 'near' and result != 'reach':
+        if result != 'all' and result != 'max' and result != 'near' and result != 'reach' and result != 'avoid':
             rospy.logerr("Wrong return type in soBuffer. Set to near.")
             self._result = 'near'
         else:
@@ -203,16 +205,20 @@ class SoBuffer():
             self._aggregate_all(pose)
         elif self._result == 'reach':
             self._aggregate_nearest_ge(pose)
+        elif self._result == 'avoid':
+            self._aggregate_avoid_all(pose)
 
         # Collision Avoidance between neighbors
         if self._collision_avoidance == 'gradient':
             collision = self._gradient_repulsion(pose)
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
+            self._current_gradient.z += collision.z
         elif self._collision_avoidance == 'repulsion':
             collision = self._repulsion_vector()
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
+            self._current_gradient.z += collision.z
 
         return self._current_gradient
 
@@ -282,12 +288,19 @@ class SoBuffer():
 
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
-                        rand = np.random.random_sample()
-                        repulsion.x += (2 * np.random.randint(2) - 1) * rand * self._repulsion_radius
-                        repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._repulsion_radius
+                        # create random vector with length (goal_radius + gradient.diffusion)
+                        tmp = np.random.rand(1, 3)
+                        tmp /= np.linalg.norm(tmp)
+                        tmp *= self._repulsion_radius
+
+                        repulsion.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                        repulsion.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                        repulsion.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
+
                     else:
                         repulsion.x += grad.x
                         repulsion.y += grad.y
+                        repulsion.z += grad.z
 
         # limit repulsion vector to repulsion radius
         d = calc.vector_length(repulsion)
@@ -319,10 +332,14 @@ class SoBuffer():
                         m.z += (self._own_pos[-1].p.z - val[-1].p.z) * diff / distance
                     elif distance == 0:
                         # create random vector with length = repulsion radius
-                        rand = np.random.random_sample()
-                        m.x += (2 * np.random.randint(2) - 1) * rand * self._repulsion_radius
-                        m.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * self._repulsion_radius
-                        m.z += 0
+                        # create random vector with length (goal_radius + gradient.diffusion)
+                        tmp = np.random.rand(1, 3)
+                        tmp /= np.linalg.norm(tmp)
+                        tmp *= self._repulsion_radius
+
+                        m.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                        m.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                        m.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
 
         # max repulsion vector length = repulsion radius of robot
         d = np.linalg.norm([m.x, m.y, m.z])
@@ -370,10 +387,14 @@ class SoBuffer():
 
                 if att > tmp_att:
                     if grad.x == np.inf or grad.x == -1 * np.inf:
-                        rand = np.random.random_sample()
-                        tmp_grad.x = (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
-                        tmp_grad.y = (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
-                                     (gradient.goal_radius + gradient.diffusion)
+                        # create random vector with length (goal_radius + gradient.diffusion)
+                        tmp = np.random.rand(1, 3)
+                        tmp /= np.linalg.norm(tmp)
+                        tmp *= (gradient.goal_radius + gradient.diffusion)
+
+                        tmp_grad.x = (2 * np.random.randint(2) - 1) * tmp[0][0]
+                        tmp_grad.y = (2 * np.random.randint(2) - 1) * tmp[0][1]
+                        tmp_grad.z = (2 * np.random.randint(2) - 1) * tmp[0][2]
                     else:
                         tmp_grad = grad
 
@@ -425,16 +446,22 @@ class SoBuffer():
                 grad = self._calc_repulsive_gradient(gradient, pose)
                 # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
-                    rand = np.random.random_sample()
-                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
-                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
-                                              (gradient.goal_radius + gradient.diffusion)
+                    # create random vector with length (goal_radius + gradient.diffusion)
+                    tmp = np.random.rand(1,3)
+                    tmp /= np.linalg.norm(tmp)
+                    tmp *= (gradient.goal_radius + gradient.diffusion)
+
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                    vector_repulsion.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
                 else:
                     vector_repulsion.x += grad.x
                     vector_repulsion.y += grad.y
+                    vector_repulsion.z += grad.z
 
         vector_attraction.x += vector_repulsion.x
         vector_attraction.y += vector_repulsion.y
+        vector_attraction.z += vector_repulsion.z
 
         self._current_gradient = vector_attraction
 
@@ -483,22 +510,28 @@ class SoBuffer():
                 grad = self._calc_repulsive_gradient_ge(gradient, attractive_gradient, pose)
                 # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
-                    rand = np.random.random_sample()
-                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (gradient.goal_radius + gradient.diffusion)
-                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * \
-                                              (gradient.goal_radius + gradient.diffusion)
+                    # create random vector with length (goal_radius + gradient.diffusion)
+                    tmp = np.random.rand(1, 3)
+                    tmp /= np.linalg.norm(tmp)
+                    tmp *= (gradient.goal_radius + gradient.diffusion)
+
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                    vector_repulsion.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
                 else:
                     vector_repulsion.x += grad.x
                     vector_repulsion.y += grad.y
+                    vector_repulsion.z += grad.z
 
         vector_attraction.x += vector_repulsion.x
         vector_attraction.y += vector_repulsion.y
+        vector_attraction.z += vector_repulsion.z
 
         self._current_gradient = vector_attraction
 
     def _aggregate_all(self, pose, frameids=[]):  # TODO unit test!!!
         """
-        aggregate all vectors
+        aggregate all vectors within view distance
         :param pose:
         :return:
         """
@@ -528,6 +561,7 @@ class SoBuffer():
                 grad = self._calc_attractive_gradient(gradient, pose)
                 vector_attraction.x += grad.x
                 vector_attraction.y += grad.y
+                vector_attraction.z += grad.z
 
         # aggregate repulsive gradients
         if gradients_repulsive:
@@ -535,19 +569,64 @@ class SoBuffer():
                 grad = self._calc_repulsive_gradient(gradient, pose)
                 # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
-                    rand = np.random.random_sample()
-                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * rand * (
-                    gradient.goal_radius + gradient.diffusion)
-                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * np.sqrt(1 - rand) * (
-                    gradient.goal_radius + gradient.diffusion)
+                    # create random vector with length (goal_radius + gradient.diffusion)
+                    tmp = np.random.rand(1,3)
+                    tmp /= np.linalg.norm(tmp)
+                    tmp *= (gradient.goal_radius + gradient.diffusion)
+
+                    vector_repulsion.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                    vector_repulsion.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                    vector_repulsion.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
                 else:
                     vector_repulsion.x += grad.x
                     vector_repulsion.y += grad.y
+                    vector_repulsion.z += grad.z
 
         vector_attraction.x += vector_repulsion.x
         vector_attraction.y += vector_repulsion.y
+        vector_attraction.z += vector_repulsion.z
 
         self._current_gradient = vector_attraction
+
+    def _aggregate_avoid_all(self, pose, frameids=[]):  # TODO unit test!!!
+        """
+        calculate vector which avoids all gradients within view distance
+        :param pose:
+        :param frameids:
+        :return:
+        """
+        gradients = []
+        v = Vector3()
+
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._data.keys()
+
+        for fid in frameids:
+            if fid in self._data:
+                for element in self._data[fid]:
+                    if calc.get_gradient_distance(element.p, pose) <= element.diffusion + element.goal_radius \
+                            + self._view_distance:
+                            gradients.append(element)
+
+        if gradients:
+            for gradient in gradients:
+                grad = self._calc_repulsive_gradient(gradient, pose)
+                if grad.x == np.inf or grad.x == -1 * np.inf:
+                    # create random vector with length (goal_radius + gradient.diffusion)
+                    tmp = np.random.rand(1,3)
+                    tmp /= np.linalg.norm(tmp)
+                    tmp *= (gradient.goal_radius + gradient.diffusion)
+
+                    v.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                    v.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                    v.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
+                else:
+                    v.x += grad.x
+                    v.y += grad.y
+                    v.z += grad.z
+
+        self._current_gradient = v
 
 
     # EVAPORATION
@@ -727,7 +806,7 @@ class SoBuffer():
         tmp.z = pose.z - gradient.p.z
 
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-        if d <= gradient.goal_radius:
+        if d <= gradient.goal_radius: #TODO evtl wie repulsion normal (ohne ge)
             v.x = -1.0 * np.inf
             v.y = -1.0 * np.inf
             v.z = -1.0 * np.inf
