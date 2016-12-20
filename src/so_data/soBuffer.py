@@ -8,6 +8,8 @@ from so_data.msg import soMessage
 import numpy as np
 import calc
 from geometry_msgs.msg import Vector3
+import flocking
+import collections
 
 
 
@@ -878,3 +880,53 @@ class SoBuffer():
             v.z = 0
 
         return v
+
+    # FLOCKING
+    # TODO: set max. velocity, max. acceleration values, avoidance distance values (where how to integrate?!?)  
+    def flocking(self):
+        """
+
+        :return:
+        """
+        view = []
+
+        # own position - we need minimum two values to calculate velocities
+        if len(self._own_pos) >= 2:
+            pose = self._own_pos[-1].p
+        else:
+            return
+
+        # neighbors of agent
+        if self._neighbors:
+            for val in self._neighbors.values():
+                # check if neighbor is in sight
+                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                        + self._view_distance:
+                    view.append(val)
+
+        # create array of tuples with neighbor position - neighbor velocity & own pos & velocity (p, v)
+        Boid = collections.namedtuple('Boid', ['p', 'v'])
+
+        agent = Boid(self._own_pos[-1].p, flocking.agent_velocity(self._own_pos[-1], self._own_pos[-2]))
+
+        neighbors = []
+        for neighbor in view:
+            if len(neighbor) >= 2:
+                neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
+
+        # maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
+        # calculate gradient based term
+        epsilon = 1.0  # TODO make parameters
+        a = 1.0
+        b = 1.0
+        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b)
+
+        # calculate velocity consensus term
+        vel = flocking.velocity_consensus(neighbors, agent, epsilon, self._view_distance)
+
+        # add terms to steering force
+        steering = calc.add_vectors(grad, vel)
+
+        # calculate new velocity based on steering force
+        # find out how to, probably like this:
+        return calc.add_vectors(agent.v, steering)

@@ -53,3 +53,31 @@ def vector_length(vector):
     :return: vector length
     """
     return np.linalg.norm([vector.x, vector.y, vector.z])
+
+
+def delta_vector(q1, q2):
+    """
+    :param q1: Vector3
+    :param q2: Vector3
+    :return: Vector3 which is q1 - q2
+    """
+    d = Vector3()
+    d.x = q1.x - q2.x
+    d.y = q1.y - q2.y
+    d.z = q1.z - q2.z
+
+    return d
+
+def add_vectors(q1, q2):
+    """
+    :param q1: Vector3
+    :param q2: Vector3
+    :return: Vector3 which is q1 + q2
+    """
+    d = Vector3()
+    d.x = q1.x + q2.x
+    d.y = q1.y + q2.y
+    d.z = q1.z + q2.z
+
+    return d
+
