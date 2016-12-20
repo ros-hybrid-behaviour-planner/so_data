@@ -882,7 +882,7 @@ class SoBuffer():
         return v
 
     # FLOCKING
-    # TODO: set max. velocity, max. acceleration values, avoidance distance values (where how to integrate?!?)  
+    # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
     def flocking(self):
         """
 
@@ -914,12 +914,12 @@ class SoBuffer():
             if len(neighbor) >= 2:
                 neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
 
-        # maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
+        # TODO maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
         # calculate gradient based term
         epsilon = 1.0  # TODO make parameters
         a = 1.0
         b = 1.0
-        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b)
+        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b, self._repulsion_radius)
 
         # calculate velocity consensus term
         vel = flocking.velocity_consensus(neighbors, agent, epsilon, self._view_distance)

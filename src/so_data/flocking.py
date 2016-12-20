@@ -31,20 +31,21 @@ def agent_velocity(p1, p2):
     return v
 
 
-def gradient_based(neighbors, agent, epsilon, a, b):
+def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance):
     """
     :param neighbors: array of neighbor positions of agent i (tuple position - velocity)
     :param agent: agent under consideration
     :param epsilon: sigma norm parameter (0,1)
     :param a: action function parameter
     :param b: action function parameter
+    :param avoidance_distance: scale (desired distance between agents)
     :return: gradient based term for flocking
     """
     v = Vector3()
 
     for q in neighbors:
         nij = vector_btw_agents(agent.p, q.p, epsilon)
-        m = action_function(q.p, agent.p, epsilon, a, b)
+        m = action_function(q.p, agent.p, epsilon, a, b, avoidance_distance)
         v.x += m * nij.x
         v.y += m * nij.y
         v.z += m * nij.z
@@ -75,7 +76,7 @@ def velocity_consensus(neighbors, agent, epsilon, r):
     return v
 
 
-def action_function(qj, qi, r, epsilon, a, b):
+def action_function(qj, qi, r, epsilon, a, b, avoidance_distance):
     """
     :param qj: Positin neighbor Vector3
     :param qi: Position agent Vector3
@@ -83,6 +84,7 @@ def action_function(qj, qi, r, epsilon, a, b):
     :param epsilon: parameter of sigma norm (0,1)
     :param a: parameter
     :param b: parameter
+    :param avoidance_distance: distance between agents
     0 < a <= b; c = |a-b|/np.sqrt(4ab)
     :return:
     """
@@ -90,11 +92,12 @@ def action_function(qj, qi, r, epsilon, a, b):
     dq = calc.delta_vector(qj, qi)
     z = sigma_norm(epsilon, dq)
     r_alpha = sigma_norm(epsilon, r)
+    d_alpha = sigma_norm(epsilon, avoidance_distance)
 
     # calculate parameter c for action function
     c = np.abs(a-b)/np.sqrt(4*a*b)
 
-    phi = 0.5 * ((a+b)*(z / np.sqrt(1+np.square(z)))*(z+c)+(a-b))
+    phi = 0.5 * ((a+b)*((z - d_alpha)/ np.sqrt(1+np.square(z-d_alpha)))*((z-d_alpha)+c)+(a-b))
     phi_alpha = bump_function(z/r_alpha)*phi
 
     return phi_alpha
