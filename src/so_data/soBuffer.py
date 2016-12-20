@@ -816,9 +816,10 @@ class SoBuffer():
             v.y = 0.0
             v.z = 0.0
         elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
-            v.x = tmp.x / (gradient.goal_radius + gradient.diffusion)
-            v.y = tmp.y / (gradient.goal_radius + gradient.diffusion)
-            v.z = tmp.z / (gradient.goal_radius + gradient.diffusion)
+            m = (d - gradient.goal_radius) / gradient.diffusion
+            v.x = tmp.x * m / d
+            v.y = tmp.y * m / d
+            v.z = tmp.z * m / d
         elif d > gradient.goal_radius + gradient.diffusion:
             v.x = tmp.x / d
             v.y = tmp.y / d
