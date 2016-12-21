@@ -12,7 +12,7 @@ import numpy as np
 import calc
 
 
-def agent_velocity(p1, p2):
+def agent_velocity(p1, p2): #TODO unittest
     """
     :param p1: gradient 1 (soMessage)
     :param p2: gradient 2 (soMessage)
@@ -31,7 +31,7 @@ def agent_velocity(p1, p2):
     return v
 
 
-def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance):
+def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance): #TODO unittest
     """
     :param neighbors: array of neighbor positions of agent i (tuple position - velocity)
     :param agent: agent under consideration
@@ -53,7 +53,7 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_dis
     return v
 
 
-def velocity_consensus(neighbors, agent, epsilon, r):
+def velocity_consensus(neighbors, agent, epsilon, r): #TODO unittest
     """
     :param neighbors: array of neighbors of agent i (tuple position - velocity)
     :param agent: agent under consideration (position and velocity)
@@ -76,7 +76,7 @@ def velocity_consensus(neighbors, agent, epsilon, r):
     return v
 
 
-def action_function(qj, qi, r, epsilon, a, b, avoidance_distance):
+def action_function(qj, qi, r, epsilon, a, b, avoidance_distance): #TODO unittest
     """
     :param qj: Positin neighbor Vector3
     :param qi: Position agent Vector3
@@ -133,14 +133,14 @@ def bump_function(z, h):
     :return:
     """
     if 0 <= z < h:
-        return 1
+        return 1.0
     elif h <= z <= 1:
-        return 0.5 * (1 + np.cos(np.pi * ( (z - h)/(1 - h))))
+        return 0.5 * (1.0 + np.cos(np.pi * ( (z - h)/(1.0 - h))))
     else:
-        return 0
+        return 0.0
 
 
-def adjacency_matrix(qj, qi, epsilon, r):
+def adjacency_matrix(qj, qi, epsilon, r): #TODO unittest
     """
     :param qj: Position neighbor
     :param qi: Position agent
@@ -156,7 +156,7 @@ def adjacency_matrix(qj, qi, epsilon, r):
 
 
 
-def vector_btw_agents(qi, qj, epsilon):
+def vector_btw_agents(qi, qj, epsilon): #TODO unittest
     """
     :param qi: agent under consideration
     :param qj: neighbor
@@ -172,3 +172,21 @@ def vector_btw_agents(qi, qj, epsilon):
     n.z = dq.z / np.sqrt(1 + epsilon * np.square(calc.vector_length(dq)))
 
     return n
+
+
+def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance): #TODO unittest
+    """
+    :param neighbors:
+    :param agent:
+    :param epsilon:
+    :param a:
+    :param b:
+    :param repulsion_radius:
+    :param view_distance:
+    :return: vector of steering force
+    """
+    grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance)
+
+    vel = velocity_consensus(neighbors, agent, epsilon, view_distance)
+
+    return calc.add_vectors(grad, vel)

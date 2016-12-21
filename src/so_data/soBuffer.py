@@ -883,6 +883,7 @@ class SoBuffer():
 
     # FLOCKING
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
+    # TODO: integrate as option in get_current_gradient setting
     def flocking(self):
         """
 
@@ -915,18 +916,17 @@ class SoBuffer():
                 neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
 
         # TODO maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
-        # calculate gradient based term
-        epsilon = 1.0  # TODO make parameters
+
+        # TODO make parameters
+        epsilon = 1.0
         a = 1.0
         b = 1.0
-        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b, self._repulsion_radius, self._view_distance)
-
-        # calculate velocity consensus term
-        vel = flocking.velocity_consensus(neighbors, agent, epsilon, self._view_distance)
-
-        # add terms to steering force
-        steering = calc.add_vectors(grad, vel)
+        # max velocity and accelartion values
+        max_accelartion = 1.0
+        max_velocity = 1.0
 
         # calculate new velocity based on steering force
         # find out how to, probably like this:
-        return calc.add_vectors(agent.v, steering)
+        # velocity to be set = current vel + flocking steering force
+
+        return calc.add_vectors(agent.v, flocking.flocking_vector(neighbors, agent, epsilon, a, b, self._repulsion_radius, self._view_distance))
