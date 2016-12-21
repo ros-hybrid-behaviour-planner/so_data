@@ -891,7 +891,7 @@ class SoBuffer():
         view = []
 
         # own position - we need minimum two values to calculate velocities
-        if len(self._own_pos) >= 2:
+        if len(self._own_pos) >= self._neighbor_storage_size:
             pose = self._own_pos[-1].p
         else:
             return
@@ -911,7 +911,7 @@ class SoBuffer():
 
         neighbors = []
         for neighbor in view:
-            if len(neighbor) >= 2:
+            if len(neighbor) >= self._neighbor_storage_size:
                 neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
 
         # TODO maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
@@ -919,7 +919,7 @@ class SoBuffer():
         epsilon = 1.0  # TODO make parameters
         a = 1.0
         b = 1.0
-        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b, self._repulsion_radius)
+        grad = flocking.gradient_based(neighbors, agent, epsilon, a, b, self._repulsion_radius, self._view_distance)
 
         # calculate velocity consensus term
         vel = flocking.velocity_consensus(neighbors, agent, epsilon, self._view_distance)

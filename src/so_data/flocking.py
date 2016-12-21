@@ -21,17 +21,17 @@ def agent_velocity(p1, p2):
     v = calc.delta_vector(p1.p, p2.p)
 
     # delta t
-    dt = p1.stamp - p2.stamp
+    dt = (p1.header.stamp - p2.header.stamp).nsecs / 1000000000.0
 
     # velocity = delta distance / delta time
-    v.x /= dt.secs
-    v.y /= dt.secs
-    v.z /= dt.secs
+    v.x /= dt
+    v.y /= dt
+    v.z /= dt
 
     return v
 
 
-def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance):
+def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance):
     """
     :param neighbors: array of neighbor positions of agent i (tuple position - velocity)
     :param agent: agent under consideration
@@ -45,7 +45,7 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance):
 
     for q in neighbors:
         nij = vector_btw_agents(agent.p, q.p, epsilon)
-        m = action_function(q.p, agent.p, epsilon, a, b, avoidance_distance)
+        m = action_function(q.p, agent.p, view_distance, epsilon, a, b, avoidance_distance)
         v.x += m * nij.x
         v.y += m * nij.y
         v.z += m * nij.z
@@ -91,14 +91,14 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance):
 
     dq = calc.delta_vector(qj, qi)
     z = sigma_norm(epsilon, dq)
-    r_alpha = sigma_norm(epsilon, r)
-    d_alpha = sigma_norm(epsilon, avoidance_distance)
+    r_alpha = sigma_norm_f(epsilon, r)
+    d_alpha = sigma_norm_f(epsilon, avoidance_distance)
 
     # calculate parameter c for action function
     c = np.abs(a-b)/np.sqrt(4*a*b)
 
     phi = 0.5 * ((a+b)*((z - d_alpha)/ np.sqrt(1+np.square(z-d_alpha)))*((z-d_alpha)+c)+(a-b))
-    phi_alpha = bump_function(z/r_alpha)*phi
+    phi_alpha = bump_function(z/r_alpha, 0.8)*phi #TODO second argument as parameter
 
     return phi_alpha
 
@@ -111,6 +111,16 @@ def sigma_norm(epsilon, z):
     """
     # Euclidean norm of vector
     z = calc.vector_length(z)
+    return (1/epsilon)*(np.sqrt(1+epsilon * np.square(z))-1)
+
+
+def sigma_norm_f(epsilon, z):
+    """
+    :param epsilon: parameter, > 0
+    :param z: float
+    :return: sigma norm of z
+    """
+    # Euclidean norm of vector
     return (1/epsilon)*(np.sqrt(1+epsilon * np.square(z))-1)
 
 
@@ -130,7 +140,7 @@ def bump_function(z, h):
         return 0
 
 
-def adjacency_matrix(qj, qi, epsilon, r): #TODO
+def adjacency_matrix(qj, qi, epsilon, r):
     """
     :param qj: Position neighbor
     :param qi: Position agent
@@ -140,9 +150,9 @@ def adjacency_matrix(qj, qi, epsilon, r): #TODO
     """
     dq = calc.delta_vector(qj, qi)
     z = sigma_norm(epsilon, dq)
-    r_alpha = sigma_norm(epsilon, r)
+    r_alpha = sigma_norm_f(epsilon, r)
 
-    return bump_function(z/r_alpha)
+    return bump_function(z/r_alpha, 0.8) #TODO make parameter
 
 
 
