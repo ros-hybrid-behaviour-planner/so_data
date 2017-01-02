@@ -5,16 +5,16 @@ Created on 21.12.2016
 """
 
 import unittest
-import calc
 from so_data.msg import soMessage
-from geometry_msgs.msg import Point, Vector3
+from geometry_msgs.msg import Vector3
 import numpy as np
 from std_msgs.msg import Header
 import flocking
 import rospy
 import collections
 
-class flockingTest(unittest.TestCase):
+
+class FlockingTest(unittest.TestCase):
     """
     unit test flocking.py
     """

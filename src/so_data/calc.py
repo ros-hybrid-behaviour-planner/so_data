@@ -1,8 +1,8 @@
-'''
+"""
 Created on 01.12.2016
 
 @author: kaiser
-'''
+"""
 
 import numpy as np
 from geometry_msgs.msg import Vector3
@@ -67,6 +67,7 @@ def delta_vector(q1, q2):
     d.z = q1.z - q2.z
 
     return d
+
 
 def add_vectors(q1, q2):
     """
