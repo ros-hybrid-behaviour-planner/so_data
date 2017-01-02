@@ -6,13 +6,13 @@ based on algorithm by Olfati-Saber
 
 @author: kaiser
 """
-
+from __future__ import division  # ensures floating point divisions
 from geometry_msgs.msg import Vector3
 import numpy as np
 import calc
 
 
-def agent_velocity(p1, p2): #TODO unittest
+def agent_velocity(p1, p2):
     """
     :param p1: gradient 1 (soMessage)
     :param p2: gradient 2 (soMessage)
@@ -20,8 +20,12 @@ def agent_velocity(p1, p2): #TODO unittest
     """
     v = calc.delta_vector(p1.p, p2.p)
 
-    # delta t
-    dt = (p1.header.stamp - p2.header.stamp).nsecs / 1000000000.0
+    # delta t in secs
+    dt = p1.header.stamp.secs - p2.header.stamp.secs
+    dt += (p1.header.stamp.nsecs - p2.header.stamp.nsecs) / 1000000000.0
+
+    if dt == 0.0:
+        return Vector3()
 
     # velocity = delta distance / delta time
     v.x /= dt
@@ -31,13 +35,15 @@ def agent_velocity(p1, p2): #TODO unittest
     return v
 
 
-def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance): #TODO unittest
+def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance, h):
     """
     :param neighbors: array of neighbor positions of agent i (tuple position - velocity)
     :param agent: agent under consideration
     :param epsilon: sigma norm parameter (0,1)
     :param a: action function parameter
     :param b: action function parameter
+    :param view_distance: interaction range of robot
+    :param h: parameter (0,1) specifying boundaries of bump function
     :param avoidance_distance: scale (desired distance between agents)
     :return: gradient based term for flocking
     """
@@ -45,7 +51,7 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_dis
 
     for q in neighbors:
         nij = vector_btw_agents(agent.p, q.p, epsilon)
-        m = action_function(q.p, agent.p, view_distance, epsilon, a, b, avoidance_distance)
+        m = action_function(q.p, agent.p, view_distance, epsilon, a, b, avoidance_distance, h)
         v.x += m * nij.x
         v.y += m * nij.y
         v.z += m * nij.z
@@ -53,21 +59,23 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_dis
     return v
 
 
-def velocity_consensus(neighbors, agent, epsilon, r): #TODO unittest
+def velocity_consensus(neighbors, agent, epsilon_z, epsilon_r, r, h):
     """
     :param neighbors: array of neighbors of agent i (tuple position - velocity)
     :param agent: agent under consideration (position and velocity)
-    :param epsilon: sigma norm parameter (0,1)
+    :param epsilon_r: sigma norm parameter (0,1) of r
+    :param epsilon_z: sigma norm parameter of z
     :param r: view distance / interaction range
+    :param h: parameter specifying boundaries of bump function
     :return: velocity consensus term for flocking
     """
     v = Vector3()
 
     for q in neighbors:
-        #needs velocity
+        # needs velocity - delta velocity
         dp = calc.delta_vector(q.v, agent.v)
         # needs position
-        aij = adjacency_matrix(q.p, agent.p, epsilon, r)
+        aij = adjacency_matrix(q.p, agent.p, epsilon_z, epsilon_r, r, h)
 
         v.x += aij * dp.x
         v.y += aij * dp.y
@@ -76,7 +84,7 @@ def velocity_consensus(neighbors, agent, epsilon, r): #TODO unittest
     return v
 
 
-def action_function(qj, qi, r, epsilon, a, b, avoidance_distance): #TODO unittest
+def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
     """
     :param qj: Positin neighbor Vector3
     :param qi: Position agent Vector3
@@ -84,11 +92,11 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance): #TODO unittes
     :param epsilon: parameter of sigma norm (0,1)
     :param a: parameter
     :param b: parameter
+                0 < a <= b; c = |a-b|/np.sqrt(4ab)
+    :param h: parameter (0,1) specifying boundaries of bump function
     :param avoidance_distance: distance between agents
-    0 < a <= b; c = |a-b|/np.sqrt(4ab)
     :return:
     """
-
     dq = calc.delta_vector(qj, qi)
     z = sigma_norm(epsilon, dq)
     r_alpha = sigma_norm_f(epsilon, r)
@@ -97,8 +105,10 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance): #TODO unittes
     # calculate parameter c for action function
     c = np.abs(a-b)/np.sqrt(4*a*b)
 
-    phi = 0.5 * ((a+b)*((z - d_alpha)/ np.sqrt(1+np.square(z-d_alpha)))*((z-d_alpha)+c)+(a-b))
-    phi_alpha = bump_function(z/r_alpha, 0.8)*phi #TODO second argument as parameter
+    z_phi = z - d_alpha
+    sigma = (z_phi + c) / (np.sqrt(1+np.square(z_phi+c)))
+    phi = 0.5 * ((a+b)*sigma+(a-b))
+    phi_alpha = bump_function(z/r_alpha, h)*phi
 
     return phi_alpha
 
@@ -129,8 +139,8 @@ def bump_function(z, h):
     scalar function varying between 0 and 1
     to construct smooth potential functions
     :param z: input parameter of bump function
-    :param h: parameter element (0,1)
-    :return:
+    :param h: parameter (0,1) specifying boundaries
+    :return: value between 0 and 1
     """
     if 0 <= z < h:
         return 1.0
@@ -140,23 +150,24 @@ def bump_function(z, h):
         return 0.0
 
 
-def adjacency_matrix(qj, qi, epsilon, r): #TODO unittest
+def adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h):
     """
     :param qj: Position neighbor
     :param qi: Position agent
-    :param epsilon: parameter of sigma norm (0,1)
+    :param epsilon_r: parameter of sigma norm (0,1) of r
+    :param epsilon_z: parameter of sigma norm of z
     :param r: view distance / interaction range
+    :param h: parameter (0,1) of bump_function
     :return: adjacency matrix element aij
     """
-    dq = calc.delta_vector(qj, qi)
-    z = sigma_norm(epsilon, dq)
-    r_alpha = sigma_norm_f(epsilon, r)
+    dq = calc.delta_vector(qi, qj)
+    z = sigma_norm(epsilon_z, dq)
+    r_alpha = sigma_norm_f(epsilon_r, r)
 
-    return bump_function(z/r_alpha, 0.8) #TODO make parameter
+    return bump_function(z/r_alpha, h)
 
 
-
-def vector_btw_agents(qi, qj, epsilon): #TODO unittest
+def vector_btw_agents(qi, qj, epsilon):
     """
     :param qi: agent under consideration
     :param qj: neighbor
@@ -166,15 +177,17 @@ def vector_btw_agents(qi, qj, epsilon): #TODO unittest
     n = Vector3()
     # dq = qj - qi
     dq = calc.delta_vector(qj, qi)
+    # denominator of calculation
+    denom = np.sqrt(1 + epsilon * np.square(calc.vector_length(dq)))
 
-    n.x = dq.x / np.sqrt(1 + epsilon * np.square(calc.vector_length(dq)))
-    n.y = dq.y / np.sqrt(1 + epsilon * np.square(calc.vector_length(dq)))
-    n.z = dq.z / np.sqrt(1 + epsilon * np.square(calc.vector_length(dq)))
+    n.x = dq.x / denom
+    n.y = dq.y / denom
+    n.z = dq.z / denom
 
     return n
 
 
-def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance): #TODO unittest
+def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance, h):
     """
     :param neighbors:
     :param agent:
@@ -183,10 +196,11 @@ def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_dist
     :param b:
     :param repulsion_radius:
     :param view_distance:
+    :param h:
     :return: vector of steering force
     """
-    grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance)
+    grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance, h)
 
-    vel = velocity_consensus(neighbors, agent, epsilon, view_distance)
+    vel = velocity_consensus(neighbors, agent, epsilon, epsilon, view_distance, h)
 
     return calc.add_vectors(grad, vel)
