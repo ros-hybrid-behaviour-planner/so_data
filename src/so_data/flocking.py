@@ -2,7 +2,7 @@
 Created on 20.12.2016
 
 contains different functions for the flocking pattern
-based on algorithm by Olfati-Saber
+based on paper / algorithms by Olfati-Saber
 
 @author: kaiser
 """

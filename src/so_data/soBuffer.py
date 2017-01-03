@@ -12,20 +12,19 @@ import flocking
 import collections
 
 
-
 class SoBuffer():
     """
     This class is the buffer for received self-organization data
     """
-    def __init__(self, aggregation='max', min_diffusion=0.1,
-                 view_distance=2.0, id='', result='reach', collision_avoidance='', repulsion_radius=2.0,
+    def __init__(self, aggregation={'DEFAULT': 'max'}, min_diffusion=0.1,
+                 view_distance=2.0, id='', result='', collision_avoidance='repulsion',
                  store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
         """
-        :param aggregation: indicator which kind of aggregation should be applied
+        :param aggregation: indicator which kind of aggregation should be applied per frameID
                 options: * min = keep gradients with minimum diffusion radius
                          * max = keep gradients with maximum diffusion radius
                          * avg = combine gradients / average
-        :type aggregation: str.
+        :type aggregation: dictionary - key: frameID value: aggregation option
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         :type min_diffusion: float
         :param result: specifies vector which should be returned (gradients within view distance considered);
@@ -67,17 +66,19 @@ class SoBuffer():
         self._neighbors = {} # empty dict
         self._current_gradient = Vector3()
 
+        # aggregation - dictionary: frameID, aggregation option
+        self._aggregation = aggregation
+
         # options
-        if aggregation != 'min' and aggregation != 'max' and aggregation != 'avg' and aggregation != 'newest':
-            rospy.logerr("Wrong aggregation type in soBuffer. Set to max.")
-            self._aggregation = 'max'
-        else:
-            self._aggregation = aggregation
+        #if aggregation != 'min' and aggregation != 'max' and aggregation != 'avg' and aggregation != 'newest':
+        #    rospy.logerr("Wrong aggregation type in soBuffer. Set to max.")
+        #    self._aggregation = 'max'
+        #else:
+        #    self._aggregation = aggregation
 
         self._store_neighbors = store_neighbors
         self._neighbor_storage_size = neighbor_storage_size
         self._min_diffusion = min_diffusion
-        self._repulsion_radius = repulsion_radius
         self._view_distance = view_distance
         if collision_avoidance != 'repulsion' and collision_avoidance != 'gradient' and collision_avoidance != '':
             rospy.logerr("No valid option for collision avoidance entered. Set to gradient.")
@@ -87,11 +88,7 @@ class SoBuffer():
 
         self._id = id
 
-        if result != 'all' and result != 'max' and result != 'near' and result != 'reach' and result != 'avoid':
-            rospy.logerr("Wrong return type in soBuffer. Set to near.")
-            self._result = 'near'
-        else:
-            self._result = result
+        self._result = result
 
     def store_data(self, msg):
         """
@@ -104,7 +101,8 @@ class SoBuffer():
         if not msg.header.frame_id:
             msg.header.frame_id = 'None'
 
-        # no frames specified - store everything; add key to dict
+        # no frames specified - store everything; add key to dict s.t. it will be stored
+        # otherwise it results in self._data[msg.header.frame_id] == None
         if not self._frames and msg.header.frame_id not in self._data and msg.header.frame_id[:5] != 'robot':
             self._data[msg.header.frame_id] = []
 
@@ -124,34 +122,45 @@ class SoBuffer():
                 else:
                     self._neighbors[msg.header.frame_id] = [msg]
         else: # Aggregation of data with same content (position), but different diffusion radii
-            # check if data with frame_id should be stored
+
+            # set aggregation value for received message based on frameID
+            if msg.header.frame_id in self._aggregation.keys():
+                aggregation = self._aggregation[msg.header.frame_id]
+            elif 'DEFAULT' in self._aggregation.keys():  # only default value is specified
+                aggregation = self._aggregation['DEFAULT']
+            else:
+                rospy.logerr("No DEFAULT value specified for aggregation!")
+                return
 
             # evaporate stored data (only non-neighbor data)
             self._evaporate_buffer()
 
             # evaporate received data (only non-neighbor data)
             msg = self._evaporate_msg(msg)
-            if not msg:
+            if not msg:  # evaporation let to disappearance of the message
                 return
 
             if msg.header.frame_id in self._data:
+                # indicates whether data point at same position is already available
                 found = False
+
+                # self._data stores data with the received frameID
                 if self._data[msg.header.frame_id]:
                     for i in xrange(len(self._data[msg.header.frame_id]) - 1, -1, -1):
                         if self._data[msg.header.frame_id][i].p.x == msg.p.x and \
                                         self._data[msg.header.frame_id][i].p.y == msg.p.y:
                             found = True
-                            if self._aggregation == 'max': # keep data with max diffusion / reach
+                            if aggregation == 'max': # keep data with max diffusion / reach
                                 if msg.diffusion + msg.goal_radius >= self._data[msg.header.frame_id][i].diffusion \
                                         + self._data[msg.header.frame_id][i].goal_radius:
                                     del self._data[msg.header.frame_id][i]
                                     self._data[msg.header.frame_id].append(msg)
-                            elif self._aggregation == 'min': # keep data with min diffusion / reach
+                            elif aggregation == 'min': # keep data with min diffusion / reach
                                 if msg.diffusion + msg.goal_radius <= self._data[msg.header.frame_id][i].diffusion \
                                         + self._data[msg.header.frame_id][i].goal_radius:
                                     del self._data[msg.header.frame_id][i]
                                     self._data[msg.header.frame_id].append(msg)
-                            elif self._aggregation == 'avg':
+                            elif aggregation == 'avg':
                                 # attraction is the same direction
                                 if msg.attraction == self._data[msg.header.frame_id][i].attraction:
                                     msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][i].diffusion)/2
@@ -172,7 +181,7 @@ class SoBuffer():
                                 # than the minimum required diffusion
                                 if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
                                     self._data[msg.header.frame_id].append(msg)
-                            elif self._aggregation == 'newest':  # keep last received gradient at one position
+                            elif aggregation == 'newest':  # keep last received gradient at one position
                                 if msg.header.stamp >= self._data[msg.header.frame_id][i].header.stamp:
                                     del self._data[msg.header.frame_id][i]
                                     self._data[msg.header.frame_id].append(msg)
@@ -197,6 +206,9 @@ class SoBuffer():
 
         # apply evaporation before proceeding with calculations
         self._evaporate_buffer()
+
+        # reset current gradient
+        self._current_gradient = Vector3()
 
         # distance vector based on gradients - merges available information
         if self._result == 'near':
@@ -273,6 +285,12 @@ class SoBuffer():
         :return:
         """
         repulsion = Vector3()
+        # repulsion radius of robot, <= view_distance
+        if self._own_pos:
+            repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
+        else:
+            repulsion_radius = self._view_distance
+
         if self._neighbors:
             for val in self._neighbors.values():
                 # check if neighbor is in sight
@@ -285,7 +303,7 @@ class SoBuffer():
                         # create random vector with length (goal_radius + gradient.diffusion)
                         tmp = np.random.rand(1, 3)
                         tmp /= np.linalg.norm(tmp)
-                        tmp *= self._repulsion_radius
+                        tmp *= repulsion_radius
 
                         repulsion.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
                         repulsion.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
@@ -298,10 +316,10 @@ class SoBuffer():
 
         # limit repulsion vector to repulsion radius
         d = calc.vector_length(repulsion)
-        if d > self._repulsion_radius:
-            repulsion.x *= self._repulsion_radius / d
-            repulsion.y *= self._repulsion_radius / d
-            repulsion.z *= self._repulsion_radius / d
+        if d > repulsion_radius:
+            repulsion.x *= repulsion_radius / d
+            repulsion.y *= repulsion_radius / d
+            repulsion.z *= repulsion_radius / d
 
         return repulsion
 
@@ -313,6 +331,10 @@ class SoBuffer():
         """
         # initialize vector
         m = Vector3()
+        if self._own_pos:
+            repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
+        else:
+            repulsion_radius = self._view_distance
 
         if self._neighbors and self._own_pos:
             for val in self._neighbors.values():
@@ -320,7 +342,7 @@ class SoBuffer():
                 if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
-                        diff = self._repulsion_radius - distance
+                        diff = repulsion_radius - distance
                         m.x += (self._own_pos[-1].p.x - val[-1].p.x) * diff / distance
                         m.y += (self._own_pos[-1].p.y - val[-1].p.y) * diff / distance
                         m.z += (self._own_pos[-1].p.z - val[-1].p.z) * diff / distance
@@ -329,7 +351,7 @@ class SoBuffer():
                         # create random vector with length (goal_radius + gradient.diffusion)
                         tmp = np.random.rand(1, 3)
                         tmp /= np.linalg.norm(tmp)
-                        tmp *= self._repulsion_radius
+                        tmp *= repulsion_radius
 
                         m.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
                         m.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
@@ -337,10 +359,10 @@ class SoBuffer():
 
         # max repulsion vector length = repulsion radius of robot
         d = np.linalg.norm([m.x, m.y, m.z])
-        if d > self._repulsion_radius:
-            m.x *= self._repulsion_radius / d
-            m.y *= self._repulsion_radius / d
-            m.z *= self._repulsion_radius / d
+        if d > repulsion_radius:
+            m.x *= repulsion_radius / d
+            m.y *= repulsion_radius / d
+            m.z *= repulsion_radius / d
 
         return m
 
@@ -881,6 +903,27 @@ class SoBuffer():
 
         return v
 
+    # QUROUM SENSING: DENSITY FUNCTION
+    def quorum(self, threshold, pose): #TODO unit test
+        """
+        calculates agent density within view
+        :param threshold: number of agents which have to be within view to switch state
+        :param pose: own position of agent
+        :return: True (threshold passed), False (threshold not passed)
+        """
+        count = 0
+        if self._neighbors:
+            for val in self._neighbors.values():
+                # check if neighbor is in sight
+                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                        + self._view_distance:
+                    count += 1.0
+
+        if count >= threshold:
+            return True
+        else:
+            return False
+
     # FLOCKING
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
     # TODO: integrate as option in get_current_gradient setting
@@ -915,18 +958,24 @@ class SoBuffer():
             if len(neighbor) >= self._neighbor_storage_size:
                 neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
 
-        # TODO maybe create class flocking which allows to overwrite certain methods (include classmethods, static methods)
-
         # TODO make parameters
         epsilon = 1.0
         a = 1.0
         b = 1.0
+        h = 0.5
         # max velocity and accelartion values
         max_accelartion = 1.0
         max_velocity = 1.0
 
+        if self._own_pos:
+            repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
+        else:
+            repulsion_radius = self._view_distance
+
+
+
         # calculate new velocity based on steering force
         # find out how to, probably like this:
         # velocity to be set = current vel + flocking steering force
-
-        return calc.add_vectors(agent.v, flocking.flocking_vector(neighbors, agent, epsilon, a, b, self._repulsion_radius, self._view_distance))
+        return calc.add_vectors(agent.v, flocking.flocking_vector(neighbors, agent, epsilon, a, b,
+                                                                  repulsion_radius, self._view_distance, h))
