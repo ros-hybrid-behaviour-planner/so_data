@@ -10,6 +10,7 @@ import calc
 from geometry_msgs.msg import Vector3
 import flocking
 import collections
+import random
 
 
 class SoBuffer():
@@ -18,12 +19,13 @@ class SoBuffer():
     """
     def __init__(self, aggregation={'DEFAULT': 'max'}, min_diffusion=0.1,
                  view_distance=2.0, id='', result='', collision_avoidance='repulsion',
-                 store_neighbors = True, neighbor_storage_size=2, framestorage=[]):
+                 store_neighbors = True, neighbor_storage_size=2, framestorage=[], aggregation_distance = 1.0):
         """
         :param aggregation: indicator which kind of aggregation should be applied per frameID
                 options: * min = keep gradients with minimum diffusion radius
                          * max = keep gradients with maximum diffusion radius
                          * avg = combine gradients / average
+                         * newest = store newest received gradient
         :type aggregation: dictionary - key: frameID value: aggregation option
         :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
         :type min_diffusion: float
@@ -69,12 +71,7 @@ class SoBuffer():
         # aggregation - dictionary: frameID, aggregation option
         self._aggregation = aggregation
 
-        # options
-        #if aggregation != 'min' and aggregation != 'max' and aggregation != 'avg' and aggregation != 'newest':
-        #    rospy.logerr("Wrong aggregation type in soBuffer. Set to max.")
-        #    self._aggregation = 'max'
-        #else:
-        #    self._aggregation = aggregation
+        self._aggregation_distance = aggregation_distance
 
         self._store_neighbors = store_neighbors
         self._neighbor_storage_size = neighbor_storage_size
@@ -121,7 +118,7 @@ class SoBuffer():
                         del self._neighbors[msg.header.frame_id][0]
                 else:
                     self._neighbors[msg.header.frame_id] = [msg]
-        else: # Aggregation of data with same content (position), but different diffusion radii
+        else:  # Aggregation of data with same content (position), but different diffusion radii
 
             # set aggregation value for received message based on frameID
             if msg.header.frame_id in self._aggregation.keys():
@@ -141,50 +138,72 @@ class SoBuffer():
                 return
 
             if msg.header.frame_id in self._data:
-                # indicates whether data point at same position is already available
+                # indicates whether data point at same position / within aggregation radius is already stored
                 found = False
 
                 # self._data stores data with the received frameID
                 if self._data[msg.header.frame_id]:
+                    view = {}
+
+                    # find all points which are in aggregation range of message
                     for i in xrange(len(self._data[msg.header.frame_id]) - 1, -1, -1):
-                        if self._data[msg.header.frame_id][i].p.x == msg.p.x and \
-                                        self._data[msg.header.frame_id][i].p.y == msg.p.y:
-                            found = True
-                            if aggregation == 'max': # keep data with max diffusion / reach
-                                if msg.diffusion + msg.goal_radius >= self._data[msg.header.frame_id][i].diffusion \
-                                        + self._data[msg.header.frame_id][i].goal_radius:
-                                    del self._data[msg.header.frame_id][i]
-                                    self._data[msg.header.frame_id].append(msg)
-                            elif aggregation == 'min': # keep data with min diffusion / reach
-                                if msg.diffusion + msg.goal_radius <= self._data[msg.header.frame_id][i].diffusion \
-                                        + self._data[msg.header.frame_id][i].goal_radius:
-                                    del self._data[msg.header.frame_id][i]
-                                    self._data[msg.header.frame_id].append(msg)
-                            elif aggregation == 'avg':
-                                # attraction is the same direction
-                                if msg.attraction == self._data[msg.header.frame_id][i].attraction:
-                                    msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][i].diffusion)/2
-                                    msg.goal_radius = (msg.goal_radius +
-                                                       self._data[msg.header.frame_id][i].goal_radius)/2
-                                else:
-                                    # change sign
-                                    if self._data[msg.header.frame_id][i].diffusion + \
-                                            self._data[msg.header.frame_id][i].goal_radius \
-                                            > msg.diffusion + msg.goal_radius:
-                                        msg.attraction *= -1
-                                    msg.diffusion = np.absolute(msg.diffusion
-                                                                - self._data[msg.header.frame_id][i].diffusion)
-                                    msg.goal_radius = np.absolute(msg.goal_radius -
-                                                                  self._data[msg.header.frame_id][i].goal_radius)
-                                del self._data[msg.header.frame_id][i]
-                                # store average element as long as it has a goal radius or a diffusion radius larger
-                                # than the minimum required diffusion
-                                if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
-                                    self._data[msg.header.frame_id].append(msg)
-                            elif aggregation == 'newest':  # keep last received gradient at one position
-                                if msg.header.stamp >= self._data[msg.header.frame_id][i].header.stamp:
-                                    del self._data[msg.header.frame_id][i]
-                                    self._data[msg.header.frame_id].append(msg)
+                        distance = calc.get_gradient_distance(self._data[msg.header.frame_id][i].p, msg.p)
+                        # data point lies within aggregation distance
+                        if distance <= self._aggregation_distance:
+                            view[i] = distance
+
+                    # find minimum value of gradient centers within view
+                    if view:
+                        found = True
+                        min_val = min(view.values())  # get minimum distance
+                        result = [j for j, v in view.items() if v == min_val]
+
+                        # several with same distance - return random value of list
+                        if len(result) > 1:
+                            k = random.choice(result)
+                        # only one minimum - use found index
+                        else:
+                            k = result[0]
+
+                        if aggregation == 'max': # keep data with max diffusion / reach
+                            if msg.diffusion + msg.goal_radius >= self._data[msg.header.frame_id][k].diffusion \
+                                    + self._data[msg.header.frame_id][k].goal_radius:
+                                del self._data[msg.header.frame_id][k]
+                                self._data[msg.header.frame_id].append(msg)
+                        elif aggregation == 'min': # keep data with min diffusion / reach
+                            if msg.diffusion + msg.goal_radius <= self._data[msg.header.frame_id][k].diffusion \
+                                    + self._data[msg.header.frame_id][k].goal_radius:
+                                del self._data[msg.header.frame_id][k]
+                                self._data[msg.header.frame_id].append(msg)
+                        elif aggregation == 'avg':
+                            # attraction is the same direction
+                            if msg.attraction == self._data[msg.header.frame_id][k].attraction:
+                                msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][k].diffusion)/2
+                                msg.goal_radius = (msg.goal_radius +
+                                                   self._data[msg.header.frame_id][k].goal_radius)/2
+                            else:
+                                # change sign
+                                if self._data[msg.header.frame_id][k].diffusion + \
+                                        self._data[msg.header.frame_id][k].goal_radius \
+                                        > msg.diffusion + msg.goal_radius:
+                                    msg.attraction *= -1
+                                msg.diffusion = np.absolute(msg.diffusion
+                                                            - self._data[msg.header.frame_id][k].diffusion)
+                                msg.goal_radius = np.absolute(msg.goal_radius -
+                                                              self._data[msg.header.frame_id][k].goal_radius)
+
+                            msg.p.x = (msg.p.x + self._data[msg.header.frame_id][k].p.x) /2
+                            msg.p.y = (msg.p.y + self._data[msg.header.frame_id][k].p.y) /2
+                            msg.p.z = (msg.p.z + self._data[msg.header.frame_id][k].p.z) /2
+                            del self._data[msg.header.frame_id][k]
+                            # store average element as long as it has a goal radius or a diffusion radius larger
+                            # than the minimum required diffusion
+                            if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
+                                self._data[msg.header.frame_id].append(msg)
+                        elif aggregation == 'newest':  # keep last received gradient at one position
+                            if msg.header.stamp >= self._data[msg.header.frame_id][k].header.stamp:
+                                del self._data[msg.header.frame_id][k]
+                                self._data[msg.header.frame_id].append(msg)
                 else:
                     self._data[msg.header.frame_id].append(msg)
                     found = True
