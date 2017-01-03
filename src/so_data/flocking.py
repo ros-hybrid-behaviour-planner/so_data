@@ -59,7 +59,7 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_dis
     return v
 
 
-def velocity_consensus(neighbors, agent, epsilon_z, epsilon_r, r, h):
+def velocity_consensus(neighbors, agent, epsilon, r, h):
     """
     :param neighbors: array of neighbors of agent i (tuple position - velocity)
     :param agent: agent under consideration (position and velocity)
@@ -75,7 +75,7 @@ def velocity_consensus(neighbors, agent, epsilon_z, epsilon_r, r, h):
         # needs velocity - delta velocity
         dp = calc.delta_vector(q.v, agent.v)
         # needs position
-        aij = adjacency_matrix(q.p, agent.p, epsilon_z, epsilon_r, r, h)
+        aij = adjacency_matrix(q.p, agent.p, epsilon, r, h)
 
         v.x += aij * dp.x
         v.y += aij * dp.y
@@ -115,7 +115,7 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
 
 def sigma_norm(epsilon, z):
     """
-    :param epsilon: parameter, > 0
+    :param epsilon: fixed parameter (0, 1)
     :param z: Vector3
     :return: sigma norm of z
     """
@@ -126,7 +126,7 @@ def sigma_norm(epsilon, z):
 
 def sigma_norm_f(epsilon, z):
     """
-    :param epsilon: parameter, > 0
+    :param epsilon: fixed parameter (0, 1)
     :param z: float
     :return: sigma norm of z
     """
@@ -150,7 +150,7 @@ def bump_function(z, h):
         return 0.0
 
 
-def adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h):
+def adjacency_matrix(qj, qi, epsilon, r, h):
     """
     :param qj: Position neighbor
     :param qi: Position agent
@@ -161,8 +161,8 @@ def adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h):
     :return: adjacency matrix element aij
     """
     dq = calc.delta_vector(qi, qj)
-    z = sigma_norm(epsilon_z, dq)
-    r_alpha = sigma_norm_f(epsilon_r, r)
+    z = sigma_norm(epsilon, dq)
+    r_alpha = sigma_norm_f(epsilon, r)
 
     return bump_function(z/r_alpha, h)
 
@@ -201,6 +201,6 @@ def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_dist
     """
     grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance, h)
 
-    vel = velocity_consensus(neighbors, agent, epsilon, epsilon, view_distance, h)
+    vel = velocity_consensus(neighbors, agent, epsilon, view_distance, h)
 
     return calc.add_vectors(grad, vel)

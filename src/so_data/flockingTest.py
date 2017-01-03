@@ -79,19 +79,18 @@ class FlockingTest(unittest.TestCase):
         # result larger than 1 --> bump function returns 0
         qj = Vector3(2.0,3.0,1.0)
         qi = Vector3(3.0,1.0,0.0)
-        epsilon_z = 1.0
-        epsilon_r = 2.0
+        epsilon = 2.0
         r = 1.0
         h = 0.5
-        self.assertEqual(flocking.adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h), 0)
+        self.assertEqual(flocking.adjacency_matrix(qj, qi, epsilon, r, h), 0)
 
         # result in [h, 1]
         r = 4.0
-        self.assertEqual(round(flocking.adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h), 3), 0.673)
+        self.assertEqual(round(flocking.adjacency_matrix(qj, qi, epsilon, r, h), 3), 0.976)
 
         # result in [0,h)
         r = 7.0
-        self.assertEqual(flocking.adjacency_matrix(qj, qi, epsilon_z, epsilon_r, r, h), 1.0)
+        self.assertEqual(flocking.adjacency_matrix(qj, qi, epsilon, r, h), 1.0)
 
     def test_agent_velocity(self):
         """
@@ -166,11 +165,10 @@ class FlockingTest(unittest.TestCase):
 
         neighbors = [Boid(Vector3(0,0,0), Vector3(2.0, 1.0, 0.0))]
         agent = Boid(Vector3(1,1,0), Vector3(0.0,0.0,0.0))
-        epsilon_z = 0.5
-        epsilon_r = 0.5
+        epsilon = 0.5
         r = 2.0
         h = 0.5
-        result = flocking.velocity_consensus(neighbors, agent, epsilon_z, epsilon_r, r, h)
+        result = flocking.velocity_consensus(neighbors, agent, epsilon, r, h)
         result.x = round(result.x, 3)
         result.y = round(result.y, 3)
         result.z = round(result.z, 3)
