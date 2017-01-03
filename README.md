@@ -41,17 +41,36 @@ gradient attraction/repulsion. Various parameters allow to adjust the soBuffer t
 
 ### soBuffer Parameters 
 
-The soBuffer provides several parameters which can be set to adjust the data storage and calculation behaviour. The following parameters can be set:
+The soBuffer provides several parameters which can be set to adjust the data storage and calculation behaviour. The following parameters can be set (default values specified in brackets):
 
-* **aggregation**:
+* **aggregation** ({'DEFAULT': 'max'}): dictionary (key: frameID, value: aggregation option) of aggregation type per frameID. 'DEFAULT' is used for all frameIDs which have no option specified in 
+the dictionary and has to be specified. Does not affect storage of neighbor gradients. Aggregation options:
+  * **min** = keep gradient with minimum diffusion radius (at a position / within aggregation_distance)
+  * **max** = keep gradient with maximum diffusion radius (at a position / within aggregation_distance)
+  * **avg** = keep average gradient (at a position / within aggregation_distance) 
+  * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
+* **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
+* **view_distance** (2.0): float; radius in which agent can sense gradients 
+* **id** (''): 'robotX' with X = robot's id; frameID's in this form are considered as robot position data / neighbor gradients. Gradients with own id are stored in self._ownpos 
+* **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Options:
+  * all = movement vector considering all vectors of the potential field will be returned 
+  * max = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
+  * near = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
+  * reach = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
+  * avoid = movement vector leading away from all sensed gradients will be returned 
+* **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents. Options:
+  * gradient = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
+  * repulsion = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
+* **store_neighbors** (True): bool; defines whether neighbor gradients / robot position data should be stored 
+* **neighbor_storage_size** (2): int; defines number of gradients which will be stored for robot position data / neighbor gradients. 
+* **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to storage of all frameIDs.
+* **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
 
 
 ### data Storage
 
-- neighbors stored separately (frame ID robot bla) 
+- neighbors stored separately (frame ID robotX) 
 
-- the parameter epsilon remains fixed throughout the paper, epsilon > 0 
-- parameter epsilon within (0, 1) 
 
 ### methods 
 gradients etc. 
