@@ -1,9 +1,11 @@
-# SO_DATA MANUAL
+SO_DATA MANUAL
+===============
 
 The package so_data provides components which are required to implement self-organization. It provides functionality to send data to the soData topic as well as to aggregate, store and use it for 
 calculations. Unit tests were done for the core components to ensure correctness of mathematical computations.  
 
-## Package components
+Package components
+-------------------
 
 The package consists of the following components:
 
@@ -15,7 +17,8 @@ The package consists of the following components:
 * **soMessage.msg**: message file describing gradients 
 
 
-## soMessage
+soMessage
+---------
 
 elements:
 
@@ -33,7 +36,8 @@ reserved frameIDs:
 
 
 
-## soBuffer(.py)
+soBuffer(.py)
+-------------
 
 The central component of the so_data package is the soBuffer. It subscribes to the soData topic and stores all received gradients in an aggregated manner. Furthermore, it includes several calculation options 
 which are based on gradients. Behaviours can use the soBuffer to implement self-organizing behaviour. The Gradient Sensor uses an instance of the soBuffer too, to enable activation calculation based on 
@@ -116,7 +120,7 @@ def _calc_attractive_gradient(gradient, pose)
 def _calc_repulsive_gradient(gradient, pose)
 ```
 
-* **Ge and Cui(1999)** 
+* **Ge and Cui (1999)** 
 
 In comparison to the approach by Balch and Hybinette, Ge and Cui guarantee with their approach, that the attractive gradient source is reached. The implementation of the attractive gradient is similar to
 Balch and Hybinette, the only difference is that Balch and Hybinette return normalized gradient values while Ge and Cui return absolute values. Therewith, to determine the closest attractive gradient 
@@ -132,7 +136,8 @@ def _calc_repulsive_gradient_ge(gradient, goal, pose)
 
 
 
-## flocking(.py)
+flocking(.py)
+-------------
 
 The flocking.py file contains algorithms to realize flocking in free-sprace (free flocking). 
 
