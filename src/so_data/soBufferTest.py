@@ -45,6 +45,36 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr.quorum(2), True)
         self.assertEqual(bffr.quorum(1), True)
 
+    # GOAL REACHED
+    def test_get_goal_reached(self):
+        """
+        test get_goal_reached method
+        :return:
+        """
+        bffr = soBuffer.SoBuffer()
+
+        # no gradients available --> True
+        self.assertEqual(bffr.get_goal_reached(Vector3(2,2,2)), True)
+
+        bffr._data = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                         soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'None': [soMessage(None, Vector3(7, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'test': [soMessage(None, Vector3(5, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(7, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(1, 2, 6), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])]}
+
+        # goal reached
+        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2)), True)
+        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 1)), True)
+        # goal not reached
+        self.assertEqual(bffr.get_goal_reached(Vector3(6, 7, 2)), False)
+        # only consider some frameIDs
+        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2), frameids=['gradient']), True)
+        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2), frameids=['None', 'test']), False)
+
+
 
 
     # STORE DATA IN SOBUFFER
@@ -447,34 +477,7 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr._evaporate_msg(msg), result)
 
 
-    # GOAL REACHED
-    def test_get_goal_reached(self):
-        bffr = soBuffer.SoBuffer()
-        now = rospy.Time.now()
 
-        # no gradients available
-        self.assertEqual(bffr.get_goal_reached(Point(0,0,0)), True)
-
-        msg = soMessage(Header(None, now, 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 1.0, 0, 0,
-                    Vector3(), [])
-        bffr.store_data(msg)
-        msg = soMessage(Header(None, now, 'gradient'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0,
-                    Vector3(), [])
-        bffr.store_data(msg)
-        msg = soMessage(Header(None, now, 'rbo'), Vector3(0, 0, 0), 1, 4.0, 0, 1.0, 0, 0,
-                    Vector3(), [])
-        bffr.store_data(msg)
-        # no gradients available
-        self.assertEqual(bffr.get_goal_reached(Point(3,3,0)), False)
-        # gradient not within view distance
-        self.assertEqual(bffr.get_goal_reached(Point(9,9,0)), True)
-        # robot within goal area of attractive gradient
-        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0)), True)
-        # only consider frames with a certain ID
-        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0), frameids=['gradient']), False)
-        # only consider frames with several IDs
-        self.assertEqual(bffr.get_goal_reached(Point(0.5, 0.5, 0), frameids=['gradient', 'rbo']), False)
-        self.assertEqual(bffr.get_goal_reached(Point(0, 0, 0), frameids=['gradient', 'rbo']), True)
 
     # POTENTIAL FIELD VECTOR CALCULATIONS
     def test_calc_attractive_gradient(self):

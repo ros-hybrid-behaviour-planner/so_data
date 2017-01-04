@@ -33,7 +33,7 @@ reserved frameIDs:
 
 
 
-## soBuffer
+## soBuffer(.py)
 
 The central component of the so_data package is the soBuffer. It subscribes to the soData topic and stores all received gradients in an aggregated manner. Furthermore, it includes several calculation options 
 which are based on gradients. Behaviours can use the soBuffer to implement self-organizing behaviour. The Gradient Sensor uses an instance of the soBuffer too, to enable activation calculation based on 
@@ -72,20 +72,34 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
 - neighbors stored separately (frame ID robotX) 
 
 
-### methods 
+### Methods for use in behaviours and sensors 
 
-* **Agent Density Function**: returns True / False based on the quantity of agents within view distance is over / below threshold  
+The following methods can be used to calculate information necessary for behaviours and sensors. 
+
+* **Agent Density Function**: returns True / False based on the quantity of agents within view distance is over / below threshold. Depends solely on agent gradients (frameID: 'robotX'). 
+Can be used to implement Quorum Sensing. Parameter: `threshold` which has to be reached 
 
 ```python
-def quorum(self, threshold, pose)
+def quorum(self, threshold)
 ```
 
-* ** **: 
+* **Flocking**: 
+
+```python
+def 
+```
+
+* **Goal Achievement**: returns True / False based on whether the gradient source was reached or not. E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
+ Parameter: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional)
+
+```python
+def get_goal_reached(self, pose, frameids=[])
+```
 
 
-## flocking
+## flocking(.py)
 
-Algorithms for flocking in free-space (free flocking).  
+The flocking.py file contains algorithms to realize flocking in free-sprace (free flocking). 
 
 1. gradient-based term
 2. velocity consensus term 

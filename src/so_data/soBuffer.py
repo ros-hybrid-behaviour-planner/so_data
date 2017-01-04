@@ -80,7 +80,6 @@ class SoBuffer():
 
         self._own_pos = [] # store own last positions
         self._neighbors = {} # empty dict
-        self._current_gradient = Vector3()
 
         # aggregation - dictionary: frameID, aggregation option
         self._aggregation = aggregation
@@ -231,54 +230,64 @@ class SoBuffer():
         """
         return self._data
 
-    def get_current_gradient(self, pose):
+    def get_current_gradient(self, pose, frameids=[]):
         """
+        returns movement vector based on gradients & with or without collision avoidance
         :param pose: Pose Message with position of robot (geometry msgs Pose)
         :return current gradient vector to follow based on settings
         """
-
         # apply evaporation before proceeding with calculations
         self._evaporate_buffer()
 
-        # reset current gradient
-        self._current_gradient = Vector3()
+        # result vector
+        result = Vector3()
 
         # distance vector based on gradients - merges available information
         if self._result == 'near':
-            self._aggregate_nearest_repulsion(pose)
+            result = self._aggregate_nearest_repulsion(pose, frameids=frameids)
         elif self._result == 'max':
-            self._aggregate_max(pose)
+            result = self._aggregate_max(pose, frameids=frameids)
         elif self._result == 'all':
-            self._aggregate_all(pose)
+            result = self._aggregate_all(pose, frameids=frameids)
         elif self._result == 'reach':
-            self._aggregate_nearest_ge(pose)
+            result = self._aggregate_nearest_ge(pose, frameids=frameids)
         elif self._result == 'avoid':
-            self._aggregate_avoid_all(pose)
+            result = self._aggregate_avoid_all(pose, frameids=frameids)
 
         # Collision Avoidance between neighbors
         if self._collision_avoidance == 'gradient':
             collision = self._gradient_repulsion()
-            self._current_gradient.x += collision.x
-            self._current_gradient.y += collision.y
-            self._current_gradient.z += collision.z
+            result.x += collision.x
+            result.y += collision.y
+            result.z += collision.z
         elif self._collision_avoidance == 'repulsion':
             collision = self._repulsion_vector()
-            self._current_gradient.x += collision.x
-            self._current_gradient.y += collision.y
-            self._current_gradient.z += collision.z
+            result.x += collision.x
+            result.y += collision.y
+            result.z += collision.z
 
-        return self._current_gradient
+        return result
+
+    def get_collision_avoidance(self):
+        """
+        collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
+        :return: vector
+        """
+        if self._collision_avoidance == 'gradient':
+            return self._gradient_repulsion()
+        elif self._collision_avoidance == 'repulsion':
+            return self._repulsion_vector()
 
     def get_goal_reached(self, pose, frameids=[]):
         """
         determines whether nearest attractive gradient was reached - especially for return == reach option
         returns True in case that gradient was reached or no gradient to be reached was found
-        False otherweise
+        False otherwise
         :param pose: Pose Message with position of robot
         :return: True/False (bool)
         """
         gradients_attractive = []
-        tmp_att = 2
+        tmp_att = np.inf  # attractive gradient calculations return values between 0 and 1
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
@@ -295,7 +304,7 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                 # attraction = distance to goal area
-                grad = self._calc_attractive_gradient_ge_norm(gradient, pose)
+                grad = self._calc_attractive_gradient(gradient, pose)
                 att = np.linalg.norm([grad.x, grad.y, grad.z])
                 # attraction smaller means distance closer - normalized value taken regarding
                 # diffusion radius + goal_radius
@@ -455,7 +464,7 @@ class SoBuffer():
 
                     tmp_att = att
 
-            self._current_gradient = tmp_grad
+            return tmp_att
 
     def _aggregate_nearest_repulsion(self, pose, frameids=[]): # TODO unit test!!!
         """
@@ -520,7 +529,7 @@ class SoBuffer():
         vector_attraction.y += vector_repulsion.y
         vector_attraction.z += vector_repulsion.z
 
-        self._current_gradient = vector_attraction
+        return vector_attraction
 
     def _aggregate_nearest_ge(self, pose, frameids=[]): # TODO unit test!!!
         """
@@ -553,7 +562,7 @@ class SoBuffer():
         if gradients_attractive:
             for gradient in gradients_attractive:
                 # find nearest attractive gradient
-                grad = self._calc_attractive_gradient_ge_norm(gradient, pose)
+                grad = self._calc_attractive_gradient(gradient, pose)
                 # returns value between 0 and 1
                 att = np.linalg.norm([grad.x, grad.y, grad.z])
                 # attraction smaller means distance closer - normalized value taken regarding
@@ -589,7 +598,7 @@ class SoBuffer():
         vector_attraction.y += vector_repulsion.y
         vector_attraction.z += vector_repulsion.z
 
-        self._current_gradient = vector_attraction
+        return vector_attraction
 
     def _aggregate_all(self, pose, frameids=[]):  # TODO unit test!!!
         """
@@ -648,7 +657,7 @@ class SoBuffer():
         vector_attraction.y += vector_repulsion.y
         vector_attraction.z += vector_repulsion.z
 
-        self._current_gradient = vector_attraction
+        return vector_attraction
 
     def _aggregate_avoid_all(self, pose, frameids=[]):  # TODO unit test!!!
         """
@@ -688,7 +697,7 @@ class SoBuffer():
                     v.y += grad.y
                     v.z += grad.z
 
-        self._current_gradient = v
+        return v
 
 
     # EVAPORATION
@@ -740,7 +749,7 @@ class SoBuffer():
         """
         :param gradient: position of the goal
         :param pose: position of the robot
-        :return: attractive vector
+        :return: attractive vector / norm vector
         """
         v = Vector3()
 
@@ -756,25 +765,16 @@ class SoBuffer():
             v.y = 0
             v.z = 0
         elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
-            # calculate norm vector for direction
-            tmp.x /= d
-            tmp.y /= d
-            tmp.z /= d
             # calculate magnitude of vector
             magnitude = (d - gradient.goal_radius) / gradient.diffusion
-            # calculate attraction vector
-            v.x = magnitude * tmp.x
-            v.y = magnitude * tmp.y
-            v.z = magnitude * tmp.z
+            v.x = magnitude * (tmp.x/d)
+            v.y = magnitude * (tmp.y/d)
+            v.z = magnitude * (tmp.z/d)
         elif d > gradient.goal_radius + gradient.diffusion:
-            # calculate norm vector for direction
-            tmp.x /= d
-            tmp.y /= d
-            tmp.z /= d
             # calculate attraction vector
-            v.x = 1.0 * tmp.x
-            v.y = 1.0 * tmp.y
-            v.z = 1.0 * tmp.z
+            v.x = 1.0 * (tmp.x/d)
+            v.y = 1.0 * (tmp.y/d)
+            v.z = 1.0 * (tmp.z/d)
 
         return v
 
@@ -828,6 +828,7 @@ class SoBuffer():
     def _calc_attractive_gradient_ge(gradient, pose):
         """
         calculate attractive gradient based on Ge & Cui - no normalization of vectors!
+        normalized version same as _calc_attractive_gradient
         :param gradient: position of the goal
         :param pose: position of the robot
         :return: attractive vector
@@ -849,40 +850,6 @@ class SoBuffer():
             v.x = (tmp.x / d) * (gradient.goal_radius + gradient.diffusion)
             v.y = (tmp.y / d) * (gradient.goal_radius + gradient.diffusion)
             v.z = (tmp.z / d) * (gradient.goal_radius + gradient.diffusion)
-
-        return v
-
-    @staticmethod
-    def _calc_attractive_gradient_ge_norm(gradient, pose):
-        """
-        calculate attractive gradient based on Ge & Cui - normalized version for choosing max gradient to pursue
-        :param gradient: position of the goal
-        :param pose: position of the robot
-        :return: attractive vector
-        """
-        v = Vector3()
-
-        # distance goal - agent
-        tmp = Vector3()
-        tmp.x = gradient.p.x - pose.x
-        tmp.y = gradient.p.y - pose.y
-        tmp.z = gradient.p.z - pose.z
-
-        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-
-        if d <= gradient.goal_radius:
-            v.x = 0.0
-            v.y = 0.0
-            v.z = 0.0
-        elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
-            m = (d - gradient.goal_radius) / gradient.diffusion
-            v.x = tmp.x * m / d
-            v.y = tmp.y * m / d
-            v.z = tmp.z * m / d
-        elif d > gradient.goal_radius + gradient.diffusion:
-            v.x = tmp.x / d
-            v.y = tmp.y / d
-            v.z = tmp.z / d
 
         return v
 
