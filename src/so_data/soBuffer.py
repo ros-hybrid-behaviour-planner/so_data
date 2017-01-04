@@ -17,42 +17,55 @@ class SoBuffer():
     """
     This class is the buffer for received self-organization data
     """
-    def __init__(self, aggregation={'DEFAULT': 'max'}, min_diffusion=0.1,
+    def __init__(self, aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0, min_diffusion=0.1,
                  view_distance=2.0, id='', result='', collision_avoidance='repulsion',
-                 store_neighbors = True, neighbor_storage_size=2, framestorage=[], aggregation_distance = 1.0):
+                 store_neighbors=True, neighbor_storage_size=2, framestorage=[]):
         """
-        :param aggregation: indicator which kind of aggregation should be applied per frameID
+        :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
+                            within aggregation_distance of gradient center
                 options: * min = keep gradients with minimum diffusion radius
                          * max = keep gradients with maximum diffusion radius
                          * avg = combine gradients / average
                          * newest = store newest received gradient
         :type aggregation: dictionary - key: frameID value: aggregation option
-        :param min_diffusion: threshold, gradients with smaller diffusion radii will be deleted
+
+        :param aggregation_distance: radius in which gradient data is aggregated
+        :type aggregation_distance: float
+
+        :param min_diffusion: threshold, gradients with smaller diffusion radius will be deleted (when goal_radius != 0)
         :type min_diffusion: float
+
+        :param view_distance: radius in which agent can sense gradients; should be >= goal_radius of own gradient
+        :type view_distance: float
+
+        :param id: should have the form 'robotX' with X being the robot's id; frame ID's in this form are considered
+                   as robot position data
+        :type id: str
+
         :param result: specifies vector which should be returned (gradients within view distance considered);
                 options: * all = return vector considering all vectors of potential field
                          * max = return vector with max attraction / repulsion
                          * near = return vector to nearest attractive vector avoiding obstacles
                          * reach = return vector which enables to reach nearest attractive gradient
                          * avoid = return vector leading away form all gradients
-        :type result: str.
-        :param collision_avoidance
-                options: * gradient = gradient / potential field approach to realize collision avoidance between neighbors
+        :type result: str
+
+        :param collision_avoidance: avoidance of neighbors
+                options: * gradient = potential field approach to realize collision avoidance between neighbors
                          * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
-        :type collision_avoidance: str.
-        :param repulsion_radius: how strong repulsion is
+        :type collision_avoidance: str
+
         :param store_neighbors: specifies whether data about neighbors is stored or not
         :type store_neighbors: bool
-        :param neighbor_storage_size: how many gradient messages per neighbor will be stored; robot frame ID considered
-                                      as being "robotX" with X being the robot's ID
-        :type neighbor_storage_size: int [0, inf.]
+
+        :param neighbor_storage_size: how many gradient messages per neighbor will be stored
+        :type neighbor_storage_size: int [0, inf]
+
         :param framestorage: list of frame IDs which should be stored
                 options: * [] = all frame IDs will be stored
                          * [key1, key2, ...] = only gradients which have one of the specified frame IDs will be stored
                          * 'None' has to be specified as the key for gradients without frameID
         :type framestorage: list of strings
-        :param id: should have the form 'robotX' with X being the robot's id; frame ID's in this form are considered
-                   as robot position data
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
@@ -983,7 +996,7 @@ class SoBuffer():
         b = 1.0
         h = 0.5
         # max velocity and accelartion values
-        max_accelartion = 1.0
+        max_acceleration = 1.0
         max_velocity = 1.0
 
         if self._own_pos:
