@@ -74,10 +74,8 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
 
 ### methods 
 
-* **Agent Density Function**: returns True / False based on the quantity of agents within view distance is over / below threshold  
-```python
-def quorum(self, threshold, pose)
-```
+* **Agent Density Function** `def quorum(self, threshold, pose)`: returns True / False based on the quantity of agents within view distance is over / below threshold  
+
 * ** **: 
 
 
