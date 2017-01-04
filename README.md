@@ -89,12 +89,47 @@ def quorum(self, threshold)
 def 
 ```
 
-* **Goal Achievement**: returns True / False based on whether the gradient source was reached or not. E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
- Parameter: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional)
+* **Goal Achievement**: returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
+ Parameters: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional)
 
 ```python
 def get_goal_reached(self, pose, frameids=[])
 ```
+
+
+### Gradient calculation 
+
+The soBuffer includes two different approaches of calculating the attraction/repulsion of gradients. The first approach follows the approach presented in "Social potentials for scalable multi-robot formations"
+by Balch and Hybinette (2000). The second approach is based on "New Potential Functions for Mobile Robot Path Planning" by Ge and Cui (1999) which was enhanced with an inner goal_radius which leads to 
+infinite repulsion. 
+
+* **Balch and Hybinette (2000)**
+
+The paper of Balch and Hybinette includes formulas to calculate attraction and repulsion of gradients. Attraction values are within `[0,1]` while repulsion values are within `[0, inf.]`. Attraction and 
+   repulsion can be combined to generate the movement vector (see [TODO]). In some scenarious the attractive gradient might not be reached as it attraction and repulsion lead to a zero potential value
+   at a point not being the attractive gradient source. 
+   Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data, `pose` is the current position of the agent. 
+
+```python
+def _calc_attractive_gradient(gradient, pose)
+
+def _calc_repulsive_gradient(gradient, pose)
+```
+
+* **Ge and Cui(1999)** 
+
+In comparison to the approach by Balch and Hybinette, Ge and Cui guarantee with their approach, that the attractive gradient source is reached. The implementation of the attractive gradient is similar to
+Balch and Hybinette, the only difference is that Balch and Hybinette return normalized gradient values while Ge and Cui return absolute values. Therewith, to determine the closest attractive gradient 
+the method based on Balch and Hybinette can be used. Ge and Cui enhanced the repulsive gradient calculation to ensure that the gradient source can be reached. 
+
+
+```python 
+def _calc_attractive_gradient_ge(gradient, pose)
+
+def _calc_repulsive_gradient_ge(gradient, goal, pose)
+```
+
+
 
 
 ## flocking(.py)

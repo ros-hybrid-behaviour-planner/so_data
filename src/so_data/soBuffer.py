@@ -100,7 +100,7 @@ class SoBuffer():
 
         self._result = result
 
-    def store_data(self, msg):
+    def store_data(self, msg): #TODO unittest
         """
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
@@ -230,7 +230,7 @@ class SoBuffer():
         """
         return self._data
 
-    def get_current_gradient(self, pose, frameids=[]):
+    def get_current_gradient(self, pose, frameids=[]): #TODO unittest
         """
         returns movement vector based on gradients & with or without collision avoidance
         :param pose: Pose Message with position of robot (geometry msgs Pose)
@@ -268,7 +268,7 @@ class SoBuffer():
 
         return result
 
-    def get_collision_avoidance(self):
+    def get_collision_avoidance(self): #TODO unittest
         """
         collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
         :return: vector
@@ -319,7 +319,7 @@ class SoBuffer():
             return False
 
     # Collision avoidance between neighbors
-    def _gradient_repulsion(self):
+    def _gradient_repulsion(self): #TODO unittest
         """
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
         considers all neighbours that have a gradient reaching inside view distance / communication range of agent
@@ -367,7 +367,7 @@ class SoBuffer():
 
         return repulsion
 
-    def _repulsion_vector(self):
+    def _repulsion_vector(self): #TODO unittest
         """
         return a repulsion vector based on formula presented by Fernandez-Marquez et al., use of received gradients (p)
         for calculation
@@ -701,7 +701,7 @@ class SoBuffer():
 
 
     # EVAPORATION
-    def _evaporate_buffer(self):
+    def _evaporate_buffer(self): # TODO unittest
         """
         evaporate buffer data stored in self._data
         neighbor data is not evaporated as it is considered being fixed
@@ -724,7 +724,7 @@ class SoBuffer():
                     if self._data[fid][i].goal_radius == 0.0 and self._data[fid][i].diffusion < self._min_diffusion:
                         del self._data[fid][i] # remove element
 
-    def _evaporate_msg(self, msg):
+    def _evaporate_msg(self, msg): #TODO unittest
         """
         evaporate a single message
         :param msg: gradient message
@@ -796,14 +796,18 @@ class SoBuffer():
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
 
         if d <= gradient.goal_radius: #infinitely large repulsion
+            v = Vector3(np.inf, np.inf, np.inf)
             # calculate norm vector for direction
             tmp.x /= d
             tmp.y /= d
             tmp.z /= d
-            # calculate repulsion vector
-            v.x = np.inf * tmp.x
-            v.y = np.inf * tmp.x
-            v.z = np.inf * tmp.x
+            # calculate repulsion vector / adjust sign/direction
+            if tmp.x != 0.0:
+                v.x *= tmp.x
+            if tmp.y != 0.0:
+                v.y *= tmp.y
+            if tmp.z != 0.0:
+                v.z *= tmp.z
         elif gradient.goal_radius < d <= gradient.diffusion + gradient.goal_radius:
             # calculate norm vector for direction
             tmp.x /= d
@@ -870,10 +874,19 @@ class SoBuffer():
         tmp.z = pose.z - gradient.p.z
 
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
-        if d <= gradient.goal_radius: #TODO evtl wie repulsion normal (ohne ge)
-            v.x = -1.0 * np.inf
-            v.y = -1.0 * np.inf
-            v.z = -1.0 * np.inf
+        if d <= gradient.goal_radius:
+            v = Vector3(np.inf, np.inf, np.inf)
+            # calculate norm vector for direction
+            tmp.x /= d
+            tmp.y /= d
+            tmp.z /= d
+            # calculate repulsion vector - adjust sign/direction
+            if tmp.x != 0.0:
+                v.x *= tmp.x
+            if tmp.y != 0.0:
+                v.y *= tmp.y
+            if tmp.z != 0.0:
+                v.z *= tmp.z
         elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
             # unit vector obstacle - agent
             tmp.x /= d
@@ -928,6 +941,7 @@ class SoBuffer():
     # FLOCKING
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
     # TODO: integrate as option in get_current_gradient setting
+    # TODO: unittest
     def flocking(self, a=1.0, b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0, max_velocity=1.0):
         """
 
