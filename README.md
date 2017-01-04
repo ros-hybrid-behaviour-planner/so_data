@@ -50,7 +50,7 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
   * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
-* **view_distance** (2.0): float; radius in which agent can sense gradients 
+* **view_distance** (2.0): float; radius in which agent can sense gradients. Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): 'robotX' with X = robot's id; frameID's in this form are considered as robot position data / neighbor gradients. Gradients with own id are stored in self._ownpos 
 * **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Options:
   * **all** = movement vector considering all vectors of the potential field will be returned 
@@ -73,7 +73,12 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
 
 
 ### methods 
-gradients etc. 
+
+* **Agent Density Function**: returns True / False based on the quantity of agents within view distance is over / below threshold  
+```python
+def quorum(self, threshold, pose)
+```
+* ** **: 
 
 
 ## flocking
@@ -82,12 +87,3 @@ Algorithms for flocking in free-space (free flocking).
 
 1. gradient-based term
 2. velocity consensus term 
-
-
-
-```python
-computeActivation() 
-computeSatisfaction()
-self.computeWishes()
-self.getProgress()
-```

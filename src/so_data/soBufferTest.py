@@ -15,15 +15,44 @@ from std_msgs.msg import Header
 import numpy as np
 
 
-class soBufferTest(unittest.TestCase):
+class SoBufferTest(unittest.TestCase):
+    """
+    testing of soBuffer methods
+    """
     maxDiff = None
+
+    def test_quorum(self):
+        """
+        test quorum / density function
+        :return:
+        """
+        bffr = soBuffer.SoBuffer()
+
+        # 2 neighbors within view, one outside view
+        bffr._neighbors = {
+            'robot1': [soMessage(), soMessage(None, Vector3(2, 2, 0), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'robot2': [soMessage(), soMessage(None, Vector3(5, 6, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'robot3': [soMessage(), soMessage(), soMessage(None, Vector3(1, 2, 0),
+                                                           1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])]}
+
+        bffr._own_pos = [soMessage(None, Vector3(1, 1, 1), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+
+        # no. of robots in view distance < threshold
+        self.assertEqual(bffr.quorum(4), False)
+        self.assertEqual(bffr.quorum(3), False)
+
+        # no. of robots in view distance > threshold
+        self.assertEqual(bffr.quorum(2), True)
+        self.assertEqual(bffr.quorum(1), True)
+
+
 
     # STORE DATA IN SOBUFFER
     def test_store_data_max(self):
         """
         test store_data method aggregation option = max
         """
-        bffr = soBuffer.SoBuffer(aggregation='max')
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
         testlist = []
 
         msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
@@ -53,7 +82,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = min
         """
-        bffr = soBuffer.SoBuffer(aggregation='min')
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'min'})
         testlist = []
 
         msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
@@ -83,7 +112,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = avg
         """
-        bffr = soBuffer.SoBuffer(aggregation='avg', min_diffusion=1.0)
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'avg'}, min_diffusion=1.0)
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
@@ -115,7 +144,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = newest
         """
-        bffr = soBuffer.SoBuffer(aggregation='newest')
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'newest'})
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
@@ -148,7 +177,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method with different frame IDs (all)
         """
-        bffr = soBuffer.SoBuffer(aggregation='max')
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'})
         testlist = {'None': [], 'grad': []}
         now = rospy.Time.now()
 
@@ -178,7 +207,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method, only store gradients with specified frameids
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', framestorage=['grad', 'silk'])
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'}, framestorage=['grad', 'silk'])
         testlist = {'grad': [], 'silk': []}
         now = rospy.Time.now()
 
@@ -209,7 +238,7 @@ class soBufferTest(unittest.TestCase):
         """
         test store_data method, evaporation of received data
         """
-        bffr = soBuffer.SoBuffer(aggregation='max')
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'})
         testlist = {'None': []}
         now = rospy.Time.now()
 

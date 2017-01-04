@@ -22,7 +22,8 @@ class SoBuffer():
                  store_neighbors=True, neighbor_storage_size=2, framestorage=[]):
         """
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
-                            within aggregation_distance of gradient center
+                            within aggregation_distance of gradient center. "DEFAULT" used for gradients without own
+                            aggregation option.
                 options: * min = keep gradients with minimum diffusion radius
                          * max = keep gradients with maximum diffusion radius
                          * avg = combine gradients / average
@@ -256,7 +257,7 @@ class SoBuffer():
 
         # Collision Avoidance between neighbors
         if self._collision_avoidance == 'gradient':
-            collision = self._gradient_repulsion(pose)
+            collision = self._gradient_repulsion()
             self._current_gradient.x += collision.x
             self._current_gradient.y += collision.y
             self._current_gradient.z += collision.z
@@ -309,7 +310,7 @@ class SoBuffer():
             return False
 
     # Collision avoidance between neighbors
-    def _gradient_repulsion(self, pose):
+    def _gradient_repulsion(self):
         """
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
         considers all neighbours that have a gradient reaching inside view distance / communication range of agent
@@ -317,18 +318,20 @@ class SoBuffer():
         :return:
         """
         repulsion = Vector3()
+
+        # no data available
+        if not self._own_pos:
+            return repulsion
+
         # repulsion radius of robot, <= view_distance
-        if self._own_pos:
-            repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
-        else:
-            repulsion_radius = self._view_distance
+        repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
 
         if self._neighbors:
             for val in self._neighbors.values():
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
                         + self._view_distance:
-                    grad = self._calc_repulsive_gradient(val[-1], pose)
+                    grad = self._calc_repulsive_gradient(val[-1], self._own_pos[-1].p)
 
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
@@ -936,18 +939,17 @@ class SoBuffer():
         return v
 
     # QUROUM SENSING: DENSITY FUNCTION
-    def quorum(self, threshold, pose): #TODO unit test
+    def quorum(self, threshold):
         """
         calculates agent density within view
         :param threshold: number of agents which have to be within view to switch state
-        :param pose: own position of agent
         :return: True (threshold passed), False (threshold not passed)
         """
         count = 0
         if self._neighbors:
-            for val in self._neighbors.values():
+            for val in self._neighbors.values():  # returns list of neighbor positions
                 # check if neighbor is in sight
-                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) <= val[-1].diffusion + val[-1].goal_radius \
                         + self._view_distance:
                     count += 1.0
 
@@ -959,7 +961,7 @@ class SoBuffer():
     # FLOCKING
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
     # TODO: integrate as option in get_current_gradient setting
-    def flocking(self):
+    def flocking(self, a=1.0, b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0, max_velocity=1.0):
         """
 
         :return:
@@ -967,18 +969,18 @@ class SoBuffer():
         view = []
 
         # own position - we need minimum two values to calculate velocities
-        if len(self._own_pos) >= self._neighbor_storage_size:
+        if len(self._own_pos) >= 2:
             pose = self._own_pos[-1].p
         else:
             return
 
         # neighbors of agent
         if self._neighbors:
-            for val in self._neighbors.values():
+            for val in self._neighbors:
                 # check if neighbor is in sight
-                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                if calc.get_gradient_distance(self._neighbors[val][-1].p, pose) <= self._neighbors[val][-1].diffusion + self._neighbors[val][-1].goal_radius \
                         + self._view_distance:
-                    view.append(val)
+                    view.append(self._neighbors[val])
 
         # create array of tuples with neighbor position - neighbor velocity & own pos & velocity (p, v)
         Boid = collections.namedtuple('Boid', ['p', 'v'])
@@ -987,24 +989,13 @@ class SoBuffer():
 
         neighbors = []
         for neighbor in view:
-            if len(neighbor) >= self._neighbor_storage_size:
+            if len(neighbor) >= 2:  # at least 2 datapoints are available
                 neighbors.append(Boid(neighbor[-1].p, flocking.agent_velocity(neighbor[-1], neighbor[-2])))
-
-        # TODO make parameters
-        epsilon = 1.0
-        a = 1.0
-        b = 1.0
-        h = 0.5
-        # max velocity and accelartion values
-        max_acceleration = 1.0
-        max_velocity = 1.0
 
         if self._own_pos:
             repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
         else:
             repulsion_radius = self._view_distance
-
-
 
         # calculate new velocity based on steering force
         # find out how to, probably like this:
