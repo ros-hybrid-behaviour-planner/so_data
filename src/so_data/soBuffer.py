@@ -701,14 +701,15 @@ class SoBuffer():
 
 
     # EVAPORATION
-    def _evaporate_buffer(self): # TODO unittest
+    def _evaporate_buffer(self):
         """
         evaporate buffer data stored in self._data
         neighbor data is not evaporated as it is considered being fixed
         :return:
         """
+        # interate through keys
         for fid in self._data:
-            if fid in self._data and self._data[fid]:
+            if self._data[fid]: # array not empty
                 for i in xrange(len(self._data[fid]) -1, -1, -1): # go in reverse order
                     if self._data[fid][i].ev_time > 0:
                         diff = rospy.Time.now() - self._data[fid][i].header.stamp
@@ -724,7 +725,7 @@ class SoBuffer():
                     if self._data[fid][i].goal_radius == 0.0 and self._data[fid][i].diffusion < self._min_diffusion:
                         del self._data[fid][i] # remove element
 
-    def _evaporate_msg(self, msg): #TODO unittest
+    def _evaporate_msg(self, msg):
         """
         evaporate a single message
         :param msg: gradient message

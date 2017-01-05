@@ -20,19 +20,30 @@ The package consists of the following components:
 soMessage
 ---------
 
-elements:
+soMessages are used to specify gradients: either in environment or as neighbour data. The specification of the soMessage data can lead to varying behaviour. The specification of frameIDs can help to
+ assign gradients to specific tasks / behaviours, but some frameIDs are reserved for special purposes. 
 
-* **Header header**
-  * time stamp 
-  * frameID
-  * sequence number
-* 
-*
+###### elements:
 
-reserved frameIDs:
-* **'robot' + ID**: frameID indicating that gradient of another robot is received
+* **Header header**: standard ROS header 
+  * uint32 seq: consecutively increasing ID; set by system
+  * time stamp: sec + nsec - has to be set using ros Time 
+  * string frame_id: to associate data for a purpose 
+* **geometry_msgs/Vector3 p**: gradient center 
+* **int8 attraction**: attractive `1` or repulsive `-1` gradient 
+* **float32 diffusion**: radius in which information will be spread
+* **float32 goal_radius**: area with minimum attraction or maximum repulsion; total reach of gradient = diffusion + goal_radius 
+* **float32 ev_factor**: evaporation factor `[0,1]` applied on diffusion (`diffusion *= ev_factor`) after `ev_time`; `1` = no evaporation, `0` = data loss after `ev_time`
+* **float32 ev_time**: delta time `>= 0` in which evaporation is applied 
+* **float32 angle**: gradient sector size
+* **geometry_msgs/Vector3 direction**: gradient sector direction
+* **diagnostic_msgs/KeyValue[]** payload: array of key-value-pairs to store payload data 
+
+
+###### reserved frameIDs:
+* **'robot' + ID**: frameID indicating that gradient of another robot is received, ID is usually a number 
 * **'DEFAULT'**: value is used to specify aggregation option (store_data in soBuffer) for frameIDs having no specific option assigned to 
-* **'None'**: 
+* **'None'**: value is assigned to all gradient messages which have no frameID when received 
 
 
 
@@ -80,21 +91,25 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
 
 The following methods can be used to calculate information necessary for behaviours and sensors. 
 
-* **Agent Density Function**: returns True / False based on the quantity of agents within view distance is over / below threshold. Depends solely on agent gradients (frameID: 'robotX'). 
-Can be used to implement Quorum Sensing. Parameter: `threshold` which has to be reached 
+##### Agent Density Function 
+
+returns True / False based on the quantity of agents within view distance is over / below threshold. Depends solely on agent gradients (frameID: 'robotX'). 
+Can be used to implement Quorum Sensing. Parameter: `threshold` which has to be reached.
 
 ```python
 def quorum(self, threshold)
 ```
 
-* **Flocking**: 
+##### Flocking
 
 ```python
 def 
 ```
 
-* **Goal Achievement**: returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
- Parameters: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional)
+##### Goal Achievement
+
+returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
+ Parameters: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional). 
 
 ```python
 def get_goal_reached(self, pose, frameids=[])
@@ -107,7 +122,7 @@ The soBuffer includes two different approaches of calculating the attraction/rep
 by Balch and Hybinette (2000). The second approach is based on "New Potential Functions for Mobile Robot Path Planning" by Ge and Cui (1999) which was enhanced with an inner goal_radius which leads to 
 infinite repulsion. 
 
-* **Balch and Hybinette (2000)**
+##### Balch and Hybinette (2000)
 
 The paper of Balch and Hybinette includes formulas to calculate attraction and repulsion of gradients. Attraction values are within `[0,1]` while repulsion values are within `[0, inf.]`. Attraction and 
    repulsion can be combined to generate the movement vector (see [TODO]). In some scenarious the attractive gradient might not be reached as it attraction and repulsion lead to a zero potential value
@@ -120,7 +135,7 @@ def _calc_attractive_gradient(gradient, pose)
 def _calc_repulsive_gradient(gradient, pose)
 ```
 
-* **Ge and Cui (1999)** 
+##### Ge and Cui (1999)
 
 In comparison to the approach by Balch and Hybinette, Ge and Cui guarantee with their approach, that the attractive gradient source is reached. The implementation of the attractive gradient is similar to
 Balch and Hybinette, the only difference is that Balch and Hybinette return normalized gradient values while Ge and Cui return absolute values. Therewith, to determine the closest attractive gradient 
@@ -132,6 +147,28 @@ def _calc_attractive_gradient_ge(gradient, pose)
 
 def _calc_repulsive_gradient_ge(gradient, goal, pose)
 ```
+
+
+### Basic Mechanisms
+
+###### Evaporation 
+
+Evaporation is one of the basic mechanisms presented in the paper by Fernandez-Marquez et al. It is applied both before storing received data as well as when requesting the current gradient to follow (get_current_gradient). 
+To ensure that all data is up-to-date, each received message is evaporated before it is stored using `_evaporate_msg(msg)`. Parameters: `msg` is a soMessage. 
+It returns the evaporated message or `None` in cases where the diffusion radius is smaller than the specified minimum diffusion and the goal radius of the gradient is zero. 
+The whole buffer (self._data) can be evaporated using `_evaporate_buffer()`.
+
+```python 
+def _evaporate_msg(self, msg)
+
+def _evaporate_buffer(self)
+```
+
+The evaporation frequency (or rather delta t) is specified in the soMessage as `ev_time` and the evaporation factor as `ev_factor`. `ev_time` has to be larger or equal zero. `ev_factor` has to be set in 
+the interval `[0,1]` with `1` leading to no evaporation and `0` to the complete evaporation after `ev_time`. In case that `ev_time == 0` and `ev_factor < 1` the gradient will instantly evaporate completely. 
+
+Gradients without goal radius (soMessage `goal_radius = 0`) and a diffusion smaller than the minimum diffusion radius (`min_diffusion`, see soBuffer Parameters) will be deleted immediately. 
+ 
 
 
 

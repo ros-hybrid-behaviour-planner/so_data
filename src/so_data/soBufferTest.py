@@ -204,7 +204,104 @@ class SoBufferTest(unittest.TestCase):
                                  2.0 / 3.0), 4),
                                  0.0))
 
+    # EVAPORATION
+    def test_evaporation_buffer(self):
+        """
+        test evaporation of buffer data using evaporate_buffer method
+        """
 
+        bffr = soBuffer.SoBuffer(aggregation = 'max', min_diffusion=1.0)
+        now = rospy.Time.now()
+
+        data = {'None': [  # message has goal radius - should be kept
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 0.8, 5, 0,
+                          Vector3(), []),
+                # evaporation time is zero cases
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 0.8, 0, 0,
+                      Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
+                      Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 1.0, 0, 0,
+                      Vector3(), []),
+                # messages without goal radius - will be sorted out based on min diffusion
+                soMessage(Header(None, now - rospy.Duration(20), 'None'), Vector3(2,2,0), 1, 4.0, 0.0, 0.75, 5, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(5), 'None'), Vector3(5,5,0), 1, 4.0, 0.0, 0.8, 3, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now, 'None'), Vector3(6,6,0), 1, 4.0, 0.0, 0.8, 5, 0,
+                          Vector3(), [])
+                 ], 'gradient': [
+                soMessage(Header(None, now - rospy.Duration(45), 'gradient'), Vector3(1,1,0), 1, 4.0, 0.0, 0.8, 5, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(15), 'gradient'), Vector3(3, 3, 0), 1, 4.0, 0.0, 0.6, 5, 0,
+                      Vector3(), [])
+                ], 'robo': [
+                soMessage(Header(None, now - rospy.Duration(10), 'robo'), Vector3(4, 4, 0), 1, 4.0, 0.0, 0.8, 4, 0,
+                      Vector3(), [])]}
+
+        bffr._data = deepcopy(data)
+        bffr._evaporate_buffer()
+
+        data = {'None': [
+                soMessage(Header(None, now, 'None'), Vector3(1,1,0), 1, 4.0 * (0.8**9), 1.0, 0.8, 5, 0, Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 0.0, 1.0, 0.8, 0, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
+                      Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 1.0, 0, 0,
+                      Vector3(), []),
+                soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 4.0 * (0.75**4), 0.0, 0.75, 5, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now - rospy.Duration(2), 'None'), Vector3(5,5,0), 1, 4.0 * 0.8, 0.0, 0.8, 3, 0,
+                          Vector3(), []),
+                soMessage(Header(None, now, 'None'), Vector3(6,6,0), 1, 4.0, 0.0, 0.8, 5, 0, Vector3(), [])],
+                'gradient': [],
+                'robo': [
+                soMessage(Header(None, now - rospy.Duration(2), 'robo'), Vector3(4, 4, 0), 1, 4.0 * (0.8 ** 2), 0.0,
+                              0.8, 4, 0, Vector3(), []),
+
+                ]}
+
+        self.assertEqual(bffr.get_data(), data)
+
+    def test_evaporation_msg(self):
+        """
+        test the evaporation of one specified message
+        :return:
+        """
+        bffr = soBuffer.SoBuffer(min_diffusion=1.0)
+        now = rospy.Time.now()
+
+        # with goal radius --> should be kept
+        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 0.8, 5, 0,
+                  Vector3(), [])
+        result = soMessage(Header(None, now, 'None'), Vector3(1, 1, 0), 1, 4.0 * (0.8 ** 9), 1.0, 0.8, 5, 0,
+                  Vector3(), [])
+        self.assertEqual(bffr._evaporate_msg(msg), result)
+
+        # without goal radius --> should be deleted
+        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 0.8, 5, 0,
+                  Vector3(), [])
+        self.assertEqual(bffr._evaporate_msg(msg), None)
+
+        # without goal radius & ev time is 0, ev factor < 1 --> should be deleted
+        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 0.8, 0, 0,
+                        Vector3(), [])
+        self.assertEqual(bffr._evaporate_msg(msg), None)
+
+        # without goal radius & ev time is 0, ev factor == 1.0 --> kept as it is
+        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
+                        Vector3(), [])
+        result = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
+                  Vector3(), [])
+        self.assertEqual(bffr._evaporate_msg(msg), result)
+
+        # with goal radius & ev time is 0, ev factor < 1.0
+        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 0.0, 0, 0,
+                        Vector3(), [])
+        result = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 0.0, 1.0, 0.0, 0, 0,
+                  Vector3(), [])
+        self.assertEqual(bffr._evaporate_msg(msg), result)
 
 
 
@@ -512,104 +609,6 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr._own_pos, [])
 
 
-    # EVAPORATION
-    def test_evaporation_buffer(self):
-        """
-        test evaporation of buffer data using evaporate_buffer method
-        """
-
-        bffr = soBuffer.SoBuffer(aggregation = 'max', min_diffusion=1.0)
-        now = rospy.Time.now()
-
-        data = {'None': [  # message has goal radius - should be kept
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 0.8, 5, 0,
-                          Vector3(), []),
-                # evaporation time is zero cases
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 0.8, 0, 0,
-                      Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
-                      Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 1.0, 0, 0,
-                      Vector3(), []),
-                # messages without goal radius - will be sorted out based on min diffusion
-                soMessage(Header(None, now - rospy.Duration(20), 'None'), Vector3(2,2,0), 1, 4.0, 0.0, 0.75, 5, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(5), 'None'), Vector3(5,5,0), 1, 4.0, 0.0, 0.8, 3, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now, 'None'), Vector3(6,6,0), 1, 4.0, 0.0, 0.8, 5, 0,
-                          Vector3(), [])
-                 ], 'gradient': [
-                soMessage(Header(None, now - rospy.Duration(45), 'gradient'), Vector3(1,1,0), 1, 4.0, 0.0, 0.8, 5, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(15), 'gradient'), Vector3(3, 3, 0), 1, 4.0, 0.0, 0.6, 5, 0,
-                      Vector3(), [])
-                ], 'robo': [
-                soMessage(Header(None, now - rospy.Duration(10), 'robo'), Vector3(4, 4, 0), 1, 4.0, 0.0, 0.8, 4, 0,
-                      Vector3(), [])]}
-
-        bffr._data = deepcopy(data)
-        bffr._evaporate_buffer()
-
-        data = {'None': [
-                soMessage(Header(None, now, 'None'), Vector3(1,1,0), 1, 4.0 * (0.8**9), 1.0, 0.8, 5, 0, Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 0.0, 1.0, 0.8, 0, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
-                      Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1,1,0), 1, 4.0, 1.0, 1.0, 0, 0,
-                      Vector3(), []),
-                soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 4.0 * (0.75**4), 0.0, 0.75, 5, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now - rospy.Duration(2), 'None'), Vector3(5,5,0), 1, 4.0 * 0.8, 0.0, 0.8, 3, 0,
-                          Vector3(), []),
-                soMessage(Header(None, now, 'None'), Vector3(6,6,0), 1, 4.0, 0.0, 0.8, 5, 0, Vector3(), [])],
-                'gradient': [],
-                'robo': [
-                soMessage(Header(None, now - rospy.Duration(2), 'robo'), Vector3(4, 4, 0), 1, 4.0 * (0.8 ** 2), 0.0,
-                              0.8, 4, 0, Vector3(), []),
-
-                ]}
-
-        self.assertEqual(bffr.get_data(), data)
-
-    def test_evaporation_msg(self):
-        """
-        test the evaporation of one specified message
-        :return:
-        """
-        bffr = soBuffer.SoBuffer(min_diffusion=1.0)
-        now = rospy.Time.now()
-
-        # with goal radius --> should be kept
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 0.8, 5, 0,
-                  Vector3(), [])
-        result = soMessage(Header(None, now, 'None'), Vector3(1, 1, 0), 1, 4.0 * (0.8 ** 9), 1.0, 0.8, 5, 0,
-                  Vector3(), [])
-        self.assertEqual(bffr._evaporate_msg(msg), result)
-
-        # without goal radius --> should be deleted
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 0.8, 5, 0,
-                  Vector3(), [])
-        self.assertEqual(bffr._evaporate_msg(msg), None)
-
-        # without goal radius & ev time is 0, ev factor < 1 --> should be deleted
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 0.8, 0, 0,
-                        Vector3(), [])
-        self.assertEqual(bffr._evaporate_msg(msg), None)
-
-        # without goal radius & ev time is 0, ev factor == 1.0 --> kept as it is
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
-                        Vector3(), [])
-        result = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 0.0, 1.0, 0, 0,
-                  Vector3(), [])
-        self.assertEqual(bffr._evaporate_msg(msg), result)
-
-        # with goal radius & ev time is 0, ev factor < 1.0
-        msg = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 4.0, 1.0, 0.0, 0, 0,
-                        Vector3(), [])
-        result = soMessage(Header(None, now - rospy.Duration(45), 'None'), Vector3(1, 1, 0), 1, 0.0, 1.0, 0.0, 0, 0,
-                  Vector3(), [])
-        self.assertEqual(bffr._evaporate_msg(msg), result)
 
 
 
