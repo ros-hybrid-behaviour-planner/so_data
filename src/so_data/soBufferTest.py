@@ -650,6 +650,143 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr._neighbors, {})
         self.assertEqual(bffr._own_pos, [])
 
+    def test_store_data_various_aggregations(self):
+        """
+        test store data method with different aggregation options for different frame IDs
+        :return:
+        """
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max', 'grad':'avg'})
+        testlist = {'None': [], 'grad': []}
+        now = rospy.Time.now()
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(4, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(3, 3, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['None'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(5, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['grad'].append(soMessage(Header(None, now, 'grad'), Vector3(4.5, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0,
+                                          Vector3(), []))
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(2, 2, 0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['None'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
+
+
+    # Collision Avoidance / Repulsion
+    def test_gradient_repulsion(self):
+        """
+        test gradient repulsion method based on gradients
+        :return:
+        """
+
+        bffr = soBuffer.SoBuffer(id='robot1')
+
+        # no own position specified
+        self.assertEqual(bffr._gradient_repulsion(), Vector3())
+
+        bffr._own_pos = [
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
+                         ]
+
+        # no neighbors specified
+        self.assertEqual(bffr._gradient_repulsion(), Vector3())
+
+        bffr._neighbors = {
+            'robot2': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(),
+                          [])
+
+            ],
+            'robot3': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(),
+                          []),
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(3, 2, 0), 1, 1.0, 0.8, 1.0, 0, 0, Vector3(),
+                          [])
+            ]
+        }
+        # calculate resulting vector
+        result = bffr._gradient_repulsion()
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        # calculate vector
+        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
+
+        # neighbor within goal_radius - returns vector with ||vector|| = repulsion_radius
+        bffr._neighbors = {
+            'robot2': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 1.5, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
+            ]
+        }
+
+        d = round(calc.vector_length(bffr._gradient_repulsion()),0)
+
+        # calculate vector
+        self.assertEqual(d, 3.0)
+
+    def test_repulsion_vector(self):
+        """
+        test gradient repulsion method based on Fernandez-Marquez et al.
+        :return:
+        """
+
+        bffr = soBuffer.SoBuffer(id='robot1')
+
+        # no own position specified
+        self.assertEqual(bffr._gradient_repulsion(), Vector3())
+
+        bffr._own_pos = [
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
+                         ]
+
+        # no neighbors specified
+        self.assertEqual(bffr._repulsion_vector(), Vector3())
+
+        bffr._neighbors = {
+            'robot2': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(),
+                          [])
+
+            ],
+            'robot3': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(),
+                          []),
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(3, 2, 1), 1, 1.0, 0.8, 1.0, 0, 0, Vector3(),
+                          [])
+            ]
+        }
+        # calculate resulting vector
+        result = bffr._repulsion_vector()
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        # calculate vector
+        self.assertEqual(result, Vector3(0.0, -1.12, -1.12))
+
+        # neighbor within goal_radius - returns vector with ||vector|| = repulsion_radius
+        bffr._neighbors = {
+            'robot2': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(),
+                          [])
+            ]
+        }
+
+        d = round(calc.vector_length(bffr._repulsion_vector()), 0)
+
+        # calculate vector
+        self.assertEqual(d, 3.0)
+
 
 
 # run tests - start roscore before running tests

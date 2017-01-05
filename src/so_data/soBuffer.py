@@ -102,7 +102,7 @@ class SoBuffer():
 
         self._result = result
 
-    def store_data(self, msg): #TODO unittest
+    def store_data(self, msg):
         """
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
@@ -123,7 +123,10 @@ class SoBuffer():
             if self._store_neighbors:
                 if self._id and msg.header.frame_id == self._id:
                     # check if data is newer
-                    if msg.header.stamp > self._neighbors[msg.header.frame_id][-1].header.stamp:
+                    if self._own_pos:  # own data already stored
+                        if msg.header.stamp > self._own_pos[-1].header.stamp:
+                            self._own_pos.append(msg)
+                    else:  # no own position stored so far
                         self._own_pos.append(msg)
                     # maximum length of stored own gradients exceeded
                     if len(self._own_pos) > self._neighbor_storage_size:
@@ -325,7 +328,7 @@ class SoBuffer():
             return False
 
     # Collision avoidance between neighbors
-    def _gradient_repulsion(self): #TODO unittest
+    def _gradient_repulsion(self):
         """
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
         considers all neighbours that have a gradient reaching inside view distance / communication range of agent
@@ -338,13 +341,13 @@ class SoBuffer():
         if not self._own_pos:
             return repulsion
 
-        # repulsion radius of robot, <= view_distance
+        # repulsion radius of robot, <= view_distance w
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
 
         if self._neighbors:
             for val in self._neighbors.values():
                 # check if neighbor is in sight
-                if calc.get_gradient_distance(val[-1].p, pose) <= val[-1].diffusion + val[-1].goal_radius \
+                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) <= val[-1].diffusion + val[-1].goal_radius \
                         + self._view_distance:
                     grad = self._calc_repulsive_gradient(val[-1], self._own_pos[-1].p)
 
@@ -805,9 +808,10 @@ class SoBuffer():
         if d <= gradient.goal_radius: #infinitely large repulsion
             v = Vector3(np.inf, np.inf, np.inf)
             # calculate norm vector for direction
-            tmp.x /= d
-            tmp.y /= d
-            tmp.z /= d
+            if d != 0:
+                tmp.x /= d
+                tmp.y /= d
+                tmp.z /= d
             # calculate repulsion vector / adjust sign/direction
             if tmp.x != 0.0:
                 v.x *= tmp.x
@@ -884,9 +888,10 @@ class SoBuffer():
         if d <= gradient.goal_radius:
             v = Vector3(np.inf, np.inf, np.inf)
             # calculate norm vector for direction
-            tmp.x /= d
-            tmp.y /= d
-            tmp.z /= d
+            if d != 0.0:
+                tmp.x /= d
+                tmp.y /= d
+                tmp.z /= d
             # calculate repulsion vector - adjust sign/direction
             if tmp.x != 0.0:
                 v.x *= tmp.x
