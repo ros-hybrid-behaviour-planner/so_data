@@ -172,7 +172,7 @@ def _calc_repulsive_gradient_ge(gradient, goal, pose)
 
 ### Basic Mechanisms
 
-##### Evaporation 
+#### Evaporation 
 
 Evaporation is one of the basic mechanisms presented in the paper by Fernandez-Marquez et al. It is applied both before storing received data as well as when requesting the current gradient to follow (get_current_gradient). 
 To ensure that all data is up-to-date, each received message is evaporated before it is stored using `_evaporate_msg(msg)`. Parameters: `msg` is a soMessage. 
@@ -191,7 +191,7 @@ the interval `[0,1]` with `1` leading to no evaporation and `0` to the complete 
 Gradients without goal radius (soMessage `goal_radius = 0`) and a diffusion smaller than the minimum diffusion radius (`min_diffusion`, see soBuffer Parameters) will be deleted immediately. 
  
  
-##### Repulsion
+#### Repulsion
 
 Repulsion is specified as a basic mechanism as well. It leads to avoiding collision between agents and can help to distribute the agents uniformly in a specific area. Fernandez-Marquez et al. provide a formula to calculate a repulsive vector in their paper, but it could be calculated on basis of repulsive gradients too. 
 In the buffer are both options implemented. The repulsion vector depends on the parameters `repulsion_radius` which is defined as the `goal_radius + diffusion <= view_distance` of the agent (`self._own_pos`) 
@@ -204,7 +204,7 @@ vector is added to the movement vector based on the (non-neighbor) gradients.
 def get_collision_avoidance(self)
 ```
 
-###### Gradient based
+##### Gradient based
 
 Invoking `_gradient_repulsion` will return a vector pointing away from all neighbors calculated with the gradient formulas specified by Balch and Hybinette (2000) (see **Gradient calculation**). 
 The calculation is completely based on the received gradients including the positions of the neighbors, their extent (diffusion + goal_radius) and the agents own gradient 
@@ -215,7 +215,7 @@ def _gradient_repulsion(self)
 ```
 
 
-###### Fernandez-Marquez et al. 
+##### Fernandez-Marquez et al. 
 
 The formula presented by Fernandez-Marquez et al. does not consider goal and diffusion radius. Instead neighbors are only seen as a point. Similar to the gradient based repulsion version, a vector pointing
  away from all neighbors within view distance is returned. In case that two robots are at the same position, it returns a random repulsion vector which is as long as the repulsion_radius. 
@@ -225,21 +225,21 @@ The formula presented by Fernandez-Marquez et al. does not consider goal and dif
  ```
 
 
-##### Spreading
+#### Spreading
 
 --> Broadcaster / Listener Scenario 
 
 
-##### Aggregation 
+#### Aggregation 
 
 Aggregation is also a part of the basic mechanisms presented by Fernandez-Marquez et al. Part of the aggregation process is done in the `store_data` method. 
 
-###### Neighbors
+##### Neighbors
 
 soBuffer keeps a certain number (`neighbor_storage_size`) of gradients of the neighbors. E.g. at least two per neighbor are needed for flocking as the agent's velocity has to be calculated. When requesting
  the agent density (`quorum` method), a repulsion vector (see **Repulsion**) or the flocking vector, the neighbor gradient is aggregated. Details can be found in the relevant sections. 
 
-##### Other gradients 
+#### Other gradients 
 
 soBuffer aggregates with the `aggregation` option the incoming gradient data and stores per position / within a specified aggregation radius only one gradient. But when requesting the `current_gradient` the
 stored data is aggregated to return one vector. There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
