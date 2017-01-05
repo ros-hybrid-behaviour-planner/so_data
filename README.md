@@ -102,7 +102,9 @@ rospy.Subscriber('soData', soMessage, self.store_data)
 `aggregation` is a dictionary which allows to specify based on frameIDs how the data should be stored. The key `DEFAULT` specifies the aggregation option for all frames for which no aggregation option is 
  defined in `aggregation`. Options are `min`, `max`, `avg` which store the gradient with maximum / minimum diffusion and goal radius and respectively the average diffusion and goal radius as well the averaged 
  gradient center (soMessage.p). The option`newest` stores the last received gradient. All options might be suitable for movement related gradients while `newest` is most appropriate for gradients including payload used for decision making. The storing mechanisms allows to store only gradients with certain frameIDs. 
- In case that **only** neighbor gradients should be stored, `'robot'` should be specified as the only frameID in `framestorage`. 
+ In case that **only** neighbor gradients should be stored, `'robot'` should be specified as the only frameID in `framestorage`. The `aggregation_distance` attribute ensures that gradients within a certain distance 
+ will be aggregated, e.g. gradients centered at (9|9|0) and (8|9|0) will be aggregated when the `aggregation_distance` is set to 1.0. Setting this parameter to 0 means that only gradients at the exact same
+ position will be aggregated. 
  
  The calculations of the methods which return values used in behaviours or sensors are based on the stored data.  
 
@@ -222,6 +224,51 @@ The formula presented by Fernandez-Marquez et al. does not consider goal and dif
  def _repulsion_vector(self)
  ```
 
+
+##### Spreading
+
+--> Broadcaster / Listener Scenario 
+
+
+##### Aggregation 
+
+Aggregation is also a part of the basic mechanisms presented by Fernandez-Marquez et al. Part of the aggregation process is done in the `store_data` method. 
+
+###### Neighbors
+
+soBuffer keeps a certain number (`neighbor_storage_size`) of gradients of the neighbors. E.g. at least two per neighbor are needed for flocking as the agent's velocity has to be calculated. When requesting
+ the agent density (`quorum` method), a repulsion vector (see **Repulsion**) or the flocking vector, the neighbor gradient is aggregated. Details can be found in the relevant sections. 
+
+##### Other gradients 
+
+soBuffer aggregates with the `aggregation` option the incoming gradient data and stores per position / within a specified aggregation radius only one gradient. But when requesting the `current_gradient` the
+stored data is aggregated to return one vector. There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
+
+Options:
+
+* **all** = movement vector considering all vectors of the potential field will be returned 
+
+* **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
+
+Option `max` returns a vector which lets the agent move away or move towards the maximum gradient. The maximum relative distance is considered as the potential field formulas by Blach and Hybinette 
+return normalized attraction/repulsion values. To compare repulsion and attraction, the attraction value is subtracted from 1 (`1 - attraction`) as attraction decreases being closer to the gradient center.
+In case that no gradient is within view distance, a zero vector will be returned. If the agent is within the goal radius of a repulsive gradient, a random vector leading away from the repulsive gradient is returned 
+(length = goal radius + diffusion). 
+
+```python
+def _aggregate_max(self, pose, frameids=[])
+```
+
+* **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
+
+* **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
+
+* **avoid** = movement vector leading away from all sensed gradients will be returned 
+
+
+
+
+##### 
 
 flocking(.py)
 -------------

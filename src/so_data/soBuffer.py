@@ -277,7 +277,7 @@ class SoBuffer():
 
         return result
 
-    def get_collision_avoidance(self): #TODO README
+    def get_collision_avoidance(self):
         """
         collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
         :return: vector
@@ -420,7 +420,7 @@ class SoBuffer():
         return m
 
     # AGGREGATION - build potential field (merging of information)
-    def _aggregate_max(self, pose, frameids=[]): #TODO: unit test
+    def _aggregate_max(self, pose, frameids=[]):
         """
         follow higher gradient values (= gradient with shortest relative distance to gradient source)
         sets current gradient to direction vector (length <= 1)
@@ -473,7 +473,7 @@ class SoBuffer():
 
                     tmp_att = att
 
-            return tmp_att
+        return tmp_grad
 
     def _aggregate_nearest_repulsion(self, pose, frameids=[]): # TODO unit test!!!
         """
