@@ -3,6 +3,7 @@
 .. moduleauthor:: kaiser
 """
 
+from __future__ import division # force floating point division when using plain /
 import rospy
 from so_data.msg import soMessage
 import numpy as np
@@ -24,8 +25,8 @@ class SoBuffer():
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
                             within aggregation_distance of gradient center. "DEFAULT" used for gradients without own
                             aggregation option.
-                options: * min = keep gradients with minimum diffusion radius
-                         * max = keep gradients with maximum diffusion radius
+                options: * min = keep gradients with minimum diffusion radius + goal radius
+                         * max = keep gradients with maximum diffusion radius + goal radius
                          * avg = combine gradients / average
                          * newest = store newest received gradient
         :type aggregation: dictionary - key: frameID value: aggregation option
@@ -75,7 +76,8 @@ class SoBuffer():
         # initialise dictionary with frame IDs/keys
         if framestorage:
             for id in framestorage:
-                self._data[id] = []
+                if not id == 'robot':
+                    self._data[id] = []
         self._frames = framestorage
 
         self._own_pos = [] # store own last positions
@@ -116,17 +118,21 @@ class SoBuffer():
         if not self._frames and msg.header.frame_id not in self._data and msg.header.frame_id[:5] != 'robot':
             self._data[msg.header.frame_id] = []
 
-        #store own position and neighbor data
+        # store own position and neighbor data
         if msg.header.frame_id[:5] == 'robot':
             if self._store_neighbors:
                 if self._id and msg.header.frame_id == self._id:
-                    self._own_pos.append(msg)
+                    # check if data is newer
+                    if msg.header.stamp > self._neighbors[msg.header.frame_id][-1].header.stamp:
+                        self._own_pos.append(msg)
+                    # maximum length of stored own gradients exceeded
                     if len(self._own_pos) > self._neighbor_storage_size:
                         del self._own_pos[0]
                 elif msg.header.frame_id in self._neighbors:
-                    #check if data is newer
+                    # check if data is newer
                     if msg.header.stamp > self._neighbors[msg.header.frame_id][-1].header.stamp:
                         self._neighbors[msg.header.frame_id].append(msg)
+                    # maximum length of stored neighbor gradients exceeded
                     if len(self._neighbors[msg.header.frame_id]) > self._neighbor_storage_size:
                         del self._neighbors[msg.header.frame_id][0]
                 else:
@@ -191,9 +197,9 @@ class SoBuffer():
                         elif aggregation == 'avg':
                             # attraction is the same direction
                             if msg.attraction == self._data[msg.header.frame_id][k].attraction:
-                                msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][k].diffusion)/2
+                                msg.diffusion = (msg.diffusion + self._data[msg.header.frame_id][k].diffusion)/2.0
                                 msg.goal_radius = (msg.goal_radius +
-                                                   self._data[msg.header.frame_id][k].goal_radius)/2
+                                                   self._data[msg.header.frame_id][k].goal_radius)/2.0
                             else:
                                 # change sign
                                 if self._data[msg.header.frame_id][k].diffusion + \
@@ -205,9 +211,9 @@ class SoBuffer():
                                 msg.goal_radius = np.absolute(msg.goal_radius -
                                                               self._data[msg.header.frame_id][k].goal_radius)
 
-                            msg.p.x = (msg.p.x + self._data[msg.header.frame_id][k].p.x) /2
-                            msg.p.y = (msg.p.y + self._data[msg.header.frame_id][k].p.y) /2
-                            msg.p.z = (msg.p.z + self._data[msg.header.frame_id][k].p.z) /2
+                            msg.p.x = (msg.p.x + self._data[msg.header.frame_id][k].p.x) /2.0
+                            msg.p.y = (msg.p.y + self._data[msg.header.frame_id][k].p.y) /2.0
+                            msg.p.z = (msg.p.z + self._data[msg.header.frame_id][k].p.z) /2.0
                             del self._data[msg.header.frame_id][k]
                             # store average element as long as it has a goal radius or a diffusion radius larger
                             # than the minimum required diffusion
@@ -230,7 +236,7 @@ class SoBuffer():
         """
         return self._data
 
-    def get_current_gradient(self, pose, frameids=[]): #TODO unittest
+    def get_current_gradient(self, pose, frameids=[]): # TODO unittest
         """
         returns movement vector based on gradients & with or without collision avoidance
         :param pose: Pose Message with position of robot (geometry msgs Pose)
@@ -268,7 +274,7 @@ class SoBuffer():
 
         return result
 
-    def get_collision_avoidance(self): #TODO unittest
+    def get_collision_avoidance(self): #TODO README
         """
         collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
         :return: vector

@@ -303,35 +303,39 @@ class SoBufferTest(unittest.TestCase):
                   Vector3(), [])
         self.assertEqual(bffr._evaporate_msg(msg), result)
 
-
-
-
-
-
-
-    # STORE DATA IN SOBUFFER
+    # STORE DATA IN SoBUFFER
     def test_store_data_max(self):
         """
         test store_data method aggregation option = max
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0)
         testlist = []
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        bffr.store_data(msg)
-
-        msg = soMessage(None, Vector3(3,3,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        msg = soMessage(None, Vector3(2, 0.8, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
         testlist.append(deepcopy(msg))
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        # store max value within aggregation distance!
+        msg = soMessage(None, Vector3(2, 1.5, 0), 1, 6.0, 1.0, 1.0, 0, 0, Vector3(), [])
         testlist.append(deepcopy(msg))
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        # keep max of both
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        # only value at this postion / area
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
         testlist.append(deepcopy(msg))
         bffr.store_data(msg)
 
@@ -339,6 +343,104 @@ class SoBufferTest(unittest.TestCase):
             el.header.frame_id = 'None'
 
         self.assertEqual(bffr.get_data(), {'None': testlist})
+
+    def test_store_data_max_aggregation_distance(self):
+        """
+        test store_data method aggregation option = max, aggregation distance = 0.0
+        """
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'}, aggregation_distance=0.0)
+        testlist = []
+
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        # store max value within aggregation distance!
+        msg = soMessage(None, Vector3(2, 1, 0), 1, 6.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        # keep max of both
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        # only value at this postion / area
+        msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        for el in testlist:
+            el.header.frame_id = 'None'
+
+        self.assertEqual(bffr.get_data(), {'None': testlist})
+
+    def test_store_data_fids(self):
+        """
+        test store_data method with different frame IDs (all)
+        """
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'})
+        testlist = {'None': [], 'grad': []}
+        now = rospy.Time.now()
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(3,3,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['grad'].append(msg)
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(3,3,0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['None'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['grad'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['None'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
+
+
+    def test_store_data_fids_selection(self):
+        """
+        test store_data method, only store gradients with specified frameids
+        """
+        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'}, framestorage=['grad', 'silk'])
+        testlist = {'grad': [], 'silk': []}
+        now = rospy.Time.now()
+
+        msg = soMessage(Header(None, now, 'pheromone'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(3,3,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['grad'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(3, 3, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'grad'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['grad'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(Header(None, now, 'silk'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist['silk'].append(deepcopy(msg))
+        bffr.store_data(msg)
+
+        msg = soMessage(None, Vector3(2, 2, 0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr.get_data(), testlist)
 
     def test_store_data_min(self):
         """
@@ -390,8 +492,8 @@ class SoBufferTest(unittest.TestCase):
         msg = soMessage(None, Vector3(5, 5, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
         bffr.store_data(msg)
 
-        msg = soMessage(None, Vector3(2, 2, 0), -1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist.append(soMessage(None, Vector3(2, 2, 0), -1, 1.0, 0.0, 1.0, 0, 0, Vector3(), []))
+        msg = soMessage(None, Vector3(2, 1, 0), -1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        testlist.append(soMessage(None, Vector3(2, 1.5, 0), -1, 1.0, 0.0, 1.0, 0, 0, Vector3(), []))
         bffr.store_data(msg)
 
         msg = soMessage(None, Vector3(5, 5, 0), -1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
@@ -435,66 +537,6 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr.get_data(), {'None' : testlist})
 
-    def test_store_data_fids(self):
-        """
-        test store_data method with different frame IDs (all)
-        """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'})
-        testlist = {'None': [], 'grad': []}
-        now = rospy.Time.now()
-
-        msg = soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'grad'), Vector3(3,3,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['grad'].append(msg)
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'None'), Vector3(3,3,0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['None'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'grad'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['grad'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'None'), Vector3(2,2,0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['None'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        self.assertEqual(bffr.get_data(), testlist)
-
-
-    def test_store_data_fids_selection(self):
-        """
-        test store_data method, only store gradients with specified frameids
-        """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'}, framestorage=['grad', 'silk'])
-        testlist = {'grad': [], 'silk': []}
-        now = rospy.Time.now()
-
-        msg = soMessage(None, Vector3(2,2,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'grad'), Vector3(3,3,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['grad'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        msg = soMessage(None, Vector3(3,3,0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'grad'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['grad'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        msg = soMessage(Header(None, now, 'silk'), Vector3(5,5,0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        testlist['silk'].append(deepcopy(msg))
-        bffr.store_data(msg)
-
-        msg = soMessage(None, Vector3(2,2,0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        bffr.store_data(msg)
-
-        self.assertEqual(bffr.get_data(), testlist)
 
     def test_store_data_ev(self):
         """
@@ -608,80 +650,6 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr._neighbors, {})
         self.assertEqual(bffr._own_pos, [])
 
-
-
-
-
-
-
-
-
-    #
-    # def test_get_current_gradient_full(self):
-    #     '''
-    #     test determination of current gradient to follow
-    #     :return:
-    #     '''
-    #     bffr = soBuffer.SoBuffer(aggregation = True, evaporation_factor=0.8, evaporation_time=5, min_diffusion=1.0)
-    #
-    #     now = rospy.Time.now()
-    #     data = [soMessage(Vector(2,2,0), now - rospy.Duration(20), 1, 2.0, 0, Vector()),
-    #         soMessage(Vector(3,3,0), now - rospy.Duration(15), 1, 3.0, 0, Vector()),
-    #         soMessage(Vector(4,4,0), now - rospy.Duration(10), 1, 5.0, 0, Vector()),
-    #         soMessage(Vector(5,5,0), now - rospy.Duration(5), 1, 4.0, 0, Vector()),
-    #         soMessage(Vector(6,6,0), now, 1, 4.0, 0, Vector())
-    #         ]
-    #
-    #     for d in data:
-    #         bffr.store_data(deepcopy(d))
-    #
-    #     self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(3,3,0))
-    #
-    #     for element in bffr.data:
-    #         element.stamp -= rospy.Duration(10)
-    #
-    #     # TODO: change
-    #     self.assertEqual(bffr.get_current_gradient(Pose(0,0,0,0,0)), Vector(0,0,0))
-    #
-    # #def test_aggregate_several(self):
-    # #    bffr = soBuffer.SoBuffer(aggregation=False, evaporation_factor=1.0, evaporation_time=5, min_diffusion=1.0)
-    #
-    # #    now = rospy.Time.now()
-    #
-    #     #data = [soMessage(Vector(1, 1, 0), now, -1, 2.0, 0, Vector()),
-    #     #            soMessage(Vector(0, 3, 0), now, 1, 4.0, 0, Vector()),
-    #     #        ]
-    #
-    # #    data = [soMessage(Vector(1, 1, 0), now, -1, 2.0, 0, Vector()),
-    # #             soMessage(Vector(0, 3, 0), now, 1, 4.0, 0, Vector()),
-    # #             soMessage(Vector(-1, 2, 0), now, -1, 3.0, 0, Vector()),
-    # #            ]
-    #
-    #
-    # #    for d in data:
-    # #            bffr.store_data(deepcopy(d))
-    #
-    # #    bffr.aggregate_several(Pose(0,0,0,0,0))
-
-
-
-
-        # def test_get_current_gradient(self):
-        #     '''
-        #     test gradient update of current gradient
-        #     :return:
-        #     '''
-        #     bffr = soBuffer.SoBuffer(result='max', aggregation = 'max', evaporation_factor=1.0, collision_avoidance='')
-        #
-        #     # distance > diffusion radius
-        #     gradient = soMessage(None, Vector3(5,5,0), 1, 3.0, 1.0, 0, Vector3())
-        #     bffr.store_data(gradient)
-        #     self.assertEqual(bffr.get_current_gradient(Point(0,0,0)), Vector3(0,0,0))
-        #
-        #     # distance < diffusion radius
-        #     gradient = soMessage(None, Vector3(2,2,0), 1, 3.0, 1.0, 0, Vector3())
-        #     bffr.store_data(gradient)
-        #     self.assertEqual(bffr.get_current_gradient(Point(0,0,0)), Vector3(2/3.0,2/3.0,0))
 
 
 # run tests - start roscore before running tests

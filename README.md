@@ -60,8 +60,8 @@ The soBuffer provides several parameters which can be set to adjust the data sto
 
 * **aggregation** ({'DEFAULT': 'max'}): dictionary (key: frameID, value: aggregation option) of aggregation type per frameID. 'DEFAULT' is used for all frameIDs which have no option specified in 
 the dictionary and has to be specified. Does not affect storage of neighbor gradients. Aggregation options:
-  * **min** = keep gradient with minimum diffusion radius (at a position / within aggregation_distance)
-  * **max** = keep gradient with maximum diffusion radius (at a position / within aggregation_distance)
+  * **min** = keep gradient with minimum diffusion radius + goal radius (at a position / within aggregation_distance)
+  * **max** = keep gradient with maximum diffusion radius + goal radius(at a position / within aggregation_distance)
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
   * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
@@ -78,14 +78,32 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
 * **store_neighbors** (True): bool; defines whether neighbor gradients / robot position data should be stored 
 * **neighbor_storage_size** (2): int; defines number of gradients which will be stored for robot position data / neighbor gradients. 
-* **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to storage of all frameIDs.
+* **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to storage of all frameIDs. 'robot' leads to storing no gradients. 
 * **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
 
 
-### data Storage
+### Gradient Storage
 
-- neighbors stored separately (frame ID robotX) 
+One key part of the buffer is the storage of incoming gradients. `store_data` applies evaporation (see **Evaporation**), stores neighbor gradient data in `self._neighbors`, the agent's own position in `self._ownpos` and
+  all other frameIDs in `self._data`. 
 
+```python
+def store_data(self, msg)
+```
+
+All gradients are received via the `soData` topic. Each buffer subscribes to this topic when initialized and defines `store_data` as the subscription callback. 
+
+```python
+rospy.Subscriber('soData', soMessage, self.store_data)
+```
+
+`store_data` will then care about storing the data as specified with the soBuffer parameters `aggregation`, `min_diffusion`, `id`, `store_neighbors`, `neighbor_storage_size`, `framestorage` and `aggregation_distance`. 
+`aggregation` is a dictionary which allows to specify based on frameIDs how the data should be stored. The key `DEFAULT` specifies the aggregation option for all frames for which no aggregation option is 
+ defined in `aggregation`. Options are `min`, `max`, `avg` which store the gradient with maximum / minimum diffusion and goal radius and respectively the average diffusion and goal radius as well the averaged 
+ gradient center (soMessage.p). The option`newest` stores the last received gradient. All options might be suitable for movement related gradients while `newest` is most appropriate for gradients including payload used for decision making. The storing mechanisms allows to store only gradients with certain frameIDs. 
+ In case that **only** neighbor gradients should be stored, `'robot'` should be specified as the only frameID in `framestorage`. 
+ 
+ The calculations of the methods which return values used in behaviours or sensors are based on the stored data.  
 
 ### Methods for use in behaviours and sensors 
 
@@ -164,7 +182,7 @@ def _evaporate_msg(self, msg)
 def _evaporate_buffer(self)
 ```
 
-The evaporation frequency (or rather delta t) is specified in the soMessage as `ev_time` and the evaporation factor as `ev_factor`. `ev_time` has to be larger or equal zero. `ev_factor` has to be set in 
+The evaporation frequency (or rather delta t) is specified in the soMessage as `ev_time` and the evaporation factor as `ev_factor`. Therewith, evaporation can be specified per gradient. `ev_time` has to be larger or equal zero. `ev_factor` has to be set in 
 the interval `[0,1]` with `1` leading to no evaporation and `0` to the complete evaporation after `ev_time`. In case that `ev_time == 0` and `ev_factor < 1` the gradient will instantly evaporate completely. 
 
 Gradients without goal radius (soMessage `goal_radius = 0`) and a diffusion smaller than the minimum diffusion radius (`min_diffusion`, see soBuffer Parameters) will be deleted immediately. 
