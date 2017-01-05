@@ -787,6 +787,55 @@ class SoBufferTest(unittest.TestCase):
         # calculate vector
         self.assertEqual(d, 3.0)
 
+    def test_get_collision_avoidance(self):
+        """
+        test get collision avoidance method
+        :return:
+        """
+
+        bffr = soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient')
+
+        bffr._own_pos = [
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
+            soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
+        ]
+
+        bffr._neighbors = {
+            'robot2': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(),
+                          [])
+
+            ],
+            'robot3': [
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(),
+                          []),
+                soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(3, 2, 0), 1, 1.0, 0.8, 1.0, 0, 0, Vector3(),
+                          [])
+            ]
+        }
+
+        # calculate resulting vector
+        result = bffr.get_collision_avoidance()
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        # calculate vector
+        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
+
+        bffr._collision_avoidance = 'repulsion'
+
+        # calculate resulting vector
+        result = bffr.get_collision_avoidance()
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        # calculate vector
+        self.assertEqual(result, Vector3(-0.88, -1.12, 0.0))
+
+
+
+
+
 
 
 # run tests - start roscore before running tests

@@ -376,7 +376,7 @@ class SoBuffer():
 
         return repulsion
 
-    def _repulsion_vector(self): #TODO unittest
+    def _repulsion_vector(self):
         """
         return a repulsion vector based on formula presented by Fernandez-Marquez et al., use of received gradients (p)
         for calculation

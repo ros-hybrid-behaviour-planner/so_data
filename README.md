@@ -195,6 +195,13 @@ Repulsion is specified as a basic mechanism as well. It leads to avoiding collis
 In the buffer are both options implemented. The repulsion vector depends on the parameters `repulsion_radius` which is defined as the `goal_radius + diffusion <= view_distance` of the agent (`self._own_pos`) 
 and `view_distance` which is set as a parameter of the buffer and should be `>= goal_radius` of the agent. 
 
+The type of repulsion is set with the soBuffer parameter `collision_avoidance`. Using the method `get_collision_avoidance` will return the repulsion vector accordingly. In `get_current_gradient` the repulsion
+vector is added to the movement vector based on the (non-neighbor) gradients. 
+
+```python
+def get_collision_avoidance(self)
+```
+
 ###### Gradient based
 
 Invoking `_gradient_repulsion` will return a vector pointing away from all neighbors calculated with the gradient formulas specified by Balch and Hybinette (2000) (see **Gradient calculation**). 
