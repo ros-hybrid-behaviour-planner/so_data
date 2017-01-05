@@ -877,6 +877,37 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
 
+    def test_aggregate_nearest_repulsion(self):
+        """
+        test aggregate nearest repulsion method
+        :return:
+        """
+        pose = Vector3(1, 2, 3)
+        bffr = soBuffer.SoBuffer(result='near')
+        bffr._data = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                         soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'None': [soMessage(None, Vector3(0, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        }
+
+        # only one frameID + repulsive gradient is not considered
+        result = bffr._aggregate_nearest_repulsion(pose, frameids=['gradient'])
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
+
+        # all frameIDs
+        result = bffr._aggregate_nearest_repulsion(pose)
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+
+        self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
+
+
+
 
 # run tests - start roscore before running tests
 if __name__ == "__main__":

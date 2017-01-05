@@ -259,7 +259,16 @@ In case that no gradient is within view distance, a zero vector will be returned
 def _aggregate_max(self, pose, frameids=[])
 ```
 
-* **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
+* **near** robot might not reach gradient source  
+
+Option `near` follows the maximum attractive gradient by avoiding all repulsive gradients (non-neighbors). First the (relatively) nearest attractive gradient is determined and the vector to follow it calculated. 
+Afterwards, the repulsive vectors are calculated and summed up. If the agent is within the goal radius of a repulsive gradient, a random vector (length = goal radius + diffusion) leading away from 
+the repulsive gradient will be added to the repulsion vector. The repulsive vector is added to the attractive vector and the sum is returned.  
+ 
+```python
+def _aggregate_nearest_repulsion(self, pose, frameids=[])
+```
+
 
 * **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
 

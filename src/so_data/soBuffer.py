@@ -475,7 +475,7 @@ class SoBuffer():
 
         return tmp_grad
 
-    def _aggregate_nearest_repulsion(self, pose, frameids=[]): # TODO unit test!!!
+    def _aggregate_nearest_repulsion(self, pose, frameids=[]):
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
@@ -487,7 +487,7 @@ class SoBuffer():
         gradients_repulsive = []
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
-        tmp_att = 2
+        tmp_att = np.inf
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
@@ -505,7 +505,7 @@ class SoBuffer():
 
         if gradients_attractive:
             for gradient in gradients_attractive:
-                    # find nearest attractive gradient
+                # find nearest attractive gradient
                 grad = self._calc_attractive_gradient(gradient, pose)
                 att = np.linalg.norm([grad.x, grad.y, grad.z])
                 # attraction decreases with being closer to gradient source / goal area
