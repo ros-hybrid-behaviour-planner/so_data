@@ -129,12 +129,22 @@ def
 
 ##### Goal Achievement
 
-returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
+The method `get_goal_reached` returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
  Parameters: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional). 
 
 ```python
 def get_goal_reached(self, pose, frameids=[])
 ```
+
+
+##### Get movement vector
+Invoking `get_current_gradient` will return a movement vector based on the parameter `result` and `collision_avoidance`. This vector can be used to let the agent move, e.g. to gradient source or away from 
+all gradients within view distance. The result of the aggregation of the (non-neighbor) gradients is summed with the repulsive vector for collision avoidance. More information see the respective subsections. 
+
+```python
+def get_current_gradient(self, pose, frameids=[])
+```
+
 
 
 ### Gradient calculation 
@@ -228,8 +238,10 @@ The formula presented by Fernandez-Marquez et al. does not consider goal and dif
 
 #### Spreading
 
---> Broadcaster / Listener Scenario 
+The basic mechanism spreading is realized as a publisher - subscriber scenario in ROS. Every agent / soBuffer listens to the soData topic and data can be published to this topic by all agents. To be able to 
+control the spreading frequency, it is necessary to create separate nodes for each publisher. Currently, only a single master setup is used, but real spreading decentralisation can be reached in a multi master setup (future work). 
 
+More information can be found in the section **soBroadcaster.py**. 
 
 #### Aggregation 
 
@@ -302,8 +314,6 @@ def _aggregate_avoid_all(self, pose, frameids=[])
 
 
 
-##### 
-
 flocking(.py)
 -------------
 
@@ -311,3 +321,55 @@ The flocking.py file contains algorithms to realize flocking in free-sprace (fre
 
 1. gradient-based term
 2. velocity consensus term 
+
+
+calc(.py)
+---------
+
+The file calc.py includes some basic vector (Vector3) calculations which are commonly required. These are:
+
+* `def unit_vector(vector)`: returns a unit vector based on the input vector
+* `def angle_between(v1, v2)`: returns the directed vector between two vectors  
+* `def get_gradient_distance(gradpos, pose)`: returns distance between agent and gradient center 
+* `def vector_length(vector)`: returns the length of a vector 
+* `def delta_vector(q1, q2)`: returns difference between vector q1 and q2 
+* `def add_vectors(q1, q2)`: returns sum of two vectors 
+
+
+soBroadcaster(.py)
+------------------
+
+The class SoBroadcaster can be used to publish data to the topic `soData`. This topic is used for self-organization purposes and requires the message format `soMessage`. Within a message all necessary
+gradient information can be specified to enable the calculations for different self-organization behaviours. 
+
+Data can be send using the method 
+
+```python
+def send_data(self, message)
+```
+
+which requires a message as the input. 
+
+The soBroadcaster can either be used in a separate node to send data in a certain frequency (to be specified by rospy.Rate()) or within behaviours to send gradient messages when necessary. Therewith, 
+`soBroadcaster` is the basis for the implementation of spreading behaviour. 
+
+
+gradientSensor(.py)
+-------------------
+
+The class `GradientSensor` is a complex version of the `SimpleTopicSensor`. Instead of subscribing directly to a topic with a primitive data type, `GradientSensor` uses a `soBuffer` to receive and store
+the gradient data.In the initialisation of the sensors not only the same parameters as for `SimpleTopicSensor` can be specified, but as well the `sensor_type` and `sensor_buffer`. `sensor_buffer` requires a soBuffer object 
+to be handed over. `sensor_type` specifies which values the sensor will sense.  
+
+```python
+def __init__(self, name, topic=None, message_type=None,  initial_value=None, create_log = False, sensor_type='gradient', sensor_buffer=None)
+``` 
+
+The following options can be set as `sensor_type`:
+
+* **gradient**: sets sensor value to current gradient vector (see method `get_current_gradient`)
+* **bool**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not (see method `get_goal_reached`)
+
+More options can be integrated if necessary. 
+
+In the subscription callback, the sensor value will be determined based on the chosen option. 
