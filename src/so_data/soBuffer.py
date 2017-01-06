@@ -543,7 +543,8 @@ class SoBuffer():
     def _aggregate_nearest_ge(self, pose, frameids=[]): # TODO unit test!!!
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
-        repulsive gradient sources
+        repulsive gradient sources based on Ge & Cui
+        requires at least one attractive gradient to be sensed
         :param pose:
         :return
         """
@@ -583,12 +584,16 @@ class SoBuffer():
                     vector_attraction.z = grad.z
                     tmp_att = att
                     attractive_gradient = gradient
+        # no attractive gradients available, return zero vector
+        else:
+            return vector_attraction
 
         # aggregate repulsive gradients
         if gradients_repulsive:
             for gradient in gradients_repulsive:
                 grad = self._calc_repulsive_gradient_ge(gradient, attractive_gradient, pose)
-                # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
+                # robot position is within obstacle radius, inf can't be handled as direction
+                # --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius + gradient.diffusion)
                     tmp = np.random.rand(1, 3)
@@ -922,7 +927,6 @@ class SoBuffer():
             v.x = f_rep1 * tmp.x + f_rep2 * ag.x
             v.y = f_rep1 * tmp.y + f_rep2 * ag.y
             v.z = f_rep1 * tmp.z + f_rep2 * ag.z
-
         elif d > gradient.goal_radius + gradient.diffusion:
             v.x = 0
             v.y = 0

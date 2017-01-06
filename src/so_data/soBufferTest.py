@@ -189,7 +189,7 @@ class SoBufferTest(unittest.TestCase):
         # diffusion and goal_radius of gradient shorter than distance
         self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(8, 8, 0)), Vector3())
 
-        # gradient within goal area of gradient
+        # agent within goal area of repulsive gradient
         self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(3, 2, 0)),
                          Vector3(-np.inf, np.inf, np.inf))
 
@@ -906,6 +906,34 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
 
+    def test_aggregate_nearest_ge(self):
+        """
+        test aggregate nearest Ge method
+        :return:
+        """
+
+        bffr = soBuffer.SoBuffer(result='near')
+        bffr._data = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                soMessage(None, Vector3(1, 0, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'None': [soMessage(None, Vector3(4, 2, 0), -1, 4.0, 2.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        }
+
+        # only one frameID + repulsive gradient is not considered
+        pose = Vector3(1, -2, 0)
+        result = bffr._aggregate_nearest_ge(pose, frameids=['gradient'])
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        self.assertEqual(result, Vector3(0.0, 2.0, 0.0))
+
+        # all frameIDs
+        result = bffr._aggregate_nearest_ge(pose)
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        self.assertEqual(result, Vector3(-0.03, 1.96, 0.0))
 
 
 

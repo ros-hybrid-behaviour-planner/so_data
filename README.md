@@ -160,8 +160,9 @@ def _calc_repulsive_gradient(gradient, pose)
 
 In comparison to the approach by Balch and Hybinette, Ge and Cui guarantee with their approach, that the attractive gradient source is reached. The implementation of the attractive gradient is similar to
 Balch and Hybinette, the only difference is that Balch and Hybinette return normalized gradient values while Ge and Cui return absolute values. Therewith, to determine the closest attractive gradient 
-the method based on Balch and Hybinette can be used. Ge and Cui enhanced the repulsive gradient calculation to ensure that the gradient source can be reached. 
-
+the method based on Balch and Hybinette can be used. Ge and Cui enhanced the repulsive gradient calculation to ensure that the gradient source can be reached. The formulas in this paper were enhanced
+with setting the repulsive gradient to infinite when the agent is within its `goal_radius`. To ensure that the calculation of the repulsive vector works as aspected, the attractive gradient was not enhanced
+with being set to zero in its goal region. 
 
 ```python 
 def _calc_attractive_gradient_ge(gradient, pose)
@@ -239,7 +240,7 @@ Aggregation is also a part of the basic mechanisms presented by Fernandez-Marque
 soBuffer keeps a certain number (`neighbor_storage_size`) of gradients of the neighbors. E.g. at least two per neighbor are needed for flocking as the agent's velocity has to be calculated. When requesting
  the agent density (`quorum` method), a repulsion vector (see **Repulsion**) or the flocking vector, the neighbor gradient is aggregated. Details can be found in the relevant sections. 
 
-#### Other gradients 
+##### Other gradients 
 
 soBuffer aggregates with the `aggregation` option the incoming gradient data and stores per position / within a specified aggregation radius only one gradient. But when requesting the `current_gradient` the
 stored data is aggregated to return one vector. There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
@@ -270,7 +271,14 @@ def _aggregate_nearest_repulsion(self, pose, frameids=[])
 ```
 
 
-* **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
+* **reach** 
+
+Option `reach` returns a vector which enables the agent to follow the attractive gradient by avoiding all repulsive gradients (non-neighbors). In contrast to option `near`, it always leads to reaching the 
+gradient source (`goal_radius`) of the attractive gradient. The calculation is based on the enhanced formulas by Ge and Cui (1999) (see **Gradient calculation**). 
+
+```python
+def _aggregate_nearest_ge(self, pose, frameids=[])
+```
 
 * **avoid** = movement vector leading away from all sensed gradients will be returned 
 
