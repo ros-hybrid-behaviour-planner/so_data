@@ -14,13 +14,14 @@ import collections
 import random
 
 
-class SoBuffer():
+class SoBuffer(object):
     """
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0, min_diffusion=0.1,
                  view_distance=2.0, id='', result='reach', collision_avoidance='',
-                 neighbor_storage_size=2, framestorage=[], threshold=2):
+                 neighbor_storage_size=2, framestorage=[], threshold=2, a=1.0, b=1.0, h=0.5, epsilon=1.0,
+                 max_acceleration=1.0, max_velocity=1.0):
         """
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
                             within aggregation_distance of gradient center. "DEFAULT" used for gradients without own
@@ -89,7 +90,6 @@ class SoBuffer():
         self._id = id
         self._neighbor_storage_size = neighbor_storage_size
 
-
         # RETURN AGGREGATED DATA
         self._view_distance = view_distance
         self._result = result
@@ -102,7 +102,15 @@ class SoBuffer():
 
         # quorum
         self._threshold = threshold
+
         # flocking
+        self._a = a
+        self._b = b
+        self._h = h
+        self._epsilon = epsilon
+        self._max_acceleration = max_acceleration
+        self._max_velocity = max_velocity
+
 
     def store_data(self, msg):
         """
@@ -966,7 +974,7 @@ class SoBuffer():
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
     # TODO: integrate as option in get_current_gradient setting
     # TODO: unittest
-    def flocking(self, a=1.0, b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0, max_velocity=1.0):
+    def flocking(self):
         """
 
         :return:
@@ -1005,5 +1013,62 @@ class SoBuffer():
         # calculate new velocity based on steering force
         # find out how to, probably like this:
         # velocity to be set = current vel + flocking steering force
-        return calc.add_vectors(agent.v, flocking.flocking_vector(neighbors, agent, epsilon, a, b,
-                                                                  repulsion_radius, self._view_distance, h))
+        return calc.add_vectors(agent.v, flocking.flocking_vector(neighbors, agent, self._epsilon, self._a, self._b,
+                                                                  repulsion_radius, self._view_distance, self._h))
+
+    # getters and setters
+    @property
+    def threshold(self):
+        return self._threshold
+
+    @threshold.setter
+    def threshold(self, threshold):
+        self._threshold = threshold
+
+    @property
+    def a(self):
+        return self._a
+
+    @a.setter
+    def a(self, a):
+        self._a = a
+
+    @property
+    def b(self):
+        return self._b
+
+    @b.setter
+    def b(self, b):
+        self._b = b
+
+    @property
+    def h(self):
+        return self._h
+
+    @h.setter
+    def h(self, h):
+        self._h = h
+
+    @property
+    def epsilon(self):
+        return self._epsilon
+
+    @epsilon.setter
+    def epsilon(self, epsilon):
+        self._epsilon = epsilon
+
+    @property
+    def max_acceleration(self):
+        return self._max_acceleration
+
+    @max_acceleration.setter
+    def max_acceleration(self, max_acceleration):
+        self._max_acceleration = max_acceleration
+
+    @property
+    def max_velocity(self):
+        return self._max_velocity
+
+    @max_velocity.setter
+    def max_velocity(self, max_velocity):
+        self._max_velocity = max_velocity

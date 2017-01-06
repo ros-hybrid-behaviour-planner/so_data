@@ -339,7 +339,8 @@ soBroadcaster(.py)
 ------------------
 
 The class SoBroadcaster can be used to publish data to the topic `soData`. This topic is used for self-organization purposes and requires the message format `soMessage`. Within a message all necessary
-gradient information can be specified to enable the calculations for different self-organization behaviours. 
+gradient information can be specified to enable the calculations for different self-organization behaviours. It can be used to spread gradients present in the environment or to let the robots spread
+specific gradients. 
 
 Data can be send using the method 
 
