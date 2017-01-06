@@ -245,6 +245,11 @@ soBuffer keeps a certain number (`neighbor_storage_size`) of gradients of the ne
 soBuffer aggregates with the `aggregation` option the incoming gradient data and stores per position / within a specified aggregation radius only one gradient. But when requesting the `current_gradient` the
 stored data is aggregated to return one vector. There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
 
+```python
+def get_current_gradient(self, pose, frameids=[])
+```
+
+
 Options:
 
 * **all** 

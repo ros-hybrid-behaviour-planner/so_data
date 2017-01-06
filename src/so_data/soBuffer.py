@@ -239,7 +239,7 @@ class SoBuffer():
         """
         return self._data
 
-    def get_current_gradient(self, pose, frameids=[]): # TODO unittest
+    def get_current_gradient(self, pose, frameids=[]):
         """
         returns movement vector based on gradients & with or without collision avoidance
         :param pose: Pose Message with position of robot (geometry msgs Pose)
@@ -679,7 +679,7 @@ class SoBuffer():
 
         return vector_attraction
 
-    def _aggregate_avoid_all(self, pose, frameids=[]):  
+    def _aggregate_avoid_all(self, pose, frameids=[]):
         """
         calculate vector which avoids all gradients within view distance
         :param pose: current pose of agent
@@ -940,7 +940,7 @@ class SoBuffer():
 
         return v
 
-    # QUROUM SENSING: DENSITY FUNCTION
+    # QUORUM SENSING: DENSITY FUNCTION
     def quorum(self, threshold):
         """
         calculates agent density within view
