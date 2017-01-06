@@ -286,8 +286,14 @@ gradient source (`goal_radius`) of the attractive gradient. The calculation is b
 def _aggregate_nearest_ge(self, pose, frameids=[])
 ```
 
-* **avoid** = movement vector leading away from all sensed gradients will be returned 
+* **avoid** 
 
+Option `avoid` returns a movement vector leading away from all gradients within view distance. Regardless of the specified `attraction` value in the soMessage, the repulsive gradient method based on 
+Balch and Hybinette is used to calculate the movement vector and the repulsive vectors from all gradients are summed up.  
+
+```python
+def _aggregate_avoid_all(self, pose, frameids=[])
+```
 
 
 

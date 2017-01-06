@@ -679,7 +679,7 @@ class SoBuffer():
 
         return vector_attraction
 
-    def _aggregate_avoid_all(self, pose, frameids=[]):  # TODO unit test!!!
+    def _aggregate_avoid_all(self, pose, frameids=[]):  
         """
         calculate vector which avoids all gradients within view distance
         :param pose: current pose of agent
