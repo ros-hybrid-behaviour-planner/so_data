@@ -20,7 +20,7 @@ class SoBuffer():
     """
     def __init__(self, aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0, min_diffusion=0.1,
                  view_distance=2.0, id='', result='reach', collision_avoidance='',
-                 store_neighbors=True, neighbor_storage_size=2, framestorage=[]):
+                 neighbor_storage_size=2, framestorage=[], threshold=2):
         """
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
                             within aggregation_distance of gradient center. "DEFAULT" used for gradients without own
@@ -57,10 +57,8 @@ class SoBuffer():
                          * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
         :type collision_avoidance: str
 
-        :param store_neighbors: specifies whether data about neighbors is stored or not
-        :type store_neighbors: bool
-
-        :param neighbor_storage_size: how many gradient messages per neighbor will be stored
+        :param neighbor_storage_size: how many gradient messages per neighbor will be stored, set 0 not to store any
+                                    neighbor gradients
         :type neighbor_storage_size: int [0, inf]
 
         :param framestorage: list of frame IDs which should be stored
@@ -72,35 +70,39 @@ class SoBuffer():
 
         rospy.Subscriber('soData', soMessage, self.store_data)
 
-        self._data = {} # store incoming, dict with frameIds and arrays of data
-        # initialise dictionary with frame IDs/keys
+        # STORE DATA
+        self._data = {}  # gradient storage (non-neighbors), dict
+        self._own_pos = []  # own positions storage
+        self._neighbors = {}  # neighbor gradients storage, dict
+
+        # initialise data dictionary (gradient storage) with frame IDs/keys
         if framestorage:
             for id in framestorage:
                 if not id == 'robot':
                     self._data[id] = []
-        self._frames = framestorage
 
-        self._own_pos = [] # store own last positions
-        self._neighbors = {} # empty dict
+        self._frames = framestorage  # frameIDs to be stored
 
-        # aggregation - dictionary: frameID, aggregation option
         self._aggregation = aggregation
-
         self._aggregation_distance = aggregation_distance
-
-        self._store_neighbors = store_neighbors
-        self._neighbor_storage_size = neighbor_storage_size
         self._min_diffusion = min_diffusion
+        self._id = id
+        self._neighbor_storage_size = neighbor_storage_size
+
+
+        # RETURN AGGREGATED DATA
         self._view_distance = view_distance
+        self._result = result
+
         if collision_avoidance != 'repulsion' and collision_avoidance != 'gradient' and collision_avoidance != '':
             rospy.logerr("No valid option for collision avoidance entered. Set to gradient.")
             self._collision_avoidance = 'gradient'
         else:
             self._collision_avoidance = collision_avoidance
 
-        self._id = id
-
-        self._result = result
+        # quorum
+        self._threshold = threshold
+        # flocking
 
     def store_data(self, msg):
         """
@@ -120,7 +122,7 @@ class SoBuffer():
 
         # store own position and neighbor data
         if msg.header.frame_id[:5] == 'robot':
-            if self._store_neighbors:
+            if self._neighbor_storage_size > 0:
                 if self._id and msg.header.frame_id == self._id:
                     # check if data is newer
                     if self._own_pos:  # own data already stored
@@ -277,7 +279,7 @@ class SoBuffer():
 
         return result
 
-    def get_collision_avoidance(self):
+    def get_collision_avoidance(self): #TODO evtl consolidate mit
         """
         collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
         :return: vector
@@ -941,7 +943,7 @@ class SoBuffer():
         return v
 
     # QUORUM SENSING: DENSITY FUNCTION
-    def quorum(self, threshold):
+    def quorum(self):
         """
         calculates agent density within view
         :param threshold: number of agents which have to be within view to switch state
@@ -955,7 +957,7 @@ class SoBuffer():
                         + self._view_distance:
                     count += 1.0
 
-        if count >= threshold:
+        if count >= self._threshold:
             return True
         else:
             return False

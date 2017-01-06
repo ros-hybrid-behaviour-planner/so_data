@@ -77,8 +77,7 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
 * **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents. Options:
   * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
-* **store_neighbors** (True): bool; defines whether neighbor gradients / robot position data should be stored 
-* **neighbor_storage_size** (2): int; defines number of gradients which will be stored for robot position data / neighbor gradients. 
+* **neighbor_storage_size** (2): int; defines number of gradients which will be stored for robot position data / neighbor gradients. Set 0 to avoid storing neighbor gradients. 
 * **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to storage of all frameIDs. 'robot' leads to storing no gradients. 
 * **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
 

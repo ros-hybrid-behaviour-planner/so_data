@@ -38,12 +38,16 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [soMessage(None, Vector3(1, 1, 1), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])]
 
         # no. of robots in view distance < threshold
-        self.assertEqual(bffr.quorum(4), False)
-        self.assertEqual(bffr.quorum(3), False)
+        bffr._threshold = 4
+        self.assertEqual(bffr.quorum(), False)
+        bffr._threshold = 3
+        self.assertEqual(bffr.quorum(), False)
 
         # no. of robots in view distance > threshold
-        self.assertEqual(bffr.quorum(2), True)
-        self.assertEqual(bffr.quorum(1), True)
+        bffr._threshold = 2
+        self.assertEqual(bffr.quorum(), True)
+        bffr._threshold = 1
+        self.assertEqual(bffr.quorum(), True)
 
     # GOAL REACHED
     def test_get_goal_reached(self):
@@ -569,7 +573,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, store neighbor data and own pos
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', store_neighbors=True, id='robot3')
+        bffr = soBuffer.SoBuffer(aggregation='max', id='robot3')
         testlist = {'robot1': [], 'robot2': []}
         ownpos = []
         now = rospy.Time.now()
@@ -615,7 +619,7 @@ class SoBufferTest(unittest.TestCase):
         test store_data method, neighbor gradients will not be stored
         :return:
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', store_neighbors=False, id='')
+        bffr = soBuffer.SoBuffer(aggregation='max', neighbor_storage_size=0, id='')
         now = rospy.Time.now()
 
         # replaced by fourth robot1 message
