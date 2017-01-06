@@ -332,8 +332,7 @@ class SoBuffer():
         """
         returns repulsion vector (collision avoidance between neighbors) based on potential field approach
         considers all neighbours that have a gradient reaching inside view distance / communication range of agent
-        :param pose:
-        :return:
+        :return: repulsion vector
         """
         repulsion = Vector3()
 
@@ -424,6 +423,9 @@ class SoBuffer():
         """
         follow higher gradient values (= gradient with shortest relative distance to gradient source)
         sets current gradient to direction vector (length <= 1)
+        :param pose: current position of agent
+        :param frameids: frameIDs of gradients to be considered in calculation
+        :return gradient vector
         """
 
         gradients = []
@@ -479,8 +481,9 @@ class SoBuffer():
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources
-        :param pose:
-        :return
+        :param pose: current agent's pose
+        :param frameids: frameids of gradients to be considered in the calculation
+        :return gradient vector
         """
 
         gradients_attractive = []
@@ -540,13 +543,14 @@ class SoBuffer():
 
         return vector_attraction
 
-    def _aggregate_nearest_ge(self, pose, frameids=[]): # TODO unit test!!!
+    def _aggregate_nearest_ge(self, pose, frameids=[]):
         """
         aggregate nearest attractive gradient with repulsive gradients s.t. robot finds gradient source avoiding the
         repulsive gradient sources based on Ge & Cui
         requires at least one attractive gradient to be sensed
-        :param pose:
-        :return
+        :param pose: current robot pose
+        :param frameids: frameIDs of gradients to be considered in calculation
+        :return gradient vector
         """
         gradients_attractive = []
         gradients_repulsive = []
@@ -614,11 +618,12 @@ class SoBuffer():
 
         return vector_attraction
 
-    def _aggregate_all(self, pose, frameids=[]):  # TODO unit test!!!
+    def _aggregate_all(self, pose, frameids=[]):
         """
         aggregate all vectors within view distance
-        :param pose:
-        :return:
+        :param pose: current robot position
+        :param frameids: frameIDs of gradients to be considered in calculation
+        :return: gradient vector
         """
 
         gradients_attractive = []
@@ -642,7 +647,7 @@ class SoBuffer():
 
         if gradients_attractive:
             for gradient in gradients_attractive:
-                # find nearest attractive gradient
+                # sum up all attractive gradients
                 grad = self._calc_attractive_gradient(gradient, pose)
                 vector_attraction.x += grad.x
                 vector_attraction.y += grad.y
@@ -652,7 +657,8 @@ class SoBuffer():
         if gradients_repulsive:
             for gradient in gradients_repulsive:
                 grad = self._calc_repulsive_gradient(gradient, pose)
-                # robot position is within obstacle radius, inf can't be handled as direction --> add vector which brings robot to the boarder of the obstacle
+                # robot position is within obstacle radius, inf can't be handled as direction
+                # --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius + gradient.diffusion)
                     tmp = np.random.rand(1,3)
@@ -676,9 +682,9 @@ class SoBuffer():
     def _aggregate_avoid_all(self, pose, frameids=[]):  # TODO unit test!!!
         """
         calculate vector which avoids all gradients within view distance
-        :param pose:
-        :param frameids:
-        :return:
+        :param pose: current pose of agent
+        :param frameids: frameIDs of gradients to be considered in calculation
+        :return gradient vector
         """
         gradients = []
         v = Vector3()

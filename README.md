@@ -66,7 +66,7 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
   * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
-* **view_distance** (2.0): float; radius in which agent can sense gradients. Should be >= goal_radius specified in agent's own gradient.  
+* **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): 'robotX' with X = robot's id; frameID's in this form are considered as robot position data / neighbor gradients. Gradients with own id are stored in self._ownpos 
 * **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Options:
   * **all** = movement vector considering all vectors of the potential field will be returned 
@@ -247,9 +247,15 @@ stored data is aggregated to return one vector. There are different options avai
 
 Options:
 
-* **all** = movement vector considering all vectors of the potential field will be returned 
+* **all** 
 
-* **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
+Option `all` returns a vector which is the sum of all attractive and repulsive potentials within view distance. The calculation is based on the formulas by Balch and Hybinette. 
+
+```python
+def _aggregate_all(self, pose, frameids=[])
+```
+
+* **max** 
 
 Option `max` returns a vector which lets the agent move away or move towards the maximum gradient. The maximum relative distance is considered as the potential field formulas by Blach and Hybinette 
 return normalized attraction/repulsion values. To compare repulsion and attraction, the attraction value is subtracted from 1 (`1 - attraction`) as attraction decreases being closer to the gradient center.
@@ -260,7 +266,7 @@ In case that no gradient is within view distance, a zero vector will be returned
 def _aggregate_max(self, pose, frameids=[])
 ```
 
-* **near** robot might not reach gradient source  
+* **near** 
 
 Option `near` follows the maximum attractive gradient by avoiding all repulsive gradients (non-neighbors). First the (relatively) nearest attractive gradient is determined and the vector to follow it calculated. 
 Afterwards, the repulsive vectors are calculated and summed up. If the agent is within the goal radius of a repulsive gradient, a random vector (length = goal radius + diffusion) leading away from 

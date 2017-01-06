@@ -935,6 +935,36 @@ class SoBufferTest(unittest.TestCase):
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(-0.03, 1.96, 0.0))
 
+    def test_aggregate_all(self):
+        """
+        test aggregate all method
+        :return:
+        """
+        bffr = soBuffer.SoBuffer(result='all')
+        bffr._data = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])],
+            'None': [soMessage(None, Vector3(0, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
+                     soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        }
+
+        pose = Vector3(1, 2, 3)
+
+        # only one frameID + repulsive gradient is not considered as outside view distance
+        result = bffr._aggregate_all(pose, frameids=['gradient'])
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
+
+        # all frameIDs - everything within view is aggregated
+        result = bffr._aggregate_nearest_repulsion(pose)
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+
+        self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
+
 
 
 # run tests - start roscore before running tests
