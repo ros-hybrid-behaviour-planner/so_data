@@ -19,7 +19,7 @@ class SoBuffer():
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0, min_diffusion=0.1,
-                 view_distance=2.0, id='', result='', collision_avoidance='repulsion',
+                 view_distance=2.0, id='', result='reach', collision_avoidance='',
                  store_neighbors=True, neighbor_storage_size=2, framestorage=[]):
         """
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /

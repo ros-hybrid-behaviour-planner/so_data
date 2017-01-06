@@ -11,13 +11,12 @@ class SoBroadcaster():
     """
     This class is the broadcaster to send data from one robot to the data space
     """
-
     def __init__(self):
         """
         Constructor
         Creates publisher to broadcast data to soData as an soMessage 
         """
-        self._pub = rospy.Publisher('soData', soMessage, queue_size = 1)
+        self._pub = rospy.Publisher('soData', soMessage, queue_size=1)
 
     def send_data(self, message):
         """
@@ -26,7 +25,5 @@ class SoBroadcaster():
         """
         if isinstance(message, soMessage):
             self._pub.publish(message)
-            self._previous = rospy.Time.now()
         else:
             rospy.loginfo("Wrong message type")
-
