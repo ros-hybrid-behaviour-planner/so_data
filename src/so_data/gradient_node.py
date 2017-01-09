@@ -48,14 +48,11 @@ def get_gradient(index):
     # possible gradients, can be changed / enhanced as required
     if index >= 0:
         gradients_set = []
-        gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1, diffusion=1.0,
-                                                             goal_radius=1.0),
+        gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1, diffusion=1.0, goal_radius=1.0),
                               create_gradient(Vector3(5, 3, 0), attraction=1, diffusion=3.0),
-                              create_gradient(Vector3(8, 3, 0), attraction=-1, diffusion=1.0,
-                                                             goal_radius=1.0)])
+                              create_gradient(Vector3(8, 3, 0), attraction=-1, diffusion=1.0, goal_radius=1.0)])
         gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0),
-                              create_gradient(Vector3(4, 1, 0), attraction=-1, diffusion=1.0,
-                                                             goal_radius=2.0)])
+                              create_gradient(Vector3(4, 1, 0), attraction=-1, diffusion=1.0, goal_radius=2.0)])
         gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0)])
         gradients_set.append([create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=3.0),
                               create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=5.0)])

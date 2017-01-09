@@ -337,6 +337,24 @@ class SoBuffer(object):
         else:
             return False
 
+    def get_no_potential(self, pose, frameids=[]): #TODO unit test
+        """
+        determines whether there is still some attraction/repulsion
+        :param pose: agent position
+        :param frameids: frameIDs of gradients to be considered in calculation
+        :return: True/False (bool)
+        """
+
+        # calculate gradient vector
+        vector = self.get_current_gradient(pose, frameids)
+        d = calc.vector_length(vector)
+
+        if d == 0.0:  # no gradient vector to follow --> "goal reached / repulsion avoided"
+            return True
+        else:
+            return False
+
+
     # Collision avoidance between neighbors
     def _gradient_repulsion(self):
         """
