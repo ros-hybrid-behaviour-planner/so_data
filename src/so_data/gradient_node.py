@@ -9,7 +9,6 @@ import rospy
 from selforga.gradient import SpreadGradient
 from geometry_msgs.msg import Vector3
 
-index = rospy.get_param("~gradientPosesSetIndex", -1)
 
 def get_gradient(index):
     # possible gradients, can be changed / enhanced as required

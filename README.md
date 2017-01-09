@@ -373,3 +373,9 @@ The following options can be set as `sensor_type`:
 More options can be integrated if necessary. 
 
 In the subscription callback, the sensor value will be determined based on the chosen option. 
+
+
+gradient_node(.py)
+------------------
+Node enabling to send artificial gradients in the environment. Gradients can be specified in the list in method get_gradient(index) and set via the gradient launch file. The spreading frequency
+can be set (ros.Rate()) via the launch file too. 
