@@ -23,6 +23,7 @@ class SoBuffer(object):
                  neighbor_storage_size=2, framestorage=[], threshold=2, a=1.0, b=1.0, h=0.5, epsilon=1.0,
                  max_acceleration=1.0, max_velocity=1.0):
         """
+        most params can be reset using setters (eof), but not id and framestorage
         :param aggregation: indicator which kind of aggregation should be applied per frameID at a gradient center /
                             within aggregation_distance of gradient center. "DEFAULT" used for gradients without own
                             aggregation option.
@@ -82,12 +83,12 @@ class SoBuffer(object):
                 if not id == 'robot':
                     self._data[id] = []
 
-        self._frames = framestorage  # frameIDs to be stored
+        self._frames = framestorage  # frameIDs to be stored, fixed (no setter)
 
         self._aggregation = aggregation
         self._aggregation_distance = aggregation_distance
         self._min_diffusion = min_diffusion
-        self._id = id
+        self._id = id  # fixed, no setter
         self._neighbor_storage_size = neighbor_storage_size
 
         # RETURN AGGREGATED DATA
@@ -110,7 +111,6 @@ class SoBuffer(object):
         self._epsilon = epsilon
         self._max_acceleration = max_acceleration
         self._max_velocity = max_velocity
-
 
     def store_data(self, msg):
         """
@@ -1017,6 +1017,7 @@ class SoBuffer(object):
                                                                   repulsion_radius, self._view_distance, self._h))
 
     # getters and setters
+    # quorum
     @property
     def threshold(self):
         return self._threshold
@@ -1025,6 +1026,7 @@ class SoBuffer(object):
     def threshold(self, threshold):
         self._threshold = threshold
 
+    # flocking
     @property
     def a(self):
         return self._a
@@ -1072,3 +1074,60 @@ class SoBuffer(object):
     @max_velocity.setter
     def max_velocity(self, max_velocity):
         self._max_velocity = max_velocity
+
+    # store data
+    @property
+    def aggregation(self):
+        return self._aggregation
+
+    @aggregation.setter
+    def aggregation(self, aggregation):
+        self._aggregation = aggregation
+
+    @property
+    def aggregation_distance(self):
+        return self._aggregation_distance
+
+    @aggregation_distance.setter
+    def aggregation_distance(self, aggregation_distance):
+        self._aggregation_distance = aggregation_distance
+
+    @property
+    def min_diffusion(self):
+        return self._min_diffusion
+
+    @min_diffusion.setter
+    def min_diffusion(self, min_diffusion):
+        self._min_diffusion = min_diffusion
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def neighbor_storage_size(self):
+        return self._neighbor_storage_size
+
+    @neighbor_storage_size.setter
+    def neighbor_storage_size(self, size):
+        self._neighbor_storage_size = size
+
+    @property
+    def view_distance(self):
+        return self._view_distance
+
+    @view_distance.setter
+    def view_distance(self, view_distance):
+        self._view_distance = view_distance
+
+    @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, result):
+        self._result = result
+
+    @property
+    def frames(self):
+        return self._frames
