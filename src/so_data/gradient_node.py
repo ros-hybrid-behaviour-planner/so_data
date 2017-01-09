@@ -6,7 +6,7 @@ Created on 09.01.2017
 """
 
 import rospy
-from selforga.gradient import SpreadGradient
+from so_data.gradient import SpreadGradient
 from geometry_msgs.msg import Vector3
 
 
