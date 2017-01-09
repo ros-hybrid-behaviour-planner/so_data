@@ -6,9 +6,34 @@ Created on 09.01.2017
 """
 
 import rospy
-import selforga.gradient
+from selforga.gradient import SpreadGradient
 from geometry_msgs.msg import Vector3
 
+index = rospy.get_param("~gradientPosesSetIndex", -1)
+
+def get_gradient(index):
+    # possible gradients, can be changed / enhanced as required
+    if index >= 0:
+        gradients_set = []
+        gradients_set.append([SpreadGradient.create_gradient(Vector3(2, 3, 0), attraction=-1, diffusion=1.0,
+                                                             goal_radius=1.0),
+                              SpreadGradient.create_gradient(Vector3(5, 3, 0), attraction=1, diffusion=3.0),
+                              SpreadGradient.create_gradient(Vector3(8, 3, 0), attraction=-1, diffusion=1.0,
+                                                             goal_radius=1.0)])
+        gradients_set.append([SpreadGradient.create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0),
+                              SpreadGradient.create_gradient(Vector3(4, 1, 0), attraction=-1, diffusion=1.0,
+                                                             goal_radius=2.0)])
+        gradients_set.append([SpreadGradient.create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0)])
+        gradients_set.append([SpreadGradient.create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=3.0),
+                              SpreadGradient.create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=5.0)])
+        gradients_set.append([SpreadGradient.create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=2.0),
+                              SpreadGradient.create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=5.0)])
+
+        if index < len(gradients_set):
+            return gradients_set[index]
+        else:
+            rospy.logwarn("gradientSet index out of range")
+            return []
 
 if __name__ == '__main__':
     """
@@ -19,30 +44,8 @@ if __name__ == '__main__':
     gradient_poses_set_index = rospy.get_param("~gradientPosesSetIndex", -1)
 
     # artificial gradient - initialize spreading
-    gradient = selforga.gradient.SpreadGradient()
-
-    gradients = []
-
-    # possible gradients, can be changed / enhanced as required
-    if gradient_poses_set_index >= 0:
-        gradients_set = []
-        gradients_set.append([gradient.create_gradient(Vector3(2, 3, 0), attraction=-1, diffusion=1.0, goal_radius=1.0),
-                              gradient.create_gradient(Vector3(5, 3, 0), attraction=1, diffusion=3.0),
-                              gradient.create_gradient(Vector3(8, 3, 0), attraction=-1, diffusion=1.0,
-                                                       goal_radius=1.0)])
-        gradients_set.append([gradient.create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0),
-                              gradient.create_gradient(Vector3(4, 1, 0), attraction=-1, diffusion=1.0,
-                                                       goal_radius=2.0)])
-        gradients_set.append([gradient.create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0)])
-        gradients_set.append([gradient.create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=3.0),
-                              gradient.create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=5.0)])
-        gradients_set.append([gradient.create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=2.0),
-                              gradient.create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=5.0)])
-
-        if gradient_poses_set_index < len(gradients_set):
-            gradients = gradients_set[gradient_poses_set_index]
-        else:
-            rospy.logwarn("gradientSet index out of range")
+    gradient = SpreadGradient()
+    gradients = get_gradient(gradient_poses_set_index)
 
     while not rospy.is_shutdown():
 
@@ -51,8 +54,5 @@ if __name__ == '__main__':
             gradient.send_message(val)
 
         rate.sleep()
-
-
-
 
 

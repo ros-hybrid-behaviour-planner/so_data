@@ -287,7 +287,7 @@ class SoBuffer(object):
 
         return result
 
-    def get_collision_avoidance(self): #TODO evtl consolidate mit
+    def get_collision_avoidance(self): #TODO evtl consolidate mit get current gradient
         """
         collision avoidance based on neighbor and ownpos gradients (frameid's = 'robotX')
         :return: vector
