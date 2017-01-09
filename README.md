@@ -379,3 +379,8 @@ gradient_node(.py)
 ------------------
 Node enabling to send artificial gradients in the environment. Gradients can be specified in the list in method get_gradient(index) and set via the gradient launch file. The spreading frequency
 can be set (ros.Rate()) via the launch file too. 
+
+There are two methods included which are purely for convenience. The first one is the `create_gradient(...)` method allowing to create a soMessage by specifying the required parameters and setting defaults
+ for the rest. The second method is `get_gradient(index)` which returns a gradient list based on the index position handed over. New gradient lists can be added to the currently available set and the method
+ can be used in other files, e.g. in main.py of the swarm_behaviour package to draw the gradients in the turtlesim environment. 
+

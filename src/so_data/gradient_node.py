@@ -42,8 +42,8 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle=0.0, direction=
 
 def get_gradient(index):
     """
-    :param index:
-    :return:
+    :param index: index of gradient list to be returned
+    :return: gradient list
     """
     # possible gradients, can be changed / enhanced as required
     if index >= 0:
