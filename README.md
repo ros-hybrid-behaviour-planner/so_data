@@ -19,6 +19,8 @@ The package consists of the following components:
 * **gradientSensor.py**: implements a complex version of the Simple Topic Sensor, the Gradient Sensor
 * **soMessage.msg**: message file describing gradients 
 
+The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.ros.org/kinetic/api/geometry_msgs/html/msg/Pose.html) Message. 
+
 
 soMessage
 ---------
@@ -396,7 +398,8 @@ def __init__(self, name, topic=None, message_type=None,  initial_value=None, cre
 The following options can be set as `sensor_type`:
 
 * **gradient**: sets sensor value to current gradient vector (see method `get_current_gradient`)
-* **bool**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not (see method `get_goal_reached`)
+* **bool_attractive**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not (see method `get_goal_reached`)
+* **bool_all**: sets sensor value to True/False based on the strength of influence of the gradients nearby. Length < 0.1 leads to true (0.0 will be hardly reached) 
 
 More options can be integrated if necessary. 
 

@@ -19,7 +19,7 @@ class SoBuffer(object):
     This class is the buffer for received self-organization data
     """
     def __init__(self, aggregation={'DEFAULT': 'max'}, aggregation_distance=1.0, min_diffusion=0.1,
-                 view_distance=2.0, id='', result='reach', collision_avoidance='',
+                 view_distance=2.0, id='', result='near', collision_avoidance='',
                  neighbor_storage_size=2, framestorage=[], threshold=2, a=1.0, b=1.0, h=0.5, epsilon=1.0,
                  max_acceleration=1.0, max_velocity=1.0):
         """
@@ -249,7 +249,7 @@ class SoBuffer(object):
         """
         return self._data
 
-    def get_current_gradient(self, pose, frameids=[]):
+    def get_current_gradient(self, pose, frameids=[]):  # TODO unit test anpassen?
         """
         returns movement vector based on gradients & with or without collision avoidance
         :param pose: Pose Message with position of robot (geometry msgs Pose)
@@ -356,7 +356,8 @@ class SoBuffer(object):
         vector = self.get_current_gradient(pose, frameids)
         d = calc.vector_length(vector)
 
-        if d == 0.0:  # no gradient vector to follow --> "goal reached / repulsion avoided"
+        # no gradient vector to follow --> "goal reached / repulsion avoided"
+        if d <= 0.1:  # nearly 0, as it might never be exactly zero
             return True
         else:
             return False
@@ -631,7 +632,7 @@ class SoBuffer(object):
         if gradients_repulsive:
             for gradient in gradients_repulsive:
                 grad = self._calc_repulsive_gradient_ge(gradient, attractive_gradient, pose)
-                # robot position is within obstacle radius, inf can't be handled as direction
+                # robot position is within obstacle goal radius, inf can't be handled as direction
                 # --> add vector which brings robot to the boarder of the obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius + gradient.diffusion)

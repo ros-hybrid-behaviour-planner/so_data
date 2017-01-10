@@ -42,8 +42,11 @@ class GradientSensor(SimpleTopicSensor):
         if self._sensor_type == 'gradient' or not self._sensor_type:
             tmp = self._buffer.get_current_gradient(msg.position)
             self.update(tmp)
-        elif self._sensor_type == 'bool':
+        elif self._sensor_type == 'bool_attractive':
             tmp = self._buffer.get_goal_reached(msg.position)
+            self.update(tmp)
+        elif self._sensor_type == 'bool_all':
+            tmp = self._buffer.get_no_potential(msg.position)
             self.update(tmp)
 
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
