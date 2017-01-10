@@ -362,6 +362,15 @@ class SoBuffer(object):
         else:
             return False
 
+    def get_neighbors_bool(self, pose):
+        flag = True
+
+        if self._neighbors:
+            for val in self._neighbors.values():
+                if calc.get_gradient_distance(val[-1].p, pose) < val[-1].diffusion + val[-1].goal_radius:
+                    flag = False
+        return flag
+
 
     # Collision avoidance between neighbors
     def _gradient_repulsion(self):
@@ -402,7 +411,7 @@ class SoBuffer(object):
                         repulsion.y += grad.y
                         repulsion.z += grad.z
 
-        # limit repulsion vector to repulsion radius
+        # limit repulsion vector length to repulsion radius
         d = calc.vector_length(repulsion)
         if d > repulsion_radius:
             repulsion.x *= repulsion_radius / d
@@ -419,14 +428,17 @@ class SoBuffer(object):
         """
         # initialize vector
         m = Vector3()
-        if self._own_pos:
-            repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
-        else:
-            repulsion_radius = self._view_distance
+
+        # no data available
+        if not self._own_pos:
+            return m
+
+        repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[-1].goal_radius
 
         if self._neighbors and self._own_pos:
             for val in self._neighbors.values():
                 distance = calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)
+                # agents within view
                 if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
@@ -835,8 +847,8 @@ class SoBuffer(object):
 
         return v
 
-    @staticmethod
-    def _calc_repulsive_gradient(gradient, pose):
+    #@staticmethod
+    def _calc_repulsive_gradient(self, gradient, pose):
         """
         :param gradient: position of the goal
         :param pose: position of the robot
@@ -850,7 +862,7 @@ class SoBuffer(object):
         tmp.y = pose.y - gradient.p.y
         tmp.z = pose.z - gradient.p.z
 
-        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) #- self._own_pos[-1].goal_radius
 
         if d <= gradient.goal_radius: #infinitely large repulsion
             v = Vector3(np.inf, np.inf, np.inf)
@@ -866,6 +878,8 @@ class SoBuffer(object):
                 v.y *= tmp.y
             if tmp.z != 0.0:
                 v.z *= tmp.z
+
+            print v
         elif gradient.goal_radius < d <= gradient.diffusion + gradient.goal_radius:
             # calculate norm vector for direction
             tmp.x /= d

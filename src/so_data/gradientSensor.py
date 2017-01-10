@@ -48,6 +48,9 @@ class GradientSensor(SimpleTopicSensor):
         elif self._sensor_type == 'bool_all':
             tmp = self._buffer.get_no_potential(msg.position)
             self.update(tmp)
+        elif self._sensor_type == 'neighbors':
+            tmp = self._buffer.get_neighbors_bool(msg.position)
+            self.update(tmp)
 
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
         if self._iShouldCreateLog:
