@@ -12,7 +12,18 @@ def unit_vector(vector):
     """
     Returns the unit vector of the vector.
     """
-    return vector / np.linalg.norm(vector)
+    return vector/np.linalg.norm(vector)
+
+
+def unit_vector3(vector):
+    """
+    Returns the unit vector of a vector3
+    """
+    d = vector_length(vector)
+    vector.x /= d
+    vector.y /= d
+    vector.z /= d
+    return vector
 
 
 def angle_between(v1, v2):

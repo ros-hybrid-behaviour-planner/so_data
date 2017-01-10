@@ -285,6 +285,13 @@ class SoBuffer(object):
             result.y += collision.y
             result.z += collision.z
 
+        # adjust length to be max within view_distance
+        if calc.vector_length(result) > self._view_distance:
+            result = calc.unit_vector3(result)
+            result.x *= self._view_distance
+            result.y *= self._view_distance
+            result.z *= self._view_distance
+
         return result
 
     def get_collision_avoidance(self): #TODO evtl consolidate mit get current gradient
