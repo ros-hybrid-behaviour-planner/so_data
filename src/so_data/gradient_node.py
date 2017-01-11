@@ -11,7 +11,7 @@ from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
 
 
-def create_gradient(position, attraction=0, diffusion=3.0, angle=0.0, direction=Vector3(),
+def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0, angle_y=0.0, direction=Vector3(),
                     goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
     """
     creates a soMessage to specify a gradient
@@ -32,7 +32,8 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle=0.0, direction=
     msg.header.stamp = rospy.Time.now()
     msg.diffusion = diffusion
     msg.goal_radius = goal_radius
-    msg.angle = angle
+    msg.angle_x = angle_x
+    msg.angle_y = angle_y
     msg.ev_factor = ev_factor
     msg.ev_time = ev_time
     msg.direction = direction
@@ -48,16 +49,26 @@ def get_gradient(index):
     # possible gradients, can be changed / enhanced as required
     if index >= 0:
         gradients_set = []
-        gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1, diffusion=1.0, goal_radius=1.0),
-                              create_gradient(Vector3(5, 3, 0), attraction=1, diffusion=3.0),
-                              create_gradient(Vector3(8, 3, 0), attraction=-1, diffusion=1.0, goal_radius=1.0)])
-        gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0),
-                              create_gradient(Vector3(4, 1, 0), attraction=-1, diffusion=1.0, goal_radius=2.0)])
-        gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1, diffusion=3.0)])
-        gradients_set.append([create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=3.0),
-                              create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=5.0)])
-        gradients_set.append([create_gradient(Vector3(4, 4, 0), attraction=-1, diffusion=2.0),
-                              create_gradient(Vector3(6, 6, 0), attraction=1, diffusion=5.0)])
+        gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1,
+                                              diffusion=1.0, goal_radius=1.0),
+                              create_gradient(Vector3(5, 3, 0), attraction=1,
+                                              diffusion=3.0),
+                              create_gradient(Vector3(8, 3, 0), attraction=-1,
+                                              diffusion=1.0, goal_radius=1.0)])
+        gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
+                                              diffusion=3.0),
+                              create_gradient(Vector3(4, 1, 0), attraction=-1,
+                                              diffusion=1.0, goal_radius=2.0)])
+        gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
+                                              diffusion=3.0)])
+        gradients_set.append([create_gradient(Vector3(6, 6, 0), attraction=1,
+                                              diffusion=3.0),
+                              create_gradient(Vector3(4, 4, 0), attraction=-1,
+                                              diffusion=5.0)])
+        gradients_set.append([create_gradient(Vector3(4, 4, 0), attraction=-1,
+                                              diffusion=2.0),
+                              create_gradient(Vector3(6, 6, 0), attraction=1,
+                                              diffusion=5.0)])
 
         if index < len(gradients_set):
             return gradients_set[index]

@@ -11,22 +11,26 @@ from behaviour_components.sensors import Sensor
 
 class GradientSensor(Sensor):
     """
-    Gradient Sensor storing received gradient messages and calculating values for the activation calculation
+    Gradient Sensor storing received gradient messages and calculating values
+    for the activation calculation
     """
-    def __init__(self, name, initial_value=None, sensor_type='gradient', sensor_buffer=None):
+    def __init__(self, name, initial_value=None, sensor_type='gradient',
+                 sensor_buffer=None):
         """
         :param name: sensor name
         :param initial_value: initial value of pose topic / sensor
         :param sensor_type: defines type of sensor
                             options:
                                 * gradient: returns movement vector
-                                * bool: returns True/False based on if nearest attractive gradient is reached
+                                * bool: returns True/False based on if nearest
+                                attractive gradient is reached
         :param sensor_buffer: soBuffer object
         """
         self._buffer = sensor_buffer
         self._sensor_type = sensor_type
 
-        super(GradientSensor, self).__init__(name=name, initial_value=initial_value)
+        super(GradientSensor, self).__init__(name=name,
+                                             initial_value=initial_value)
 
     def sync(self):
         """
