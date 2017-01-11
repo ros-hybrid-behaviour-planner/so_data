@@ -15,5 +15,8 @@ float32 angle_x
 float32 angle_y
 geometry_msgs/Vector3 direction
 
+# indicates whether data is from a moving object (e.g. robot)
+bool moving
+
 # payload
 diagnostic_msgs/KeyValue[] payload

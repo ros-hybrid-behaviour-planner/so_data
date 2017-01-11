@@ -12,7 +12,7 @@ from geometry_msgs.msg import Vector3
 
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
-                    angle_y=0.0, direction=Vector3(),
+                    angle_y=0.0, direction=Vector3(), moving = False,
                     goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
     """
     creates a soMessage to specify a gradient
@@ -38,6 +38,7 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     msg.ev_factor = ev_factor
     msg.ev_time = ev_time
     msg.direction = direction
+    msg.moving = moving
     msg.payload = payload
     return msg
 
