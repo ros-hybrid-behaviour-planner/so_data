@@ -141,10 +141,10 @@ def
 
 The method `get_goal_reached` returns True / False based on whether the gradient source was reached or not ('normalized' attraction == 0). 
 E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
-Parameters: current `pose` of the agent, `frameids` specifying which gradients should be considered in the calculation (optional). 
+Parameters: `frameids` specifying which gradients should be considered in the calculation (optional). 
 
 ```python
-def get_goal_reached(self, pose, frameids=[])
+def get_goal_reached(self, frameids=[])
 ```
 
 
@@ -155,7 +155,7 @@ The result of the aggregation of the (non-neighbor) gradients is summed with the
 More information see the respective subsections. 
 
 ```python
-def get_current_gradient(self, pose, frameids=[])
+def get_current_gradient(self, frameids=[])
 ```
 
 
@@ -171,12 +171,12 @@ The second approach is based on "New Potential Functions for Mobile Robot Path P
 The paper of Balch and Hybinette includes formulas to calculate attraction and repulsion of gradients. Attraction values are within `[0,1]` while repulsion values are within `[0, inf.]`. 
 Attraction and repulsion can be combined to generate the movement vector (see [TODO]). 
 In some scenarios the attractive gradient might not be reached as it attraction and repulsion lead to a zero potential value at a point not being the attractive gradient source. 
-Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data, `pose` is the current position of the agent. 
+Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data
 
 ```python
-def _calc_attractive_gradient(gradient, pose)
+def _calc_attractive_gradient(self, gradient)
 
-def _calc_repulsive_gradient(gradient, pose)
+def _calc_repulsive_gradient(self, gradient)
 ```
 
 ##### Ge and Cui (1999)
@@ -189,9 +189,9 @@ The formulas in this paper were enhanced with setting the repulsive gradient to 
 To ensure that the calculation of the repulsive vector works as aspected, the attractive gradient was not enhanced with being set to zero in its goal region. 
 
 ```python 
-def _calc_attractive_gradient_ge(gradient, pose)
+def _calc_attractive_gradient_ge(self, gradient)
 
-def _calc_repulsive_gradient_ge(gradient, goal, pose)
+def _calc_repulsive_gradient_ge(self, gradient, goal)
 ```
 
 
@@ -285,7 +285,7 @@ But when requesting the `current_gradient` the stored data is aggregated to retu
 There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
 
 ```python
-def get_current_gradient(self, pose, frameids=[])
+def get_current_gradient(self, frameids=[])
 ```
 
 
@@ -296,7 +296,7 @@ Options:
 Option `all` returns a vector which is the sum of all attractive and repulsive potentials within view distance. The calculation is based on the formulas by Balch and Hybinette. 
 
 ```python
-def _aggregate_all(self, pose, frameids=[])
+def _aggregate_all(self, frameids=[])
 ```
 
 * **max** 
@@ -308,7 +308,7 @@ In case that no gradient is within view distance, a zero vector will be returned
 If the agent is within the goal radius of a repulsive gradient, a random vector leading away from the repulsive gradient is returned (length = goal radius + diffusion). 
 
 ```python
-def _aggregate_max(self, pose, frameids=[])
+def _aggregate_max(self, frameids=[])
 ```
 
 * **near** 
@@ -320,7 +320,7 @@ If the agent is within the goal radius of a repulsive gradient, a random vector 
 The repulsive vector is added to the attractive vector and the sum is returned.  
  
 ```python
-def _aggregate_nearest_repulsion(self, pose, frameids=[])
+def _aggregate_nearest_repulsion(self, frameids=[])
 ```
 
 
@@ -331,7 +331,7 @@ In contrast to option `near`, it always leads to reaching the gradient source (`
 The calculation is based on the enhanced formulas by Ge and Cui (1999) (see **Gradient calculation**). 
 
 ```python
-def _aggregate_nearest_ge(self, pose, frameids=[])
+def _aggregate_nearest_ge(self, frameids=[])
 ```
 
 * **avoid** 
@@ -340,7 +340,7 @@ Option `avoid` returns a movement vector leading away from all gradients within 
 Regardless of the specified `attraction` value in the soMessage, the repulsive gradient method based on Balch and Hybinette is used to calculate the movement vector and the repulsive vectors from all gradients are summed up.  
 
 ```python
-def _aggregate_avoid_all(self, pose, frameids=[])
+def _aggregate_avoid_all(self, frameids=[])
 ```
 
 
