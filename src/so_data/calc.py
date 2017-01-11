@@ -27,7 +27,8 @@ def unit_vector3(vector):
 
 
 def angle_between(v1, v2):
-    """ Returns the directed angle in radians between vectors 'v1' and 'v2' - only working in 2D!::
+    """ Returns the directed angle in radians between vectors 'v1' and 'v2'
+    - only working in 2D!::
 
             >>> angle_between((1, 0), (0, 1))
             1.5707963267948966
@@ -55,7 +56,8 @@ def get_gradient_distance(gradpos, pose):
     :param pose: pose of the robot (Pose)
     :return: euclidian distance robot to last received gradient
     """
-    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y), (gradpos.z - pose.z)])
+    return np.linalg.norm([(gradpos.x - pose.x), (gradpos.y - pose.y),
+                           (gradpos.z - pose.z)])
 
 
 def vector_length(vector):

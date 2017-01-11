@@ -35,9 +35,11 @@ def agent_velocity(p1, p2):
     return v
 
 
-def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_distance, h):
+def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance,
+                   view_distance, h):
     """
-    :param neighbors: array of neighbor positions of agent i (tuple position - velocity)
+    :param neighbors: array of neighbor positions of agent i (tuple position -
+    velocity)
     :param agent: agent under consideration
     :param epsilon: sigma norm parameter (0,1)
     :param a: action function parameter
@@ -51,7 +53,8 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance, view_dis
 
     for q in neighbors:
         nij = vector_btw_agents(agent.p, q.p, epsilon)
-        m = action_function(q.p, agent.p, view_distance, epsilon, a, b, avoidance_distance, h)
+        m = action_function(q.p, agent.p, view_distance, epsilon, a, b,
+                            avoidance_distance, h)
         v.x += m * nij.x
         v.y += m * nij.y
         v.z += m * nij.z
@@ -103,12 +106,12 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
     d_alpha = sigma_norm_f(epsilon, avoidance_distance)
 
     # calculate parameter c for action function
-    c = np.abs(a-b)/np.sqrt(4*a*b)
+    c = np.abs(a - b) / np.sqrt(4 * a * b)
 
     z_phi = z - d_alpha
-    sigma = (z_phi + c) / (np.sqrt(1+np.square(z_phi+c)))
-    phi = 0.5 * ((a+b)*sigma+(a-b))
-    phi_alpha = bump_function(z/r_alpha, h)*phi
+    sigma = (z_phi + c) / (np.sqrt(1 + np.square(z_phi + c)))
+    phi = 0.5 * ((a + b) * sigma + (a - b))
+    phi_alpha = bump_function(z / r_alpha, h) * phi
 
     return phi_alpha
 
@@ -121,7 +124,7 @@ def sigma_norm(epsilon, z):
     """
     # Euclidean norm of vector
     z = calc.vector_length(z)
-    return (1/epsilon)*(np.sqrt(1+epsilon * np.square(z))-1)
+    return (1 / epsilon) * (np.sqrt(1 + epsilon * np.square(z)) - 1)
 
 
 def sigma_norm_f(epsilon, z):
@@ -131,7 +134,7 @@ def sigma_norm_f(epsilon, z):
     :return: sigma norm of z
     """
     # Euclidean norm of vector
-    return (1/epsilon)*(np.sqrt(1+epsilon * np.square(z))-1)
+    return (1 / epsilon) * (np.sqrt(1 + epsilon * np.square(z)) - 1)
 
 
 def bump_function(z, h):
@@ -145,7 +148,7 @@ def bump_function(z, h):
     if 0 <= z < h:
         return 1.0
     elif h <= z <= 1:
-        return 0.5 * (1.0 + np.cos(np.pi * ( (z - h)/(1.0 - h))))
+        return 0.5 * (1.0 + np.cos(np.pi * ((z - h) / (1.0 - h))))
     else:
         return 0.0
 
@@ -164,7 +167,7 @@ def adjacency_matrix(qj, qi, epsilon, r, h):
     z = sigma_norm(epsilon, dq)
     r_alpha = sigma_norm_f(epsilon, r)
 
-    return bump_function(z/r_alpha, h)
+    return bump_function(z / r_alpha, h)
 
 
 def vector_btw_agents(qi, qj, epsilon):
@@ -187,7 +190,8 @@ def vector_btw_agents(qi, qj, epsilon):
     return n
 
 
-def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance, h):
+def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius,
+                    view_distance, h):
     """
     :param neighbors:
     :param agent:
@@ -199,7 +203,8 @@ def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius, view_dist
     :param h:
     :return: vector of steering force
     """
-    grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius, view_distance, h)
+    grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius,
+                          view_distance, h)
 
     vel = velocity_consensus(neighbors, agent, epsilon, view_distance, h)
 

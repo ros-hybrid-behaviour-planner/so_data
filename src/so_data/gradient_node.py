@@ -11,7 +11,8 @@ from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
 
 
-def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0, angle_y=0.0, direction=Vector3(),
+def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
+                    angle_y=0.0, direction=Vector3(),
                     goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
     """
     creates a soMessage to specify a gradient
