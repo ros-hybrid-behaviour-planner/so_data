@@ -27,7 +27,7 @@ class SoBuffer(object):
                  neighbor_storage_size=2, store_all=True,
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
-                 max_velocity=1.0):
+                 max_velocity=1.0, quorum_moving=True, quorum_static=False):
         """
         most params can be reset using setters (eof)
         :param aggregation: indicator which kind of aggregation should be
@@ -93,6 +93,17 @@ class SoBuffer(object):
                          * 'None' has to be specified as the key for gradients
                          without frameID
         :type framestorage: list of strings
+
+        :param threshold: quorum sensing threshold to be passed to return True
+        :type threshold: int
+
+        :param quorum_moving: consider moving gradients (True) or not (False)
+                            in quorum decision
+        :type quorum_moving: bool
+
+        :param quorum_static: consider static gradients (True) or not (False)
+                            in quorum decision
+        :type quorum_static: bool
         """
 
         rospy.Subscriber('soData', soMessage, self.store_data)
@@ -132,6 +143,8 @@ class SoBuffer(object):
 
         # quorum
         self._threshold = threshold
+        self._quorum_moving = quorum_moving
+        self._quorum_static = quorum_static
 
         # flocking
         self._a = a
@@ -1127,25 +1140,72 @@ class SoBuffer(object):
     def quorum(self):
         """
         calculates agent density within view
-        :param threshold: number of agents which have to be within view to
-        switch state
         :return: True (threshold passed), False (threshold not passed)
         """
         count = 0
-        if self._moving:
-            for val in self._moving.values():  # returns list
+        if self._quorum_moving:
+            if self._moving:
+                for val in self._moving.values():  # returns list
                                                 # of neighbor positions
-                # check if neighbor is in sight
-                if calc.get_gradient_distance(val[-1].p,
-                                              self._own_pos[-1].p) <= val[
-                    -1].diffusion + val[-1].goal_radius \
-                        + self._view_distance:
-                    count += 1.0
+                    # check if neighbor is in sight
+                    if calc.get_gradient_distance(val[-1].p,
+                                                  self._own_pos[-1].p) <= val[
+                        -1].diffusion + val[-1].goal_radius \
+                            + self._view_distance:
+                        count += 1.0
+        if self._quorum_static:
+            for fid in self._static:
+                if self._static[fid]:
+                    for val in self._static[fid]:  # returns list
+                        # of neighbor positions
+                        # check if neighbor is in sight
+                        if calc.get_gradient_distance(val.p,
+                                                      self._own_pos[-1].p) <= \
+                                                val.diffusion + \
+                                                val.goal_radius \
+                                        + self._view_distance:
+                            count += 1.0
 
         if count >= self._threshold:
-            return True
+                return True
         else:
             return False
+
+    def quorum_list(self):
+            """
+            returns gradients within view
+            :return: list
+            """
+            view = []
+
+            if self._quorum_moving:
+                if self._moving:
+                    for val in self._moving.values():  # returns list
+                        # of neighbor positions
+                        # check if neighbor is in sight
+                        if calc.get_gradient_distance(val[-1].p,
+                                                      self._own_pos[-1].p) <= \
+                                                val[
+                                                    -1].diffusion + val[
+                                            -1].goal_radius \
+                                        + self._view_distance:
+                            view.append(val[-1])
+
+            if self._quorum_static:
+                for fid in self._static:
+                    if self._static[fid]:
+                        for val in self._static[fid]:  # returns list
+                            # of neighbor positions
+                            # check if neighbor is in sight
+                            if calc.get_gradient_distance(val.p,
+                                                          self._own_pos[-1
+                                                          ].p) <= \
+                                                    val.diffusion + \
+                                                    val.goal_radius \
+                                            + self._view_distance:
+                                view.append(val)
+
+            return view
 
     # FLOCKING
     # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)

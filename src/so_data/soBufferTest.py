@@ -32,21 +32,27 @@ class SoBufferTest(unittest.TestCase):
         bffr._moving = {
             'robot1': [soMessage(), soMessage(None, Vector3(2, 2, 0), 1, 1.0,
                                               1.0, 1.0, 0, 0, 0, Vector3(),
-                                              False, [])],
+                                              True, [])],
             'robot2': [soMessage(), soMessage(None, Vector3(5, 6, 0), 1, 2.0,
                                               1.0, 1.0, 0, 0, 0, Vector3(),
-                                              False, [])],
+                                              True, [])],
             'robot3': [soMessage(), soMessage(), soMessage(None,
                                                            Vector3(1, 2, 0),
                                                            1, 4.0, 1.0, 1.0, 0,
                                                            0, 0, Vector3(),
-                                                           False, [])]}
+                                                           True, [])]}
+
+        bffr._static = {
+            'None': [soMessage(None, Vector3(5, 6, 5), 1, 1.0,
+                                              1.0, 1.0, 0, 0, 0, Vector3(),
+                                              False, [])]
+        }
 
         bffr._own_pos = [soMessage(None, Vector3(1, 1, 1), 1, 1.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, [])]
 
         # no. of robots in view distance < threshold
-        bffr._threshold = 4
+        bffr._threshold = 5
         self.assertEqual(bffr.quorum(), False)
         bffr._threshold = 3
         self.assertEqual(bffr.quorum(), False)
@@ -56,6 +62,49 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr.quorum(), True)
         bffr._threshold = 1
         self.assertEqual(bffr.quorum(), True)
+
+    def test_quorum_list(self):
+        """
+        test quorum / density function
+        :return:
+        """
+        bffr = soBuffer.SoBuffer()
+
+        self.assertEqual(bffr.quorum_list(), [])
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot1': [soMessage(), soMessage(None, Vector3(2, 2, 0), 1, 1.0,
+                                              1.0, 1.0, 0, 0, 0, Vector3(),
+                                              True, [])],
+            'robot2': [soMessage(), soMessage(None, Vector3(5, 6, 0), 1, 2.0,
+                                              1.0, 1.0, 0, 0, 0, Vector3(),
+                                              True, [])],
+            'robot3': [soMessage(), soMessage(), soMessage(None,
+                                                           Vector3(1, 2, 0),
+                                                           1, 4.0, 1.0, 1.0, 0,
+                                                           0, 0, Vector3(),
+                                                           True, [])]}
+
+        bffr._static = {
+            'None': [soMessage(None, Vector3(5, 6, 5), 1, 1.0,
+                                              1.0, 1.0, 0, 0, 0, Vector3(),
+                                              False, []), soMessage()],
+        }
+
+        bffr._own_pos = [soMessage(None, Vector3(1, 1, 1), 1, 1.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+
+        result = [soMessage(None, Vector3(1, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, 0,
+                            Vector3(), True, []),
+                  soMessage(None, Vector3(2, 2, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
+                            Vector3(), True, [])]
+
+        self.assertEqual(bffr.quorum_list(), result)
+        bffr._quorum_static = True
+        result.append(soMessage())
+        self.assertEqual(bffr.quorum_list(), result)
+
 
     # GOAL REACHED
     def test_get_goal_reached(self):
