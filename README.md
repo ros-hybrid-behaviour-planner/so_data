@@ -389,13 +389,14 @@ Therewith, `soBroadcaster` is the basis for the implementation of spreading beha
 gradientSensor(.py)
 -------------------
 
-The class `GradientSensor` is a complex version of the `SimpleTopicSensor`. 
-Instead of subscribing directly to a topic with a primitive data type, `GradientSensor` uses a `soBuffer` to receive and store the gradient data.
-In the initialisation of the sensors not only the same parameters as for `SimpleTopicSensor` can be specified, but as well the `sensor_type` and `sensor_buffer`. `sensor_buffer` requires a soBuffer object to be handed over. 
+The class `GradientSensor` is a complex version of the `Sensor`. 
+`GradientSensor` uses the data provided by `soBuffer` to set the sensor values. 
+In the initialisation of the sensors not only the same parameters as for `Sensor` can be specified, but as well the `sensor_type` and `sensor_buffer`. 
+`sensor_buffer` requires a soBuffer object to be handed over. 
 `sensor_type` specifies which values the sensor will sense.  
 
 ```python
-def __init__(self, name, topic=None, message_type=None,  initial_value=None, create_log = False, sensor_type='gradient', sensor_buffer=None)
+def __init__(self, name, initial_value=None, sensor_type='gradient', sensor_buffer=None)
 ``` 
 
 The following options can be set as `sensor_type`:
@@ -403,6 +404,7 @@ The following options can be set as `sensor_type`:
 * **gradient**: sets sensor value to current gradient vector (see method `get_current_gradient`)
 * **bool_attractive**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not (see method `get_goal_reached`)
 * **bool_all**: sets sensor value to True/False based on the strength of influence of the gradients nearby. Length < 0.1 leads to true (0.0 will be hardly reached) 
+* **neighbors**: sets sensor value to True/False based on the presence of neighbors in the environment 
 
 More options can be integrated if necessary. 
 

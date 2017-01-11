@@ -30,17 +30,16 @@ class GradientSensor(Sensor):
 
     def sync(self):
         """
-        syncs sensor value
+        syncs sensor value setting self._value
         :return:
         """
         if self._sensor_type == 'gradient' or not self._sensor_type:
-            tmp = self._buffer.get_current_gradient()
+            self._value = self._buffer.get_current_gradient()
         elif self._sensor_type == 'bool_attractive':
-            tmp = self._buffer.get_goal_reached()
+            self._value = self._buffer.get_goal_reached()
         elif self._sensor_type == 'bool_all':
-            tmp = self._buffer.get_no_potential()
+            self._value = self._buffer.get_no_potential()
         elif self._sensor_type == 'neighbors':
-            tmp = self._buffer.get_neighbors_bool()
+            self._value = self._buffer.get_neighbors_bool()
 
-        self._value = tmp
         return self._value
