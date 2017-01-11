@@ -58,7 +58,8 @@ class SoBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer()
 
         # no gradients available --> True
-        self.assertEqual(bffr.get_goal_reached(Vector3(2,2,2)), True)
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr.get_goal_reached(), True)
 
         bffr._data = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
@@ -70,13 +71,17 @@ class SoBufferTest(unittest.TestCase):
                      soMessage(None, Vector3(1, 2, 6), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), [])]}
 
         # goal reached
-        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2)), True)
-        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 1)), True)
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr.get_goal_reached(), True)
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 1), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr.get_goal_reached(), True)
         # goal not reached
-        self.assertEqual(bffr.get_goal_reached(Vector3(6, 7, 2)), False)
+        bffr._own_pos = [soMessage(None, Vector3(6, 7, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr.get_goal_reached(), False)
         # only consider some frameIDs
-        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2), frameids=['gradient']), True)
-        self.assertEqual(bffr.get_goal_reached(Vector3(2, 2, 2), frameids=['None', 'test']), False)
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr.get_goal_reached(frameids=['gradient']), True)
+        self.assertEqual(bffr.get_goal_reached(frameids=['None', 'test']), False)
 
     # GRADIENT CALCULATIONS
     def test_calc_attractive_gradient(self):
@@ -87,40 +92,36 @@ class SoBufferTest(unittest.TestCase):
 
         # 2D - D < r <= C
         gradient = soMessage(None, Vector3(3, 4, 0), 1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6 * 0.8, 0.8 * 0.8, 0))
+        bffr._own_pos = [soMessage(None, Vector3(0, 0, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), Vector3(0.6 * 0.8, 0.8 * 0.8, 0))
 
         # 2D - r > C
         gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), Vector3(0.6, 0.8, 0))
 
         # 2D - r <= D
         gradient = soMessage(None, Vector3(3, 4, 0), 1, 2.0, 5.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0), [])
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), Vector3(0, 0, 0), [])
 
         # 2D - r > C - non zero robot pose
         gradient = soMessage(None, Vector3(4, 5, 0), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 1, 0)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0.6, 0.8, 0))
+        bffr._own_pos = [soMessage(None, Vector3(1, 1, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), Vector3(0.6, 0.8, 0))
 
         # 3D - D < r <= C
         gradient = soMessage(None, Vector3(3, 5, 10), 1, 6.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 4), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
         result = Vector3((2.0 / 7.0) * (5.0 / 6.0), (3.0 / 7.0) * (5.0 / 6.0), (6.0 / 7.0) * (5.0 / 6.0))
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), result)
 
         # 3D - r > C
         gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
         result = Vector3((2.0 / 7.0), (3.0 / 7.0), (6.0 / 7.0))
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), result)
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), result)
 
         # 3D - r <= D
         gradient = soMessage(None, Vector3(3, 5, 10), 1, 5.0, 7.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
-        self.assertEqual(bffr._calc_attractive_gradient(gradient, pose), Vector3(0, 0, 0))
+        self.assertEqual(bffr._calc_attractive_gradient(gradient), Vector3(0, 0, 0))
 
     def test_calc_repulsive_gradient(self):
         """
@@ -130,55 +131,55 @@ class SoBufferTest(unittest.TestCase):
 
         # 2D - D < r <= C
         gradient = soMessage(None, Vector3(3, 4, 0), -1, 5.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-0.6 * 0.2, -0.8 * 0.2, 0))
+        bffr._own_pos = [soMessage(None, Vector3(0, 0, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(-0.6 * 0.2, -0.8 * 0.2, 0))
 
         # 2D - r > C
         gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(0, 0, 0))
 
         # 2D - r <= D
         gradient = soMessage(None, Vector3(3, 4, 0), -1, 2.0, 5.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(0, 0, 0)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1.0 * np.inf, -1.0 * np.inf, np.inf))
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(-1.0 * np.inf, -1.0 * np.inf, np.inf))
 
         # 2D - r > C - non zero robot pose
         gradient = soMessage(None, Vector3(4, 5, 0), -1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 1, 0)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+        bffr._own_pos = [soMessage(None, Vector3(1, 1, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(0, 0, 0))
 
         # 3D - D < r <= C
         gradient = soMessage(None, Vector3(3, 5, 10), -1, 6.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 4), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
         result = Vector3((-2.0 / 7.0) * (1.0 / 6.0), (-3.0 / 7.0) * (1.0 / 6.0), (-6.0 / 7.0) * (1.0 / 6.0))
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), result)
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), result)
 
         # 3D - r > C
         gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(0, 0, 0))
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(0, 0, 0))
 
         # 3D - r <= D
         gradient = soMessage(None, Vector3(3, 5, 10), -1, 5.0, 7.0, 1.0, 0, 0, Vector3(), [])
-        pose = Point(1, 2, 4)
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient, pose), Vector3(-1 * np.inf, -1 * np.inf, -1 * np.inf))
+        self.assertEqual(bffr._calc_repulsive_gradient(gradient), Vector3(-1 * np.inf, -1 * np.inf, -1 * np.inf))
 
     def test_calc_attractive_gradient_ge(self):
         """
         test calc attractive gradient method based on Ge & Cui paper
         :return:
         """
+        bffr = soBuffer.SoBuffer()
         # robot within diffusion radius + goal radius of gradient
         gradient = soMessage(None, Vector3(3, 5, 10), -1, 10.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(0, 0, 0)), Vector3(3, 5, 10))
+        bffr._own_pos = [soMessage(None, Vector3(0, 0, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient), Vector3(3, 5, 10))
 
         # robot within goal radius of gradient
-        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(3, 7, 10)), Vector3(0, -2, 0))
+        bffr._own_pos = [soMessage(None, Vector3(3, 7, 10), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient), Vector3(0, -2, 0))
 
         # robot without radius + goal radius of gradient, but gradient is within view_distance
         gradient = soMessage(None, Vector3(2, 3, 6), -1, 4.0, 2.0, 1.0, 0, 0, Vector3(), [])
-        self.assertEqual(soBuffer.SoBuffer._calc_attractive_gradient_ge(gradient, Point(0, 0, 0)),
+        bffr._own_pos = [soMessage(None, Vector3(0, 0, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient),
                          Vector3((2.0 / 7.0) * 6.0, (3.0 / 7.0) * 6.0, (6.0 / 7.0) * 6.0))
 
     def test_repulsive_gradient_ge(self):
@@ -190,15 +191,19 @@ class SoBufferTest(unittest.TestCase):
         gradient = soMessage(None, Vector3(4, 2, 0), -1, 4.0, 2.0, 1.0, 0, 0, Vector3(), [])
         goal = soMessage(None, Vector3(1, 0, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])
 
+
         # diffusion and goal_radius of gradient shorter than distance
-        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(8, 8, 0)), Vector3())
+        bffr._own_pos = [soMessage(None, Vector3(8, 8, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal), Vector3())
 
         # agent within goal area of repulsive gradient
-        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal, Point(3, 2, 0)),
+        bffr._own_pos = [soMessage(None, Vector3(3, 2, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal),
                          Vector3(-np.inf, np.inf, np.inf))
 
         # robot within reach of gradient
-        v = bffr._calc_repulsive_gradient_ge(gradient, goal, Point(1, -2, 0))
+        bffr._own_pos = [soMessage(None, Vector3(1, -2, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+        v = bffr._calc_repulsive_gradient_ge(gradient, goal)
         v.x = round(v.x, 4)
         v.y = round(v.y, 4)
         v.z = round(v.z, 4)
@@ -414,7 +419,6 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr.get_data(), testlist)
 
-
     def test_store_data_fids_selection(self):
         """
         test store_data method, only store gradients with specified frameids
@@ -541,7 +545,6 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr.get_data(), {'None' : testlist})
 
-
     def test_store_data_ev(self):
         """
         test store_data method, evaporation of received data
@@ -567,7 +570,6 @@ class SoBufferTest(unittest.TestCase):
         bffr.store_data(msg)
 
         self.assertEqual(bffr.get_data(), testlist)
-
 
     def test_store_data_neighbors(self):
         """
@@ -684,7 +686,6 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr.get_data(), testlist)
 
-
     # Collision Avoidance / Repulsion
     def test_gradient_repulsion(self):
         """
@@ -797,7 +798,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient')
+        bffr = soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient', result='')
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0), 1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
@@ -819,7 +820,7 @@ class SoBufferTest(unittest.TestCase):
         }
 
         # calculate resulting vector
-        result = bffr.get_collision_avoidance()
+        result = bffr.get_current_gradient()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -829,7 +830,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._collision_avoidance = 'repulsion'
 
         # calculate resulting vector
-        result = bffr.get_collision_avoidance()
+        result = bffr.get_current_gradient()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -842,10 +843,9 @@ class SoBufferTest(unittest.TestCase):
         test aggregate max method
         :return:
         """
-
-        pose = Vector3(1, 2, 3)
-
         bffr = soBuffer.SoBuffer(result='max')
+
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
 
         bffr._data = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), []),
@@ -858,7 +858,7 @@ class SoBufferTest(unittest.TestCase):
         }
 
         # with all frameIDs
-        result = bffr._aggregate_max(pose)
+        result = bffr._aggregate_max()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -866,7 +866,7 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
 
         # only one frameID considered - no gradient within view
-        result = bffr._aggregate_max(pose, frameids=['None'])
+        result = bffr._aggregate_max(frameids=['None'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -874,7 +874,7 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(result, Vector3())
 
         # two frameIDs
-        result = bffr._aggregate_max(pose, frameids=['None', 'gradient'])
+        result = bffr._aggregate_max(frameids=['None', 'gradient'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -886,8 +886,9 @@ class SoBufferTest(unittest.TestCase):
         test aggregate nearest repulsion method
         :return:
         """
-        pose = Vector3(1, 2, 3)
         bffr = soBuffer.SoBuffer(result='near')
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+
         bffr._data = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0, 0, 0, Vector3(), []),
                          soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0, Vector3(), [])],
@@ -896,14 +897,14 @@ class SoBufferTest(unittest.TestCase):
         }
 
         # only one frameID + repulsive gradient is not considered
-        result = bffr._aggregate_nearest_repulsion(pose, frameids=['gradient'])
+        result = bffr._aggregate_nearest_repulsion(frameids=['gradient'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
 
         # all frameIDs
-        result = bffr._aggregate_nearest_repulsion(pose)
+        result = bffr._aggregate_nearest_repulsion()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -917,6 +918,8 @@ class SoBufferTest(unittest.TestCase):
         """
 
         bffr = soBuffer.SoBuffer(result='near')
+        bffr._own_pos = [soMessage(None, Vector3(1, -2, 0), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
+
         bffr._data = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 4.0, 1.0, 1.0, 0, 0, Vector3(), []),
                 soMessage(None, Vector3(1, 0, 0), 1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])],
@@ -926,14 +929,14 @@ class SoBufferTest(unittest.TestCase):
 
         # only one frameID + repulsive gradient is not considered
         pose = Vector3(1, -2, 0)
-        result = bffr._aggregate_nearest_ge(pose, frameids=['gradient'])
+        result = bffr._aggregate_nearest_ge(frameids=['gradient'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(0.0, 2.0, 0.0))
 
         # all frameIDs
-        result = bffr._aggregate_nearest_ge(pose)
+        result = bffr._aggregate_nearest_ge()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -952,17 +955,17 @@ class SoBufferTest(unittest.TestCase):
                      soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])]
         }
 
-        pose = Vector3(1, 2, 3)
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
 
         # only one frameID + repulsive gradient is not considered as outside view distance
-        result = bffr._aggregate_all(pose, frameids=['gradient'])
+        result = bffr._aggregate_all(frameids=['gradient'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
 
         # all frameIDs - everything within view is aggregated
-        result = bffr._aggregate_nearest_repulsion(pose)
+        result = bffr._aggregate_nearest_repulsion()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
@@ -983,17 +986,17 @@ class SoBufferTest(unittest.TestCase):
                  soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0, Vector3(), [])]
         }
 
-        pose = Vector3(1, 2, 3)
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0, Vector3(), [])]
 
         # only one frameID + repulsive gradient is not considered as outside view distance
-        result = bffr._aggregate_avoid_all(pose, frameids=['gradient'])
+        result = bffr._aggregate_avoid_all(frameids=['gradient'])
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(-0.41, 0.0, 0.41))
 
         # all frameIDs - everything within view is aggregated
-        result = bffr._aggregate_avoid_all(pose)
+        result = bffr._aggregate_avoid_all()
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
