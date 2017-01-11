@@ -47,8 +47,7 @@ The specification of frameIDs can help to assign gradients to specific tasks / b
 
 
 ###### reserved frameIDs:
-* **'robot' + ID**: frameID indicating that gradient of another robot is received, ID is usually a number 
-* **'DEFAULT'**: value is used to specify aggregation option (store_data in soBuffer) for frameIDs having no specific option assigned to 
+* **'DEFAULT'**: value is used to specify aggregation option (store_data in soBuffer) for frameIDs having no specific option assigned to  
 * **'None'**: value is assigned to all gradient messages which have no frameID when received 
 
 

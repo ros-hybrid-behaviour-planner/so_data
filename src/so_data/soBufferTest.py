@@ -29,7 +29,7 @@ class SoBufferTest(unittest.TestCase):
         bffr = soBuffer.SoBuffer()
 
         # 2 neighbors within view, one outside view
-        bffr._neighbors = {
+        bffr._moving = {
             'robot1': [soMessage(), soMessage(None, Vector3(2, 2, 0), 1, 1.0,
                                               1.0, 1.0, 0, 0, 0, Vector3(),
                                               False, [])],
@@ -70,7 +70,7 @@ class SoBufferTest(unittest.TestCase):
                                    0, 0, 0, Vector3(), False, [])]
         self.assertEqual(bffr.get_goal_reached(), True)
 
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0,
                                    0, 0, Vector3(), False, []),
                          soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0,
@@ -330,7 +330,7 @@ class SoBufferTest(unittest.TestCase):
                           Vector3(4, 4, 0), 1, 4.0, 0.0, 0.8, 4, 0, 0,
                       Vector3(), False, [])]}
 
-        bffr._data = deepcopy(data)
+        bffr._static = deepcopy(data)
         bffr._evaporate_buffer()
 
         data = {'None': [
@@ -361,7 +361,7 @@ class SoBufferTest(unittest.TestCase):
 
                 ]}
 
-        self.assertEqual(bffr.get_data(), data)
+        self.assertEqual(bffr.get_static(), data)
 
     def test_evaporation_msg(self):
         """
@@ -459,7 +459,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_data(), {'None': testlist})
+        self.assertEqual(bffr.get_static(), {'None': testlist})
 
     def test_store_data_max_aggregation_distance(self):
         """
@@ -503,7 +503,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_data(), {'None': testlist})
+        self.assertEqual(bffr.get_static(), {'None': testlist})
 
     def test_store_data_fids(self):
         """
@@ -537,13 +537,14 @@ class SoBufferTest(unittest.TestCase):
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_data(), testlist)
+        self.assertEqual(bffr.get_static(), testlist)
 
     def test_store_data_fids_selection(self):
         """
         test store_data method, only store gradients with specified frameids
         """
         bffr = soBuffer.SoBuffer(aggregation={'DEFAULT':'max'},
+                                 store_all=False,
                                  framestorage=['grad', 'silk'])
         testlist = {'grad': [], 'silk': []}
         now = rospy.Time.now()
@@ -575,7 +576,7 @@ class SoBufferTest(unittest.TestCase):
                         Vector3(), False, [])
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_data(), testlist)
+        self.assertEqual(bffr.get_static(), testlist)
 
     def test_store_data_min(self):
         """
@@ -610,7 +611,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_data(), {'None' : testlist})
+        self.assertEqual(bffr.get_static(), {'None' : testlist})
 
     def test_store_data_avg(self):
         """
@@ -651,7 +652,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_data(), {'None': testlist})
+        self.assertEqual(bffr.get_static(), {'None': testlist})
 
     def test_store_data_newest(self):
         """
@@ -690,7 +691,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_data(), {'None': testlist})
+        self.assertEqual(bffr.get_static(), {'None': testlist})
 
     def test_store_data_ev(self):
         """
@@ -720,7 +721,7 @@ class SoBufferTest(unittest.TestCase):
                         Vector3(), False, [])
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_data(), testlist)
+        self.assertEqual(bffr.get_static(), testlist)
 
     def test_store_data_neighbors(self):
         """
@@ -734,42 +735,42 @@ class SoBufferTest(unittest.TestCase):
         # replaced by fourth robot1 message
         msg = soMessage(Header(None, now - rospy.Duration(10), 'robot1'),
                         Vector3(2.1,2.2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # position older than newest stored position --> ignore
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot1'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # add to position list
         msg = soMessage(Header(None, now - rospy.Duration(5), 'robot1'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         testlist['robot1'].append(msg)
         bffr.store_data(msg)
 
         # add to position list
         msg = soMessage(Header(None, now, 'robot1'), Vector3(2, 2, 0), 1, 4.0,
-                        1.0, 0.8, 5, 0, 0, Vector3(), False, [])
+                        1.0, 0.8, 5, 0, 0, Vector3(), True, [])
         testlist['robot1'].append(msg)
         bffr.store_data(msg)
 
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot2'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         testlist['robot2'].append(msg)
         bffr.store_data(msg)
 
         # own position
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot3'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         ownpos.append(msg)
         bffr.store_data(msg)
 
-        self.assertEqual(bffr._neighbors, testlist)
+        self.assertEqual(bffr._moving, testlist)
         self.assertEqual(bffr._own_pos, ownpos)
 
     def test_store_data_neighbors_False(self):
@@ -784,38 +785,38 @@ class SoBufferTest(unittest.TestCase):
         # replaced by fourth robot1 message
         msg = soMessage(Header(None, now - rospy.Duration(10), 'robot1'),
                         Vector3(2.1,2.2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # position older than newest stored position --> ignore
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot1'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # add to position list
         msg = soMessage(Header(None, now - rospy.Duration(5), 'robot1'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # add to position list
         msg = soMessage(Header(None, now, 'robot1'), Vector3(2, 2, 0), 1, 4.0,
-                        1.0, 0.8, 5, 0, 0, Vector3(), False, [])
+                        1.0, 0.8, 5, 0, 0, Vector3(), True, [])
         bffr.store_data(msg)
 
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot2'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
         # own position
         msg = soMessage(Header(None, now - rospy.Duration(15), 'robot3'),
                         Vector3(2,2,0), 1, 4.0, 1.0, 0.8, 5, 0, 0,
-                        Vector3(), False, [])
+                        Vector3(), True, [])
         bffr.store_data(msg)
 
-        self.assertEqual(bffr._neighbors, {})
+        self.assertEqual(bffr._moving, {})
         self.assertEqual(bffr._own_pos, [])
 
     def test_store_data_various_aggregations(self):
@@ -852,7 +853,7 @@ class SoBufferTest(unittest.TestCase):
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_data(), testlist)
+        self.assertEqual(bffr.get_static(), testlist)
 
     # Collision Avoidance / Repulsion
     def test_gradient_repulsion(self):
@@ -876,7 +877,7 @@ class SoBufferTest(unittest.TestCase):
         # no neighbors specified
         self.assertEqual(bffr._gradient_repulsion(), Vector3())
 
-        bffr._neighbors = {
+        bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
                           Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
@@ -901,7 +902,7 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
 
         # neighbor within goal_radius - returns vector with ||vector|| = repulsion_radius
-        bffr._neighbors = {
+        bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
                           Vector3(2, 1.5, 0), 1, 2.0, 1.0, 1.0, 0, 0, 0,
@@ -935,7 +936,7 @@ class SoBufferTest(unittest.TestCase):
         # no neighbors specified
         self.assertEqual(bffr._repulsion_vector(), Vector3())
 
-        bffr._neighbors = {
+        bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
                           Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
@@ -961,7 +962,7 @@ class SoBufferTest(unittest.TestCase):
 
         # neighbor within goal_radius - returns vector with
         # ||vector|| = repulsion_radius
-        bffr._neighbors = {
+        bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
                           Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, 0,
@@ -992,7 +993,7 @@ class SoBufferTest(unittest.TestCase):
                       Vector3(), False, [])
         ]
 
-        bffr._neighbors = {
+        bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
                           Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
@@ -1038,7 +1039,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, [])]
 
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0,
                                    0, 0, Vector3(), False, []),
                          soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0,
@@ -1088,7 +1089,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, [])]
 
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, []),
                          soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0,
@@ -1124,7 +1125,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [soMessage(None, Vector3(1, -2, 0), -1, 3.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, [])]
 
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 4.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, []),
                 soMessage(None, Vector3(1, 0, 0), 1, 3.0, 1.0, 1.0, 0, 0, 0,
@@ -1156,7 +1157,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
         bffr = soBuffer.SoBuffer(result='all')
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, []),
                 soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0, 0,
@@ -1193,7 +1194,7 @@ class SoBufferTest(unittest.TestCase):
         """
 
         bffr = soBuffer.SoBuffer(result='all')
-        bffr._data = {
+        bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, []),
                      soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0, 0,

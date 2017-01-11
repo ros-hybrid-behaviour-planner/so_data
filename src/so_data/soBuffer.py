@@ -24,7 +24,8 @@ class SoBuffer(object):
                  aggregation_distance=1.0, min_diffusion=0.1,
                  view_distance=2.0, id='', result='near',
                  collision_avoidance='',
-                 neighbor_storage_size=2, framestorage=[], threshold=2, a=1.0,
+                 neighbor_storage_size=2, store_all=True,
+                 framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0):
         """
@@ -82,8 +83,11 @@ class SoBuffer(object):
          will be stored, set 0 not to store any neighbor gradients
         :type neighbor_storage_size: int [0, inf]
 
-        :param framestorage: list of frame IDs which should be stored
-                options: * [] = all frame IDs will be stored
+        :param store_all: defines whether all frameIDs will be stored or only
+                    the frameIDs defined in framestorage
+        :param framestorage: list of frame IDs which should be stored,
+                        applies both for moving and for static gradients
+                options: * [] = no gradients will be stored
                          * [key1, key2, ...] = only gradients which have one of
                           the specified frame IDs will be stored
                          * 'None' has to be specified as the key for gradients
@@ -94,16 +98,17 @@ class SoBuffer(object):
         rospy.Subscriber('soData', soMessage, self.store_data)
 
         # STORE DATA
-        self._data = {}  # gradient storage (non-neighbors), dict
+        self._static = {}  # static gradient storage, dict
         self._own_pos = []  # own positions storage
-        self._neighbors = {}  # neighbor gradients storage, dict
+        self._moving = {}  # moving gradients storage, e.g. robots, dict
 
         # initialise data dictionary (gradient storage) with frame IDs/keys
-        if framestorage:
-            for id in framestorage:
-                if not id == 'robot':
-                    self._data[id] = []
+        #if framestorage:
+        #    for id in framestorage:
+        #        if not id == 'DEFAULT':  # will not be stored
+        #            self._data[id] = []
 
+        self._store_all = store_all
         self._frames = framestorage  # frameIDs to be stored, fixed (no setter)
 
         self._aggregation = aggregation
@@ -150,12 +155,18 @@ class SoBuffer(object):
         # no frames specified - store everything; add key to dict s.t. it
         # will be stored
         # otherwise it results in self._data[msg.header.frame_id] == None
-        if not self._frames and msg.header.frame_id not in self._data and \
-                        msg.header.frame_id[:5] != 'robot':
-            self._data[msg.header.frame_id] = []
+        #if not self._frames and msg.header.frame_id not in self._data and \
+        #                msg.header.frame_id[:5] != 'robot':
+        #    self._data[msg.header.frame_id] = []
 
-        # store own position and neighbor data
-        if msg.header.frame_id[:5] == 'robot':
+        # check if received msg should be stored
+        if not self._store_all:
+            if msg.header.frame_id not in self.frames:
+                return
+
+        # store own position and neighbor / moving agents data
+        # if msg.header.frame_id[:5] == 'robot':
+        if msg.moving:
             if self._neighbor_storage_size > 0:
                 if self._id and msg.header.frame_id == self._id:
                     # check if data is newer
@@ -167,18 +178,18 @@ class SoBuffer(object):
                     # maximum length of stored own gradients exceeded
                     if len(self._own_pos) > self._neighbor_storage_size:
                         del self._own_pos[0]
-                elif msg.header.frame_id in self._neighbors:
+                elif msg.header.frame_id in self._moving:
                     # check if data is newer
                     if msg.header.stamp > \
-                            self._neighbors[msg.header.frame_id][-1]. \
+                            self._moving[msg.header.frame_id][-1]. \
                                     header.stamp:
-                        self._neighbors[msg.header.frame_id].append(msg)
+                        self._moving[msg.header.frame_id].append(msg)
                     # maximum length of stored neighbor gradients exceeded
-                    if len(self._neighbors[msg.header.frame_id]) > \
+                    if len(self._moving[msg.header.frame_id]) > \
                             self._neighbor_storage_size:
-                        del self._neighbors[msg.header.frame_id][0]
+                        del self._moving[msg.header.frame_id][0]
                 else:
-                    self._neighbors[msg.header.frame_id] = [msg]
+                    self._moving[msg.header.frame_id] = [msg]
         else:  # Aggregation of data with same content (position), but
                # different diffusion radii
 
@@ -200,120 +211,113 @@ class SoBuffer(object):
             if not msg:  # evaporation let to disappearance of the message
                 return
 
-            if msg.header.frame_id in self._data:
+            if msg.header.frame_id in self._static:
                 # indicates whether data point at same position / within
                 # aggregation radius is already stored
-                found = False
+                view = {}
 
-                # self._data stores data with the received frameID
-                if self._data[msg.header.frame_id]:
-                    view = {}
+                # find all points which are in aggregation range of message
+                for i in xrange(len(self._static[msg.header.frame_id])
+                                        - 1, -1, -1):
+                    distance = calc.get_gradient_distance(
+                        self._static[msg.header.frame_id][i].p, msg.p)
+                    # data point lies within aggregation distance
+                    if distance <= self._aggregation_distance:
+                        view[i] = distance
 
-                    # find all points which are in aggregation range of message
-                    for i in xrange(len(self._data[msg.header.frame_id])
-                                            - 1, -1, -1):
-                        distance = calc.get_gradient_distance(
-                            self._data[msg.header.frame_id][i].p, msg.p)
-                        # data point lies within aggregation distance
-                        if distance <= self._aggregation_distance:
-                            view[i] = distance
-
-                    # find minimum value of gradient centers within view
-                    if view:
-                        found = True
-                        min_val = min(view.values())  # get minimum distance
-                        result = [j for j, v in view.items() if v == min_val]
-
-                        # several with same distance - random value of list
-                        if len(result) > 1:
-                            k = random.choice(result)
-                        # only one minimum - use found index
-                        else:
-                            k = result[0]
-
-                        if aggregation == 'max':  # keep data with max reach
-                            if msg.diffusion + msg.goal_radius >= \
-                                            self._data[msg.header.frame_id][k]. \
-                                                    diffusion \
-                                            + self._data[msg.header.frame_id][
-                                        k]. \
-                                            goal_radius:
-                                del self._data[msg.header.frame_id][k]
-                                self._data[msg.header.frame_id].append(msg)
-                        elif aggregation == 'min':  # keep data with min reach
-                            if msg.diffusion + msg.goal_radius <= \
-                                            self._data[msg.header.frame_id][k]. \
-                                                    diffusion \
-                                            + self._data[msg.header.frame_id][
-                                        k]. \
-                                            goal_radius:
-                                del self._data[msg.header.frame_id][k]
-                                self._data[msg.header.frame_id].append(msg)
-                        elif aggregation == 'avg':
-                            # attraction is the same direction
-                            if msg.attraction == \
-                                    self._data[msg.header.frame_id][k]. \
-                                            attraction:
-                                msg.diffusion = (msg.diffusion +
-                                                 self._data[
-                                                     msg.header.frame_id][
-                                                     k].diffusion) / 2.0
-                                msg.goal_radius = (msg.goal_radius +
-                                                   self._data[
-                                                       msg.header.frame_id][
-                                                       k].goal_radius) / 2.0
-                            else:
-                                # change sign
-                                if self._data[msg.header.frame_id][
-                                    k].diffusion + \
-                                        self._data[msg.header.frame_id][
-                                            k].goal_radius \
-                                        > msg.diffusion + msg.goal_radius:
-                                    msg.attraction *= -1
-                                msg.diffusion = np.absolute(msg.diffusion -
-                                                            self._data[
-                                                                msg.header.frame_id][
-                                                                k].diffusion)
-                                msg.goal_radius = np.absolute(msg.goal_radius -
-                                                              self._data[
-                                                                  msg.header.frame_id][
-                                                                  k].goal_radius)
-
-                            msg.p.x = (msg.p.x +
-                                       self._data[msg.header.frame_id][k].p.x) \
-                                      / 2.0
-                            msg.p.y = (msg.p.y +
-                                       self._data[msg.header.frame_id][k].p.y) \
-                                      / 2.0
-                            msg.p.z = (msg.p.z +
-                                       self._data[msg.header.frame_id][k].p.z) \
-                                      / 2.0
-                            del self._data[msg.header.frame_id][k]
-                            # store average element as long as it has a goal
-                            # radius or a diffusion radius larger
-                            # than the minimum required diffusion
-                            if msg.diffusion >= self._min_diffusion or \
-                                            msg.goal_radius != 0.0:
-                                self._data[msg.header.frame_id].append(msg)
-                        elif aggregation == 'newest':  # keep last received
-                            # gradient at one position
-                            if msg.header.stamp >= \
-                                    self._data[msg.header.frame_id][k]. \
-                                            header.stamp:
-                                del self._data[msg.header.frame_id][k]
-                                self._data[msg.header.frame_id].append(msg)
-                else:
-                    self._data[msg.header.frame_id].append(msg)
+                # find minimum value of gradient centers within view
+                if view:
                     found = True
+                    min_val = min(view.values())  # get minimum distance
+                    result = [j for j, v in view.items() if v == min_val]
 
-                if not found:
-                    self._data[msg.header.frame_id].append(msg)
+                    # several with same distance - random value of list
+                    if len(result) > 1:
+                        k = random.choice(result)
+                    # only one minimum - use found index
+                    else:
+                        k = result[0]
 
-    def get_data(self):
+                    if aggregation == 'max':  # keep data with max reach
+                        if msg.diffusion + msg.goal_radius >= \
+                                        self._static[msg.header.frame_id][k]. \
+                                                diffusion \
+                                        + self._static[msg.header.frame_id][k]. \
+                                        goal_radius:
+                            del self._static[msg.header.frame_id][k]
+                            self._static[msg.header.frame_id].append(msg)
+                    elif aggregation == 'min':  # keep data with min reach
+                        if msg.diffusion + msg.goal_radius <= \
+                                        self._static[msg.header.frame_id][k]. \
+                                                diffusion \
+                                        + self._static[msg.header.frame_id][k]. \
+                                        goal_radius:
+                            del self._static[msg.header.frame_id][k]
+                            self._static[msg.header.frame_id].append(msg)
+                    elif aggregation == 'avg':
+                        # attraction is the same direction
+                        if msg.attraction == \
+                                self._static[msg.header.frame_id][k]. \
+                                        attraction:
+                            msg.diffusion = (msg.diffusion +
+                                             self._static[
+                                                 msg.header.frame_id][k].
+                                             diffusion) / 2.0
+                            msg.goal_radius = (msg.goal_radius +
+                                               self._static[
+                                                   msg.header.frame_id][k].
+                                               goal_radius) / 2.0
+                        else:
+                           # change sign
+                            if self._static[msg.header.frame_id][
+                                k].diffusion + \
+                                    self._static[msg.header.frame_id][
+                                        k].goal_radius \
+                                    > msg.diffusion + msg.goal_radius:
+                                msg.attraction *= -1
+                            msg.diffusion = np.absolute(msg.diffusion -
+                                                        self._static[
+                                                            msg.header.frame_id][
+                                                            k].diffusion)
+                            msg.goal_radius = np.absolute(msg.goal_radius -
+                                                           self._static[
+                                                              msg.header.frame_id][
+                                                              k].goal_radius)
+
+                        msg.p.x = (msg.p.x +
+                                   self._static[msg.header.frame_id][k].p.x) \
+                                  / 2.0
+                        msg.p.y = (msg.p.y +
+                                   self._static[msg.header.frame_id][k].p.y) \
+                                  / 2.0
+                        msg.p.z = (msg.p.z +
+                                   self._static[msg.header.frame_id][k].p.z) \
+                                  / 2.0
+                        del self._static[msg.header.frame_id][k]
+                        # store average element as long as it has a goal
+                        # radius or a diffusion radius larger
+                        # than the minimum required diffusion
+                        if msg.diffusion >= self._min_diffusion or \
+                                        msg.goal_radius != 0.0:
+                            self._static[msg.header.frame_id].append(msg)
+                    elif aggregation == 'newest':  # keep last received
+                       # gradient at one position
+                        if msg.header.stamp >= \
+                                self._static[msg.header.frame_id][k]. \
+                                       header.stamp:
+                            del self._static[msg.header.frame_id][k]
+                            self._static[msg.header.frame_id].append(msg)
+
+                else:
+                    self._static[msg.header.frame_id].append(msg)
+            else:
+                self._static[msg.header.frame_id] = [msg]
+
+    def get_static(self):
         """
         :return buffer content
         """
-        return self._data
+        return self._static
 
     def get_current_gradient(self, frameids=[]):  # TODO unit test anpassen?
         """
@@ -377,11 +381,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -427,11 +431,13 @@ class SoBuffer(object):
     def get_neighbors_bool(self):
         flag = True
 
-        if self._neighbors:
-            for val in self._neighbors.values():
-                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p) \
-                        < val[-1].diffusion + val[-1].goal_radius:
-                    flag = False
+        if self._moving:
+            for val in self._moving.values():
+                if val[-1].attraction == -1:
+                    if calc.get_gradient_distance(val[-1].p,
+                                                  self._own_pos[-1].p) < \
+                                    val[-1].diffusion + val[-1].goal_radius:
+                        flag = False
         return flag
 
     # Collision avoidance between neighbors
@@ -453,8 +459,8 @@ class SoBuffer(object):
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
-        if self._neighbors:
-            for val in self._neighbors.values():
+        if self._moving:
+            for val in self._moving.values():
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(val[-1].p,
                                               self._own_pos[-1].p) <= val[
@@ -508,8 +514,8 @@ class SoBuffer(object):
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
-        if self._neighbors and self._own_pos:
-            for val in self._neighbors.values():
+        if self._moving and self._own_pos:
+            for val in self._moving.values():
                 distance = calc.get_gradient_distance(val[-1].p,
                                                       self._own_pos[-1].p)
                 # agents within view
@@ -562,11 +568,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -627,11 +633,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -704,11 +710,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -785,11 +791,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -850,11 +856,11 @@ class SoBuffer(object):
 
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
-            frameids = self._data.keys()
+            frameids = self._static.keys()
 
         for fid in frameids:
-            if fid in self._data:
-                for element in self._data[fid]:
+            if fid in self._static:
+                for element in self._static[fid]:
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
@@ -883,36 +889,36 @@ class SoBuffer(object):
     # EVAPORATION
     def _evaporate_buffer(self):
         """
-        evaporate buffer data stored in self._data
+        evaporate buffer data stored in self._static
         neighbor data is not evaporated as it is considered being fixed
         :return:
         """
         # interate through keys
-        for fid in self._data:
-            if self._data[fid]:  # array not empty
-                for i in xrange(len(self._data[fid]) - 1, -1,
+        for fid in self._static:
+            if self._static[fid]:  # array not empty
+                for i in xrange(len(self._static[fid]) - 1, -1,
                                 -1):  # go in reverse order
-                    if self._data[fid][i].ev_time > 0:
-                        diff = rospy.Time.now() - self._data[fid][
+                    if self._static[fid][i].ev_time > 0:
+                        diff = rospy.Time.now() - self._static[fid][
                             i].header.stamp
-                        if diff >= rospy.Duration(self._data[fid][i].ev_time):
-                            n = diff.secs // self._data[fid][i].ev_time
-                            self._data[fid][i].diffusion *= self._data[fid][
+                        if diff >= rospy.Duration(self._static[fid][i].ev_time):
+                            n = diff.secs // self._static[fid][i].ev_time
+                            self._static[fid][i].diffusion *= self._static[fid][
                                                                 i].ev_factor \
                                                             ** n
-                            self._data[fid][i].header.stamp += rospy.Duration(
-                                n * self._data[fid][i].ev_time)
+                            self._static[fid][i].header.stamp += rospy.Duration(
+                                n * self._static[fid][i].ev_time)
                     else:  # delta t for evaporation = 0 and evaporation
                         # applies, set diffusion immediately to 0
-                        if self._data[fid][i].ev_factor < 1.0:
-                            self._data[fid][i].diffusion = 0.0
+                        if self._static[fid][i].ev_factor < 1.0:
+                            self._static[fid][i].diffusion = 0.0
 
                     # in case that gradient concentration is lower than
                     # minimum and no goal_radius exists, delete data
-                    if self._data[fid][i].goal_radius == 0.0 and \
-                                    self._data[fid][
+                    if self._static[fid][i].goal_radius == 0.0 and \
+                                    self._static[fid][
                                         i].diffusion < self._min_diffusion:
-                        del self._data[fid][i]  # remove element
+                        del self._static[fid][i]  # remove element
 
     def _evaporate_msg(self, msg):
         """
@@ -1126,8 +1132,8 @@ class SoBuffer(object):
         :return: True (threshold passed), False (threshold not passed)
         """
         count = 0
-        if self._neighbors:
-            for val in self._neighbors.values():  # returns list
+        if self._moving:
+            for val in self._moving.values():  # returns list
                                                 # of neighbor positions
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(val[-1].p,
@@ -1159,14 +1165,14 @@ class SoBuffer(object):
             return
 
         # neighbors of agent
-        if self._neighbors:
-            for val in self._neighbors:
+        if self._moving:
+            for val in self._moving:
                 # check if neighbor is in sight
-                if calc.get_gradient_distance(self._neighbors[val][-1].p,
-                                              pose) <= self._neighbors[val][
-                    -1].diffusion + self._neighbors[val][-1].goal_radius \
+                if calc.get_gradient_distance(self._moving[val][-1].p,
+                                              pose) <= self._moving[val][
+                    -1].diffusion + self._moving[val][-1].goal_radius \
                         + self._view_distance:
-                    view.append(self._neighbors[val])
+                    view.append(self._moving[val])
 
         # create array of tuples with neighbor position - neighbor velocity &
         # own pos & velocity (p, v)
