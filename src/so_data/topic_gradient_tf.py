@@ -10,8 +10,6 @@ from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
 from abc import ABCMeta, abstractmethod
-import copy
-
 
 class TopicGradientTf(object):
     """

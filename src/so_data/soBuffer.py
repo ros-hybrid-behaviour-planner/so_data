@@ -111,12 +111,6 @@ class SoBuffer(object):
         self._own_pos = []  # own positions storage
         self._moving = {}  # moving gradients storage, e.g. robots, dict
 
-        # initialise data dictionary (gradient storage) with frame IDs/keys
-        #if framestorage:
-        #    for id in framestorage:
-        #        if not id == 'DEFAULT':  # will not be stored
-        #            self._data[id] = []
-
         self._store_all = store_all
         self._frames = framestorage
 
@@ -154,7 +148,6 @@ class SoBuffer(object):
 
         rospy.Subscriber('soData', soMessage, self.store_data)
 
-
     def store_data(self, msg):
         """
         store received soMessage using evaporation and aggregation
@@ -175,7 +168,7 @@ class SoBuffer(object):
 
         # check if received msg should be stored
         if not self._store_all:
-            if msg.header.frame_id not in self.frames:
+            if msg.header.frame_id not in self._frames:
                 return
 
         # store own position and neighbor / moving agents data

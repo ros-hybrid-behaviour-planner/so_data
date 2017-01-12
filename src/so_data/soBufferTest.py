@@ -1,8 +1,8 @@
-'''
+"""
 Created on 14.11.2016
 
 @author: kaiser
-'''
+"""
 
 import soBuffer
 import unittest
@@ -52,15 +52,15 @@ class SoBufferTest(unittest.TestCase):
                                    0, 0, 0, Vector3(), False, [])]
 
         # no. of robots in view distance < threshold
-        bffr._threshold = 5
+        bffr.threshold = 5
         self.assertEqual(bffr.quorum(), False)
-        bffr._threshold = 3
+        bffr.threshold = 3
         self.assertEqual(bffr.quorum(), False)
 
         # no. of robots in view distance > threshold
-        bffr._threshold = 2
+        bffr.threshold = 2
         self.assertEqual(bffr.quorum(), True)
-        bffr._threshold = 1
+        bffr.threshold = 1
         self.assertEqual(bffr.quorum(), True)
 
     def test_quorum_list(self):
@@ -101,7 +101,7 @@ class SoBufferTest(unittest.TestCase):
                             Vector3(), True, [])]
 
         self.assertEqual(bffr.quorum_list(), result)
-        bffr._quorum_static = True
+        bffr.quorum_static = True
         result.append(soMessage())
         self.assertEqual(bffr.quorum_list(), result)
 
@@ -1067,7 +1067,7 @@ class SoBufferTest(unittest.TestCase):
         # calculate vector
         self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
 
-        bffr._collision_avoidance = 'repulsion'
+        bffr.collision_avoidance = 'repulsion'
 
         # calculate resulting vector
         result = bffr.get_current_gradient()
