@@ -320,12 +320,6 @@ class SoBuffer(object):
             else:
                 self._static[msg.header.frame_id] = [msg]
 
-    def get_static(self):
-        """
-        :return buffer content
-        """
-        return self._static
-
     def get_current_gradient(self, frameids=[]):  # TODO unit test anpassen?
         """
         returns movement vector based on gradients & with or without collision
@@ -372,17 +366,37 @@ class SoBuffer(object):
 
         return result
 
+    def get_attractive_gradients_view(self, frameids=[]):
+        """
+        :return:
+        """
+        flag = False
+
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._static.keys()
+
+        for fid in frameids:
+            if fid in self._static:
+                for element in self._static[fid]:
+                    if calc.get_gradient_distance(element.p, self._own_pos[
+                        -1].p) <= element.diffusion + \
+                            element.goal_radius + self._view_distance:
+                        if element.attraction == 1:
+                            flag = True
+
+        return flag
+
     def get_goal_reached(self, frameids=[]):
         """
         determines whether nearest attractive gradient was reached - especially
         for return == reach option
-        returns True in case that gradient was reached or no gradient to be
-        reached was found
+        returns True in case that gradient was reached
         False otherwise
-        :param pose: Pose Message with position of robot
         :return: True/False (bool)
         """
         gradients_attractive = []
+
         tmp_att = np.inf  # attractive gradient calculations return values
         # between 0 and 1
 
@@ -405,12 +419,9 @@ class SoBuffer(object):
                 grad = self._calc_attractive_gradient(gradient)
                 att = np.linalg.norm([grad.x, grad.y, grad.z])
                 # attraction smaller means distance closer - normalized value
-                # taken regarding
-                # diffusion radius + goal_radius
+                # considered regarding diffusion radius + goal_radius
                 if att < tmp_att:
                     tmp_att = att
-        else:
-            return True
 
         if tmp_att == 0.0:
             return True
@@ -420,7 +431,6 @@ class SoBuffer(object):
     def get_no_potential(self, frameids=[]):  # TODO unit test
         """
         determines whether there is still some attraction/repulsion
-        :param pose: agent position
         :param frameids: frameIDs of gradients to be considered in calculation
         :return: True/False (bool)
         """
