@@ -27,7 +27,8 @@ class SoBuffer(object):
                  moving_storage_size=2, store_all=True,
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
-                 max_velocity=1.0, quorum_moving=True, quorum_static=False):
+                 max_velocity=1.0, quorum_moving=True, quorum_static=False,
+                 min_velocity=0.1):
         """
         most params can be reset using setters (eof)
         :param aggregation: indicator which kind of aggregation should be
@@ -145,6 +146,8 @@ class SoBuffer(object):
         self.epsilon = epsilon
         self.max_acceleration = max_acceleration
         self.max_velocity = max_velocity
+
+        self.min_velocity = min_velocity
 
         rospy.Subscriber('soData', soMessage, self.store_data)
 
@@ -358,11 +361,17 @@ class SoBuffer(object):
             result.z += collision.z
 
         # adjust length to be max within view_distance
-        if calc.vector_length(result) > self._view_distance:
+        d = calc.vector_length(result)
+        if d > self.max_velocity:
             result = calc.unit_vector3(result)
-            result.x *= self._view_distance
-            result.y *= self._view_distance
-            result.z *= self._view_distance
+            result.x *= self.max_velocity
+            result.y *= self.max_velocity
+            result.z *= self.max_velocity
+        elif 0 < d < self.min_velocity:
+            result = calc.unit_vector3(result)
+            result.x *= self.min_velocity
+            result.y *= self.min_velocity
+            result.z *= self.min_velocity
 
         return result
 
@@ -440,7 +449,7 @@ class SoBuffer(object):
         d = calc.vector_length(vector)
 
         # no gradient vector to follow --> "goal reached / repulsion avoided"
-        if d <= 0.1:  # nearly 0, as it might never be exactly zero
+        if d <= 0.0:  # nearly 0, as it might never be exactly zero
             return True
         else:
             return False
