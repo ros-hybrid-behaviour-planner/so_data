@@ -16,7 +16,8 @@ class SoBroadcaster():
         Constructor
         Creates publisher to broadcast data to soData as an soMessage 
         """
-        self._pub = rospy.Publisher('soData', soMessage, queue_size=1)
+        self._pub = rospy.Publisher('soData', soMessage, queue_size=1,
+                                    latch=True)
 
     def send_data(self, message):
         """
