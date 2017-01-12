@@ -827,7 +827,7 @@ class SoBufferTest(unittest.TestCase):
         test store_data method, neighbor gradients will not be stored
         :return:
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', neighbor_storage_size=0,
+        bffr = soBuffer.SoBuffer(aggregation='max', moving_storage_size=0,
                                  id='')
         now = rospy.Time.now()
 

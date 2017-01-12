@@ -24,7 +24,7 @@ class SoBuffer(object):
                  aggregation_distance=1.0, min_diffusion=0.1,
                  view_distance=2.0, id='', result='near',
                  collision_avoidance='',
-                 neighbor_storage_size=2, store_all=True,
+                 moving_storage_size=2, store_all=True,
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, quorum_moving=True, quorum_static=False):
@@ -79,9 +79,9 @@ class SoBuffer(object):
                           Fernandez-Marquez et al.
         :type collision_avoidance: str
 
-        :param neighbor_storage_size: how many gradient messages per neighbor
-         will be stored, set 0 not to store any neighbor gradients
-        :type neighbor_storage_size: int [0, inf]
+        :param moving_storage_size: how many gradient messages per moving
+         gradient will be stored, set 0 not to store any neighbor gradients
+        :type moving_storage_size: int [0, inf]
 
         :param store_all: defines whether all frameIDs will be stored or only
                     the frameIDs defined in framestorage
@@ -118,7 +118,7 @@ class SoBuffer(object):
         self._aggregation_distance = aggregation_distance
         self._min_diffusion = min_diffusion
         self._id = id  # fixed, no setter
-        self._neighbor_storage_size = neighbor_storage_size
+        self._moving_storage_size = moving_storage_size
 
         # RETURN AGGREGATED DATA
         self._view_distance = view_distance
@@ -174,7 +174,7 @@ class SoBuffer(object):
         # store own position and neighbor / moving agents data
         # if msg.header.frame_id[:5] == 'robot':
         if msg.moving:
-            if self._neighbor_storage_size > 0:
+            if self._moving_storage_size > 0:
                 if self._id and msg.header.frame_id == self._id:
                     # check if data is newer
                     if self._own_pos:  # own data already stored
@@ -183,7 +183,7 @@ class SoBuffer(object):
                     else:  # no own position stored so far
                         self._own_pos.append(msg)
                     # maximum length of stored own gradients exceeded
-                    if len(self._own_pos) > self._neighbor_storage_size:
+                    if len(self._own_pos) > self._moving_storage_size:
                         del self._own_pos[0]
                 elif msg.header.frame_id in self._moving:
                     # check if data is newer
@@ -193,7 +193,7 @@ class SoBuffer(object):
                         self._moving[msg.header.frame_id].append(msg)
                     # maximum length of stored neighbor gradients exceeded
                     if len(self._moving[msg.header.frame_id]) > \
-                            self._neighbor_storage_size:
+                            self._moving_storage_size:
                         del self._moving[msg.header.frame_id][0]
                 else:
                     self._moving[msg.header.frame_id] = [msg]
