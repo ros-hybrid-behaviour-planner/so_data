@@ -449,7 +449,7 @@ class SoBuffer(object):
         else:
             return False
 
-    def get_no_potential(self, frameids=[]):  # TODO unit test
+    def get_no_potential(self, frameids=[]):
         """
         determines whether there is still some attraction/repulsion
         :param frameids: frameIDs of gradients to be considered in calculation
@@ -461,20 +461,21 @@ class SoBuffer(object):
         d = calc.vector_length(vector)
 
         # no gradient vector to follow --> "goal reached / repulsion avoided"
-        if d <= 0.0:  # nearly 0, as it might never be exactly zero
+        if d == 0.0:
             return True
         else:
             return False
 
-    def get_neighbors_bool(self):
+    def get_neighbors_bool(self): #TODO unit test
+        """
+        :return: True (no neighbors within view), False (neighbors within view)
+        """
         flag = True
 
         if self._moving:
             for val in self._moving.values():
-                if val[-1].attraction == -1:
-                    if calc.get_gradient_distance(val[-1].p,
-                                                  self._own_pos[-1].p) < \
-                                    val[-1].diffusion + val[-1].goal_radius:
+                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)\
+                        < val[-1].diffusion + val[-1].goal_radius:
                         flag = False
         return flag
 

@@ -153,6 +153,84 @@ class SoBufferTest(unittest.TestCase):
         self.assertEqual(bffr.get_goal_reached(frameids=['None', 'test']),
                          False)
 
+    # no potential
+    def test_get_no_potential(self):
+        """
+        test get_no_potential method
+        :return:
+        """
+        bffr = soBuffer.SoBuffer()
+
+        # no gradients available --> True
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_no_potential(), True)
+
+        bffr._static = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0,
+                                   0, 0, Vector3(), False, []),
+                         soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0,
+                                   0, 0, Vector3(), False, [])],
+            'None': [soMessage(None, Vector3(7, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0,
+                               0, Vector3(), False, []),
+                     soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, 0,
+                               0, Vector3(), False, [])],
+            'test': [soMessage(None, Vector3(5, 3, 2), -1, 3.0, 1.0, 1.0, 0, 0,
+                               0, Vector3(), False, []),
+                     soMessage(None, Vector3(7, 2, 3), -1, 3.0, 1.0, 1.0, 0, 0,
+                               0, Vector3(), False, []),
+                     soMessage(None, Vector3(1, 2, 6), 1, 4.0, 1.0, 1.0, 0, 0,
+                               0, Vector3(), False, [])]}
+
+        # potential
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_no_potential(), False)
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 1), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_no_potential(), False)
+        # no potential
+        bffr._own_pos = [soMessage(None, Vector3(0, 9, 9), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_no_potential(), True)
+
+        # only consider some frameIDs
+        # no potential
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_no_potential(frameids=['gradient']), True)
+        # potential
+        self.assertEqual(bffr.get_no_potential(frameids=['None', 'test']),
+                         False)
+
+
+    def test_get_neighbors_bool(self):
+        """
+        test get_neighbors_bool method
+        :return:
+        """
+
+        bffr = soBuffer.SoBuffer()
+
+        # no gradients available --> True
+        bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_neighbors_bool(), True)
+
+        bffr._moving = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, []),
+                         soMessage(None, Vector3(2, 2, 2), -1, 1.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        }
+
+        self.assertEqual(bffr.get_neighbors_bool(), False)
+
+        bffr._own_pos = [soMessage(None, Vector3(9, 9, 9), -1, 3.0, 1.0, 1.0,
+                                   0, 0, 0, Vector3(), False, [])]
+        self.assertEqual(bffr.get_neighbors_bool(), True)
+
+
     # GRADIENT CALCULATIONS
     def test_calc_attractive_gradient(self):
         """
