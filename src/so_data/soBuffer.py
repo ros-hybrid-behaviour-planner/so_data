@@ -29,8 +29,8 @@ class SoBuffer(object):
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, quorum_moving=True, quorum_static=False,
                  min_velocity=0.1):
+
         """
-        most params can be reset using setters (eof)
         :param aggregation: indicator which kind of aggregation should be
         applied per frameID at a gradient center / within aggregation_distance
         of gradient center. "DEFAULT" used for gradients without own
@@ -105,6 +105,21 @@ class SoBuffer(object):
         :param quorum_static: consider static gradients (True) or not (False)
                             in quorum decision
         :type quorum_static: bool
+
+        :param max_velocity: maximum velocity of robot (= length of returned
+        vector); used in get_current_gradient and flocking
+        :param min_velocity:  minimum velocity of robot (= length of returned
+        vector); used in get_current_gradient and flocking
+
+        flocking parameters
+        :param a: action function parameter
+        :param b: action function parameter
+                    0 < a <= b; c = |a-b|/np.sqrt(4ab)
+        :param h: parameter (0,1) specifying boundaries of bump function
+        :param epsilon: sigma norm parameter (0,1)
+        :param max_acceleration: maximum acceleration of robot (flocking)
+
+
         """
 
         # STORE DATA
