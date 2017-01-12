@@ -118,7 +118,7 @@ class SoBuffer(object):
         #            self._data[id] = []
 
         self._store_all = store_all
-        self._frames = framestorage  # frameIDs to be stored, fixed (no setter)
+        self._frames = framestorage
 
         self._aggregation = aggregation
         self._aggregation_distance = aggregation_distance
@@ -128,29 +128,29 @@ class SoBuffer(object):
 
         # RETURN AGGREGATED DATA
         self._view_distance = view_distance
-        self._result = result
+        self.result = result
 
         if collision_avoidance != 'repulsion' and \
                         collision_avoidance != 'gradient' and \
                         collision_avoidance != '':
             rospy.logerr("No valid option for collision avoidance entered. "
                          "Set to gradient.")
-            self._collision_avoidance = 'gradient'
+            self.collision_avoidance = 'gradient'
         else:
-            self._collision_avoidance = collision_avoidance
+            self.collision_avoidance = collision_avoidance
 
         # quorum
-        self._threshold = threshold
-        self._quorum_moving = quorum_moving
-        self._quorum_static = quorum_static
+        self.threshold = threshold
+        self.quorum_moving = quorum_moving
+        self.quorum_static = quorum_static
 
         # flocking
-        self._a = a
-        self._b = b
-        self._h = h
-        self._epsilon = epsilon
-        self._max_acceleration = max_acceleration
-        self._max_velocity = max_velocity
+        self.a = a
+        self.b = b
+        self.h = h
+        self.epsilon = epsilon
+        self.max_acceleration = max_acceleration
+        self.max_velocity = max_velocity
 
         rospy.Subscriber('soData', soMessage, self.store_data)
 
@@ -347,24 +347,24 @@ class SoBuffer(object):
         result = Vector3()
 
         # distance vector based on gradients - merges available information
-        if self._result == 'near':
+        if self.result == 'near':
             result = self._aggregate_nearest_repulsion(frameids=frameids)
-        elif self._result == 'max':
+        elif self.result == 'max':
             result = self._aggregate_max(frameids=frameids)
-        elif self._result == 'all':
+        elif self.result == 'all':
             result = self._aggregate_all(frameids=frameids)
-        elif self._result == 'reach':
+        elif self.result == 'reach':
             result = self._aggregate_nearest_ge(frameids=frameids)
-        elif self._result == 'avoid':
+        elif self.result == 'avoid':
             result = self._aggregate_avoid_all(frameids=frameids)
 
         # Collision Avoidance between neighbors
-        if self._collision_avoidance == 'gradient':
+        if self.collision_avoidance == 'gradient':
             collision = self._gradient_repulsion()
             result.x += collision.x
             result.y += collision.y
             result.z += collision.z
-        elif self._collision_avoidance == 'repulsion':
+        elif self.collision_avoidance == 'repulsion':
             collision = self._repulsion_vector()
             result.x += collision.x
             result.y += collision.y
@@ -1144,7 +1144,7 @@ class SoBuffer(object):
         :return: True (threshold passed), False (threshold not passed)
         """
         count = 0
-        if self._quorum_moving:
+        if self.quorum_moving:
             if self._moving:
                 for val in self._moving.values():  # returns list
                                                 # of neighbor positions
@@ -1154,7 +1154,7 @@ class SoBuffer(object):
                         -1].diffusion + val[-1].goal_radius \
                             + self._view_distance:
                         count += 1.0
-        if self._quorum_static:
+        if self.quorum_static:
             for fid in self._static:
                 if self._static[fid]:
                     for val in self._static[fid]:  # returns list
@@ -1167,7 +1167,7 @@ class SoBuffer(object):
                                         + self._view_distance:
                             count += 1.0
 
-        if count >= self._threshold:
+        if count >= self.threshold:
                 return True
         else:
             return False
@@ -1179,7 +1179,7 @@ class SoBuffer(object):
             """
             view = []
 
-            if self._quorum_moving:
+            if self.quorum_moving:
                 if self._moving:
                     for val in self._moving.values():  # returns list
                         # of neighbor positions
@@ -1192,7 +1192,7 @@ class SoBuffer(object):
                                         + self._view_distance:
                             view.append(val[-1])
 
-            if self._quorum_static:
+            if self.quorum_static:
                 for fid in self._static:
                     if self._static[fid]:
                         for val in self._static[fid]:  # returns list
@@ -1261,124 +1261,8 @@ class SoBuffer(object):
         # velocity to be set = current vel + flocking steering force
         return calc.add_vectors(agent.v,
                                 flocking.flocking_vector(neighbors, agent,
-                                                         self._epsilon,
-                                                         self._a, self._b,
+                                                         self.epsilon,
+                                                         self.a, self.b,
                                                          repulsion_radius,
                                                          self._view_distance,
-                                                         self._h))
-
-    # getters and setters
-    # quorum
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @threshold.setter
-    def threshold(self, threshold):
-        self._threshold = threshold
-
-    # flocking
-    @property
-    def a(self):
-        return self._a
-
-    @a.setter
-    def a(self, a):
-        self._a = a
-
-    @property
-    def b(self):
-        return self._b
-
-    @b.setter
-    def b(self, b):
-        self._b = b
-
-    @property
-    def h(self):
-        return self._h
-
-    @h.setter
-    def h(self, h):
-        self._h = h
-
-    @property
-    def epsilon(self):
-        return self._epsilon
-
-    @epsilon.setter
-    def epsilon(self, epsilon):
-        self._epsilon = epsilon
-
-    @property
-    def max_acceleration(self):
-        return self._max_acceleration
-
-    @max_acceleration.setter
-    def max_acceleration(self, max_acceleration):
-        self._max_acceleration = max_acceleration
-
-    @property
-    def max_velocity(self):
-        return self._max_velocity
-
-    @max_velocity.setter
-    def max_velocity(self, max_velocity):
-        self._max_velocity = max_velocity
-
-    # store data
-    @property
-    def aggregation(self):
-        return self._aggregation
-
-    @aggregation.setter
-    def aggregation(self, aggregation):
-        self._aggregation = aggregation
-
-    @property
-    def aggregation_distance(self):
-        return self._aggregation_distance
-
-    @aggregation_distance.setter
-    def aggregation_distance(self, aggregation_distance):
-        self._aggregation_distance = aggregation_distance
-
-    @property
-    def min_diffusion(self):
-        return self._min_diffusion
-
-    @min_diffusion.setter
-    def min_diffusion(self, min_diffusion):
-        self._min_diffusion = min_diffusion
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def neighbor_storage_size(self):
-        return self._neighbor_storage_size
-
-    @neighbor_storage_size.setter
-    def neighbor_storage_size(self, size):
-        self._neighbor_storage_size = size
-
-    @property
-    def view_distance(self):
-        return self._view_distance
-
-    @view_distance.setter
-    def view_distance(self, view_distance):
-        self._view_distance = view_distance
-
-    @property
-    def result(self):
-        return self._result
-
-    @result.setter
-    def result(self, result):
-        self._result = result
-
-    @property
-    def frames(self):
-        return self._frames
+                                                         self.h))
