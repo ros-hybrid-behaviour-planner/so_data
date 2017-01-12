@@ -29,21 +29,47 @@ soMessages are used to specify gradients: either in environment or as neighbour 
 The specification of the soMessage data can lead to varying behaviour. 
 The specification of frameIDs can help to assign gradients to specific tasks / behaviours, but some frameIDs are reserved for special purposes. 
 
-###### elements:
+###### Message file
 
-* **Header header**: standard ROS header 
+```
+Header header 
+
+geometry_msgs/Vector3 p  
+
+int8 attraction 
+float32 diffusion 
+float32 goal_radius 
+
+float32 ev_factor 
+float32 ev_time 
+
+float32 angle_x
+float32 angle_y
+geometry_msgs/Vector3 direction
+
+bool moving
+
+diagnostic_msgs/KeyValue[] payload
+```
+
+* **header**: standard ROS header 
   * uint32 seq: consecutively increasing ID; set by system
   * time stamp: sec + nsec - has to be set using ros Time 
   * string frame_id: to associate data for a purpose 
-* **geometry_msgs/Vector3 p**: gradient center 
-* **int8 attraction**: attractive `1` or repulsive `-1` gradient 
-* **float32 diffusion**: radius in which information will be spread
-* **float32 goal_radius**: area with minimum attraction or maximum repulsion; total reach of gradient = diffusion + goal_radius 
-* **float32 ev_factor**: evaporation factor `[0,1]` applied on diffusion (`diffusion *= ev_factor`) after `ev_time`; `1` = no evaporation, `0` = data loss after `ev_time`
-* **float32 ev_time**: delta time `>= 0` in which evaporation is applied 
-* **float32 angle**: gradient sector size
-* **geometry_msgs/Vector3 direction**: gradient sector direction
-* **diagnostic_msgs/KeyValue[]** payload: array of key-value-pairs to store payload data 
+* main gradient attributes:
+  * **p**: gradient center 
+  * **attraction**: attractive `1` or repulsive `-1` gradient 
+  * **diffusion**: radius in which information will be spread
+  * **goal_radius**: area with minimum attraction or maximum repulsion; total reach of gradient = diffusion + goal_radius 
+* evaporation:
+  * **ev_factor**: evaporation factor `[0,1]` applied on diffusion (`diffusion *= ev_factor`) after `ev_time`; `1` = no evaporation, `0` = data loss after `ev_time`
+  * **ev_time**: delta time `>= 0` in which evaporation is applied 
+* gradient sector:
+  * **angle_x**: first gradient angle
+  * **angle_y**: second gradient angle
+  * **direction**: gradient sector direction
+* **moving**: gradient of moving (True) or static (False)
+* **payload**: array of key-value-pairs to store payload data 
 
 
 ###### reserved frameIDs:
