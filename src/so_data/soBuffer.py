@@ -106,8 +106,6 @@ class SoBuffer(object):
         :type quorum_static: bool
         """
 
-        rospy.Subscriber('soData', soMessage, self.store_data)
-
         # STORE DATA
         self._static = {}  # static gradient storage, dict
         self._own_pos = []  # own positions storage
@@ -153,6 +151,9 @@ class SoBuffer(object):
         self._epsilon = epsilon
         self._max_acceleration = max_acceleration
         self._max_velocity = max_velocity
+
+        rospy.Subscriber('soData', soMessage, self.store_data)
+
 
     def store_data(self, msg):
         """
