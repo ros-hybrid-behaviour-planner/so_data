@@ -55,9 +55,8 @@ class SoBuffer(object):
         should be >= goal_radius of own gradient
         :type view_distance: float
 
-        :param id: should have the form 'robotX' with X being the robot's id;
-        frame ID's in this form are considered
-                   as robot position data
+        :param id: agent's id, gradients with this id are stored in
+        self._own_pos
         :type id: str
 
         :param result: specifies vector which should be returned
@@ -118,8 +117,6 @@ class SoBuffer(object):
         :param h: parameter (0,1) specifying boundaries of bump function
         :param epsilon: sigma norm parameter (0,1)
         :param max_acceleration: maximum acceleration of robot (flocking)
-
-
         """
 
         # STORE DATA

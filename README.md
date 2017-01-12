@@ -99,21 +99,43 @@ the dictionary and has to be specified. Does not affect storage of neighbor grad
   * **max** = keep gradient with maximum diffusion radius + goal radius(at a position / within aggregation_distance)
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
   * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
+* **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
+
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
 * **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
-* **id** (''): 'robotX' with X = robot's id; frameID's in this form are considered as robot position data / neighbor gradients. Gradients with own id are stored in self._ownpos 
+* **id** (''): agent's id, gradients with this id are stored in self._own_pos 
+
 * **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Options:
   * **all** = movement vector considering all vectors of the potential field will be returned 
   * **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
   * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
   * **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
   * **avoid** = movement vector leading away from all sensed gradients will be returned 
+  
 * **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents. Options:
   * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
-* **neighbor_storage_size** (2): int; defines number of gradients which will be stored for robot position data / neighbor gradients. Set 0 to avoid storing neighbor gradients. 
-* **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to storage of all frameIDs. 'robot' leads to storing no gradients. 
-* **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
+  
+* **moving_storage_size** (2): int; defines number of gradients which will be stored for moving gradients. Set 0 to avoid storing moving gradients. 
+
+* **store_all** (True): defines whether all frameIDs will be stored or only frameIDs indicated in framestorage 
+* **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to not storing any gradients. 
+
+* **max_velocity** (1.0): maximum velocity of robot (= length of returned vector)
+* **min_velocity** (0.1): maximum velocity of robot (= length of returned vector)
+
+Flocking parameters:
+
+* **a, b**: action function parameters with `0 < a <= b; c = |a-b|/np.sqrt(4ab)`
+* **h**: parameter (0,1) specifying boundaries of bump function
+* **epsilon**: sigma norm parameter (0,1)
+* **max_acceleration**: maximum acceleration of robot
+
+Quorum Sensing parameters: 
+
+* **threshold** (2): quorum sensing threshold to be passed 
+* **quorum_moving** (True): consider moving gradients (True) or not (False) in quorum decision
+* **quorum_static** (False): consider static gradients (True) or not (False) in quorum decision
 
 
 ### Gradient Storage
