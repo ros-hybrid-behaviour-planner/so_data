@@ -117,7 +117,7 @@ class SoBufferTest(unittest.TestCase):
         # no gradients available --> True
         bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
                                    0, 0, 0, Vector3(), False, [])]
-        self.assertEqual(bffr.get_goal_reached(), True)
+        self.assertEqual(bffr.get_goal_reached(), False)
 
         bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0,
@@ -410,7 +410,7 @@ class SoBufferTest(unittest.TestCase):
 
                 ]}
 
-        self.assertEqual(bffr.get_static(), data)
+        self.assertEqual(bffr._static, data)
 
     def test_evaporation_msg(self):
         """
@@ -508,7 +508,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_static(), {'None': testlist})
+        self.assertEqual(bffr._static, {'None': testlist})
 
     def test_store_data_max_aggregation_distance(self):
         """
@@ -552,7 +552,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_static(), {'None': testlist})
+        self.assertEqual(bffr._static, {'None': testlist})
 
     def test_store_data_fids(self):
         """
@@ -586,7 +586,7 @@ class SoBufferTest(unittest.TestCase):
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_static(), testlist)
+        self.assertEqual(bffr._static, testlist)
 
     def test_store_data_fids_selection(self):
         """
@@ -625,7 +625,7 @@ class SoBufferTest(unittest.TestCase):
                         Vector3(), False, [])
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_static(), testlist)
+        self.assertEqual(bffr._static, testlist)
 
     def test_store_data_min(self):
         """
@@ -660,7 +660,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_static(), {'None' : testlist})
+        self.assertEqual(bffr._static, {'None' : testlist})
 
     def test_store_data_avg(self):
         """
@@ -701,7 +701,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_static(), {'None': testlist})
+        self.assertEqual(bffr._static, {'None': testlist})
 
     def test_store_data_newest(self):
         """
@@ -740,7 +740,7 @@ class SoBufferTest(unittest.TestCase):
         for el in testlist:
             el.header.frame_id = 'None'
 
-        self.assertEqual(bffr.get_static(), {'None': testlist})
+        self.assertEqual(bffr._static, {'None': testlist})
 
     def test_store_data_ev(self):
         """
@@ -770,7 +770,7 @@ class SoBufferTest(unittest.TestCase):
                         Vector3(), False, [])
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_static(), testlist)
+        self.assertEqual(bffr._static, testlist)
 
     def test_store_data_neighbors(self):
         """
@@ -902,7 +902,7 @@ class SoBufferTest(unittest.TestCase):
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
-        self.assertEqual(bffr.get_static(), testlist)
+        self.assertEqual(bffr._static, testlist)
 
     # Collision Avoidance / Repulsion
     def test_gradient_repulsion(self):
@@ -1031,7 +1031,7 @@ class SoBufferTest(unittest.TestCase):
         """
 
         bffr = soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient',
-                                 result='')
+                                 result='', max_velocity=2.0)
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
