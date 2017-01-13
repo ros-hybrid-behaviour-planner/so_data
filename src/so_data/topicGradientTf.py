@@ -10,6 +10,8 @@ from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
 from abc import ABCMeta, abstractmethod
+import geometry_msgs.msg
+
 
 class TopicGradientTf(object):
     """
@@ -106,20 +108,20 @@ class PoseTopicGradientTf(TopicGradientTf):
         self._broadcast.send_data(msg)
 
 
-
-# ROS Node to spread gradients - still #TODO
+# ROS Node to spread gradients
+# sample setup with default values + pose specified in topic
 if __name__ == '__main__':
     """
     Node to convert topics to gradients
     """
 
-    rospy.init_node(rospy.get_param("~nodeName", 'poseGradientTf'))
+    id = rospy.get_param("~id", 'robot1')
+
+    rospy.init_node('poseGradientTf'+id)
     rate = rospy.Rate(rospy.get_param("~frequency", 1))
 
-    # alle parameter fuer transform so machen?!?
-
-    self.tf = PoseTopicGradientTf(topic, message_type)
-
+    tf = PoseTopicGradientTf(rospy.get_param("~topic", 'turtle_1_pose'),
+                             geometry_msgs.msg.Pose, id)
 
     while not rospy.is_shutdown():
         rate.sleep()
