@@ -558,8 +558,7 @@ class SoBuffer(object):
                 distance = calc.get_gradient_distance(val[-1].p,
                                                       self._own_pos[-1].p)
                 # agents within view
-                if calc.get_gradient_distance(val[-1].p, self._own_pos[
-                    -1].p) < self._view_distance:
+                if distance < self._view_distance:
                     # only robots within repulsion
                     if distance != 0:
                         diff = repulsion_radius - distance
@@ -995,7 +994,10 @@ class SoBuffer(object):
         tmp.y = gradient.p.y - self._own_pos[-1].p.y
         tmp.z = gradient.p.z - self._own_pos[-1].p.z
 
-        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        # shortest distance considered (goal_radius of agent == size of agent)
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) \
+            - self._own_pos[-1].goal_radius
+
         if d <= gradient.goal_radius:
             v.x = 0
             v.y = 0
@@ -1029,8 +1031,9 @@ class SoBuffer(object):
         tmp.y = self._own_pos[-1].p.y - gradient.p.y
         tmp.z = self._own_pos[-1].p.z - gradient.p.z
 
-        d = np.linalg.norm(
-            [tmp.x, tmp.y, tmp.z])  # - self._own_pos[-1].goal_radius
+        # shortest distance considered (goal_radius of agent == size of agent)
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) \
+            - self._own_pos[-1].goal_radius
 
         if d <= gradient.goal_radius:  # infinitely large repulsion
             v = Vector3(np.inf, np.inf, np.inf)
@@ -1086,7 +1089,10 @@ class SoBuffer(object):
         tmp.y = gradient.p.y - self._own_pos[-1].p.y
         tmp.z = gradient.p.z - self._own_pos[-1].p.z
 
-        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        # shortest distance considered (goal_radius of agent == size of agent)
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) \
+            - self._own_pos[-1].goal_radius
+
         if d <= gradient.goal_radius + gradient.diffusion:
             v.x = tmp.x
             v.y = tmp.y
@@ -1113,7 +1119,10 @@ class SoBuffer(object):
         tmp.y = self._own_pos[-1].p.y - gradient.p.y
         tmp.z = self._own_pos[-1].p.z - gradient.p.z
 
-        d = np.linalg.norm([tmp.x, tmp.y, tmp.z])
+        # shortest distance considered (goal_radius of agent == size of agent)
+        d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) \
+            - self._own_pos[-1].goal_radius
+
         if d <= gradient.goal_radius:
             v = Vector3(np.inf, np.inf, np.inf)
             # calculate norm vector for direction

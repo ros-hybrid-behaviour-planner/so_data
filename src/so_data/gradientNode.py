@@ -60,7 +60,7 @@ def get_gradient(index):
         gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
                                               diffusion=3.0),
                               create_gradient(Vector3(4, 1, 0), attraction=-1,
-                                              diffusion=1.0, goal_radius=2.0)
+                                              diffusion=2.0, goal_radius=1.0)
                                ])
         gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
                                               diffusion=3.0)])
