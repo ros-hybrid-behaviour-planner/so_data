@@ -448,10 +448,11 @@ def __init__(self, name, initial_value=None, sensor_type='gradient', sensor_buff
 
 The following options can be set as `sensor_type`:
 
-* **gradient**: sets sensor value to current gradient vector (see method `get_current_gradient`)
-* **bool_attractive**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not (see method `get_goal_reached`)
-* **bool_all**: sets sensor value to True/False based on the strength of influence of the gradients nearby. Length < 0.1 leads to true (0.0 will be hardly reached) 
+* **gradient**: sets sensor value to current gradient vector 
+* **bool_reached_attractive**: sets sensor value to True/False based on if the attractive gradient source (goal_radius) was reached or not 
+* **bool_all**: sets sensor value to True/False based on the strength of influence of the gradients nearby 
 * **neighbors**: sets sensor value to True/False based on the presence of neighbors in the environment 
+* **view_attractive**: returns True when attractive gradients are within view distance, False otherwise 
 
 More options can be integrated if necessary. 
 
