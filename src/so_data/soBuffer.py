@@ -449,6 +449,54 @@ class SoBuffer(object):
         else:
             return False
 
+    def get_attractive_distance(self, frameids=[]):   # TODO test
+        """
+        :return:  returns distance to closest attractive gradient
+        no attractive gradients: returns np.inf
+        """
+        gradients_attractive = []
+
+        tmp_att = np.inf  # attractive gradient calculations return values
+        # between 0 and 1
+
+        # if no frameids are specified, use all data stored in buffer
+        if not frameids:
+            frameids = self._static.keys()
+
+        for fid in frameids:
+            if fid in self._static:
+                for element in self._static[fid]:
+                    if calc.get_gradient_distance(element.p, self._own_pos[
+                        -1].p) <= element.diffusion + \
+                            element.goal_radius + self._view_distance:
+                        if element.attraction == 1:
+                            gradients_attractive.append(element)
+
+        tmp_grad = soMessage()
+        d = np.inf
+
+        if gradients_attractive:
+            for gradient in gradients_attractive:
+                # find nearest attractive gradient
+                grad = self._calc_attractive_gradient(gradient)
+                att = np.linalg.norm([grad.x, grad.y, grad.z])
+                # attraction decreases with being closer to gradient source
+                # / goal area
+                if att < tmp_att:
+                    tmp_grad = gradient
+                    tmp_att = att
+
+            # distance from center to center - goal_radius agent "HW size")
+            # - goal_radius gradient ("size of goal" - agent just
+            # has to reach this area somehow)
+            d = calc.get_gradient_distance(self._own_pos[-1].p, tmp_grad.p) \
+                - self._own_pos[-1].goal_radius - tmp_grad.goal_radius
+
+            if d < 0:
+                d = 0
+
+        return d
+
     def get_no_potential(self, frameids=[]):
         """
         determines whether there is still some attraction/repulsion

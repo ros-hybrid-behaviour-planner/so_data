@@ -39,6 +39,8 @@ class GradientSensor(Sensor):
         """
         if self._sensor_type == 'gradient' or not self._sensor_type:
             self._value = self._buffer.get_current_gradient()
+        elif self._sensor_type == 'distance':
+            self._value = self._buffer.get_attractive_distance()
         elif self._sensor_type == 'bool_reached_attractive':
             self._value = self._buffer.get_goal_reached()
         elif self._sensor_type == 'bool_all':
