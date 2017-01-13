@@ -360,7 +360,7 @@ class SoBuffer(object):
         elif self.result == 'avoid':
             result = self._aggregate_avoid_all(frameids=frameids)
 
-        # Collision Avoidance between neighbors
+        # collision avoidance / consider moving gradients
         if self.collision_avoidance == 'gradient':
             collision = self._gradient_repulsion()
             result.x += collision.x
@@ -466,7 +466,7 @@ class SoBuffer(object):
         else:
             return False
 
-    def get_neighbors_bool(self): #TODO unit test
+    def get_neighbors_bool(self):
         """
         :return: True (no neighbors within view), False (neighbors within view)
         """
@@ -475,7 +475,8 @@ class SoBuffer(object):
         if self._moving:
             for val in self._moving.values():
                 if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)\
-                        < val[-1].diffusion + val[-1].goal_radius:
+                        < val[-1].diffusion + val[-1].goal_radius \
+                                + self._view_distance:
                         flag = False
         return flag
 
@@ -486,6 +487,7 @@ class SoBuffer(object):
          based on potential field approach
         considers all neighbours that have a gradient reaching inside view
         distance / communication range of agent
+        considers both repulsive and attractive moving gradients
         :return: repulsion vector
         """
         repulsion = Vector3()
@@ -505,7 +507,11 @@ class SoBuffer(object):
                                               self._own_pos[-1].p) <= val[
                     -1].diffusion + val[-1].goal_radius \
                         + self._view_distance:
-                    grad = self._calc_repulsive_gradient(val[-1])
+                    # distinguish between attractive and repulsive gradients
+                    if val[-1].attraction == -1:
+                        grad = self._calc_repulsive_gradient(val[-1])
+                    else:
+                        grad = self._calc_attractive_gradient(val[-1])
 
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
@@ -541,6 +547,7 @@ class SoBuffer(object):
         return a repulsion vector based on formula presented by
         Fernandez-Marquez et al., use of received gradients (p)
         for calculation
+        only for repulsive moving gradients
         :return repulsion vector
         """
         # initialize vector
@@ -555,30 +562,31 @@ class SoBuffer(object):
 
         if self._moving and self._own_pos:
             for val in self._moving.values():
-                distance = calc.get_gradient_distance(val[-1].p,
-                                                      self._own_pos[-1].p)
-                # agents within view
-                if distance < self._view_distance:
-                    # only robots within repulsion
-                    if distance != 0:
-                        diff = repulsion_radius - distance
-                        m.x += (self._own_pos[-1].p.x - val[
-                            -1].p.x) * diff / distance
-                        m.y += (self._own_pos[-1].p.y - val[
-                            -1].p.y) * diff / distance
-                        m.z += (self._own_pos[-1].p.z - val[
-                            -1].p.z) * diff / distance
-                    elif distance == 0:
-                        # create random vector with length = repulsion radius
-                        # create random vector with length (goal_radius +
-                        # gradient.diffusion)
-                        tmp = np.random.rand(1, 3)
-                        tmp /= np.linalg.norm(tmp)
-                        tmp *= repulsion_radius
+                if val[-1].attraction == -1:
+                    distance = calc.get_gradient_distance(val[-1].p,
+                                                          self._own_pos[-1].p)
+                    # agents within view
+                    if distance < self._view_distance:
+                        # only robots within repulsion
+                        if distance != 0:
+                            diff = repulsion_radius - distance
+                            m.x += (self._own_pos[-1].p.x - val[
+                                -1].p.x) * diff / distance
+                            m.y += (self._own_pos[-1].p.y - val[
+                                -1].p.y) * diff / distance
+                            m.z += (self._own_pos[-1].p.z - val[
+                                -1].p.z) * diff / distance
+                        elif distance == 0:
+                            # create random vector with length=repulsion radius
+                            # create random vector with length (goal_radius +
+                            # gradient.diffusion)
+                            tmp = np.random.rand(1, 3)
+                            tmp /= np.linalg.norm(tmp)
+                            tmp *= repulsion_radius
 
-                        m.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
-                        m.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
-                        m.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
+                            m.x += (2 * np.random.randint(2) - 1) * tmp[0][0]
+                            m.y += (2 * np.random.randint(2) - 1) * tmp[0][1]
+                            m.z += (2 * np.random.randint(2) - 1) * tmp[0][2]
 
         # max repulsion vector length = repulsion radius of robot
         d = np.linalg.norm([m.x, m.y, m.z])

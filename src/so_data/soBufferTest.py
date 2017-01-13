@@ -1007,16 +1007,16 @@ class SoBufferTest(unittest.TestCase):
         bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(1, 3, 0), -1, 1.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, [])
 
             ],
             'robot3': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(2, 2, 0), -1, 4.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, []),
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(3, 2, 0), 1, 1.0, 0.8, 1.0, 0, 0, 0,
+                          Vector3(3, 2, 0), -1, 1.0, 0.8, 1.0, 0, 0, 0,
                           Vector3(), False, [])
             ]
         }
@@ -1032,7 +1032,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(2, 1.5, 0), 1, 2.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(2, 1.5, 0), -1, 2.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, [])
             ]
         }
@@ -1055,9 +1055,9 @@ class SoBufferTest(unittest.TestCase):
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
-                      1, 4.0, 1.0, 1.0, 0, 0, 0, False, Vector3(), []),
+                      -1, 4.0, 1.0, 1.0, 0, 0, 0, False, Vector3(), []),
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0),
-                      1, 2.0, 1.0, 1.0, 0, 0, 0, False, Vector3(), [])
+                      -1, 2.0, 1.0, 1.0, 0, 0, 0, False, Vector3(), [])
                     ]
 
         # no neighbors specified
@@ -1066,16 +1066,16 @@ class SoBufferTest(unittest.TestCase):
         bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(1, 3, 0), -1, 1.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, [])
 
             ],
             'robot3': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(2, 2, 0), -1, 4.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, []),
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(3, 2, 1), 1, 1.0, 0.8, 1.0, 0, 0, 0,
+                          Vector3(3, 2, 1), -1, 1.0, 0.8, 1.0, 0, 0, 0,
                           Vector3(), False, [])
             ]
         }
@@ -1092,7 +1092,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(2, 2, 0), 1, 2.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(2, 2, 0), -1, 2.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, [])
             ]
         }
@@ -1113,26 +1113,26 @@ class SoBufferTest(unittest.TestCase):
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
-                      1, 5.0, 0.0, 1.0, 0, 0, 0,
+                      -1, 5.0, 0.0, 1.0, 0, 0, 0,
                       Vector3(), False, []),
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 2, 0),
-                      1, 3.0, 0.0, 1.0, 0, 0, 0,
+                      -1, 3.0, 0.0, 1.0, 0, 0, 0,
                       Vector3(), False, [])
         ]
 
         bffr._moving = {
             'robot2': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(1, 3, 0), 1, 1.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(1, 3, 0), -1, 1.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, [])
 
             ],
             'robot3': [
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, 0, 0,
+                          Vector3(2, 2, 0), -1, 4.0, 1.0, 1.0, 0, 0, 0,
                           Vector3(), False, []),
                 soMessage(Header(None, rospy.Time.now(), 'None'),
-                          Vector3(3, 2, 0), 1, 1.0, 0.8, 1.0, 0, 0, 0,
+                          Vector3(3, 2, 0), -1, 1.0, 0.8, 1.0, 0, 0, 0,
                           Vector3(), False, [])
             ]
         }
