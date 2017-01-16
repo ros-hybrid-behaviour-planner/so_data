@@ -616,8 +616,10 @@ class SoBuffer(object):
         if self._moving and self._own_pos:
             for val in self._moving.values():
                 if val[-1].attraction == -1:
+                    # shortest distance
                     distance = calc.get_gradient_distance(val[-1].p,
-                                                          self._own_pos[-1].p)
+                                                          self._own_pos[-1].p)\
+                               - self._own_pos[-1].goal_radius
                     # agents within view
                     if distance < self._view_distance:
                         # only robots within repulsion
