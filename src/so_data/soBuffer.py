@@ -517,21 +517,22 @@ class SoBuffer(object):
 
     def get_neighbors_bool(self):
         """
-        :return: True (no neighbors within view), False (neighbors within view)
+        :return: True (no neighbors within view / leading to repulsive
+        behaviour), False (neighbors within view / leading to repulsive
+        behaviour)
         """
         flag = True
 
-        if self._moving:
-            for val in self._moving.values():
-                d = calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)
-                # gradient within view distance
-                if d <= val[-1].diffusion + val[-1].goal_radius +\
-                                self._view_distance:
-                    # gradient too close (gradient diffusion + goal_radius
-                    # reaches into goal_radius of agent)
-                    if d - self._own_pos[-1].goal_radius <= \
-                                    val[-1].diffusion + val[-1].goal_radius:
-                        flag = False
+        d = 0.0
+
+        if self.collision_avoidance == 'repulsion':
+            d = calc.vector_length(self._repulsion_vector())
+        elif self.collision_avoidance == 'gradient':
+            d = calc.vector_length(self._gradient_repulsion())
+
+        if d > 0:
+            flag = False
+
         return flag
 
     # Collision avoidance between neighbors
