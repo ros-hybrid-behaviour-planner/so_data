@@ -22,7 +22,7 @@ class SoBuffer(object):
 
     def __init__(self, aggregation={'DEFAULT': 'max'},
                  aggregation_distance=1.0, min_diffusion=0.1,
-                 view_distance=2.0, id='', result='near',
+                 view_distance=1.5, id='', result='near',
                  collision_avoidance='',
                  moving_storage_size=2, store_all=True,
                  framestorage=[], threshold=2, a=1.0,
@@ -523,9 +523,14 @@ class SoBuffer(object):
 
         if self._moving:
             for val in self._moving.values():
-                if calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)\
-                        < val[-1].diffusion + val[-1].goal_radius \
-                                + self._view_distance:
+                d = calc.get_gradient_distance(val[-1].p, self._own_pos[-1].p)
+                # gradient within view distance
+                if d <= val[-1].diffusion + val[-1].goal_radius +\
+                                self._view_distance:
+                    # gradient too close (gradient diffusion + goal_radius
+                    # reaches into goal_radius of agent)
+                    if d - self._own_pos[-1].goal_radius <= \
+                                    val[-1].diffusion + val[-1].goal_radius:
                         flag = False
         return flag
 
@@ -553,9 +558,8 @@ class SoBuffer(object):
             for val in self._moving.values():
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(val[-1].p,
-                                              self._own_pos[-1].p) <= val[
-                    -1].diffusion + val[-1].goal_radius \
-                        + self._view_distance:
+                                              self._own_pos[-1].p) <= val[-1]\
+                        .diffusion + val[-1].goal_radius + self._view_distance:
                     # distinguish between attractive and repulsive gradients
                     if val[-1].attraction == -1:
                         grad = self._calc_repulsive_gradient(val[-1])

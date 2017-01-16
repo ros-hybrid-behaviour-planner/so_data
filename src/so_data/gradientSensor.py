@@ -37,7 +37,7 @@ class GradientSensor(Sensor):
         syncs sensor value setting self._value
         :return:
         """
-        if self._sensor_type == 'gradient' or not self._sensor_type:
+        if self._sensor_type == 'gradient':
             self._value = self._buffer.get_current_gradient()
         elif self._sensor_type == 'distance':
             self._value = self._buffer.get_attractive_distance()
