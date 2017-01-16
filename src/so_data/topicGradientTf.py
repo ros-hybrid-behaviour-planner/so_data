@@ -20,7 +20,7 @@ class TopicGradientTf(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, topic, message_type, id, p=Vector3(), attraction=-1,
-                 diffusion=1.0, goal_radius=1.0, ev_factor=1, ev_time=0,
+                 diffusion=1.0, goal_radius=0.5, ev_factor=1, ev_time=0,
                  angle_x=0, angle_y=0, direction=Vector3(), moving=True,
                  payload=[]):
         rospy.Subscriber(topic, message_type, self.callback)

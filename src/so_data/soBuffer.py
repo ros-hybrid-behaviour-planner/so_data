@@ -139,7 +139,8 @@ class SoBuffer(object):
 
         if collision_avoidance != 'repulsion' and \
                         collision_avoidance != 'gradient' and \
-                        collision_avoidance != '':
+                        collision_avoidance != '' and \
+                        collision_avoidance != 'ge':
             rospy.logerr("No valid option for collision avoidance entered. "
                          "Set to gradient.")
             self.collision_avoidance = 'gradient'
@@ -805,6 +806,8 @@ class SoBuffer(object):
         # if no frameids are specified, use all data stored in buffer
         if not frameids:
             frameids = self._static.keys()
+        if self.collision_avoidance == "ge":
+            frameids += self._moving.keys()
 
         for fid in frameids:
             if fid in self._static:
@@ -816,6 +819,12 @@ class SoBuffer(object):
                             gradients_attractive.append(element)
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
+
+            if fid in self._moving:
+                if self._moving[fid][-1].attraction == 1:
+                    gradients_attractive.append(self._moving[fid][-1])
+                elif self._moving[fid][-1].attraction == -1:
+                    gradients_repulsive.append(self._moving[fid][-1])
 
         if gradients_attractive:
             for gradient in gradients_attractive:
