@@ -360,6 +360,8 @@ class SoBuffer(object):
             result = self._aggregate_nearest_ge(frameids=frameids)
         elif self.result == 'avoid':
             result = self._aggregate_avoid_all(frameids=frameids)
+        elif self.result == 'flocking':
+            result = self.flocking()
 
         # collision avoidance / consider moving gradients
         if self.collision_avoidance == 'gradient':
@@ -529,6 +531,8 @@ class SoBuffer(object):
             d = calc.vector_length(self._repulsion_vector())
         elif self.collision_avoidance == 'gradient':
             d = calc.vector_length(self._gradient_repulsion())
+        elif self.result == 'flocking':
+            d = calc.vector_length(self.flocking())
 
         if d > 0:
             flag = False
@@ -1315,8 +1319,6 @@ class SoBuffer(object):
             return view
 
     # FLOCKING
-    # TODO: set max. velocity, max. acceleration values (where / how to integrate?!?)
-    # TODO: integrate as option in get_current_gradient setting
     # TODO: unittest
     def flocking(self):
         """
@@ -1365,10 +1367,26 @@ class SoBuffer(object):
         # calculate new velocity based on steering force
         # find out how to, probably like this:
         # velocity to be set = current vel + flocking steering force
-        return calc.add_vectors(agent.v,
-                                flocking.flocking_vector(neighbors, agent,
+
+        acceleration = flocking.flocking_vector(neighbors, agent,
                                                          self.epsilon,
                                                          self.a, self.b,
                                                          repulsion_radius,
                                                          self._view_distance,
-                                                         self.h))
+                                                         self.h)
+
+        if calc.vector_length(acceleration) > self.max_acceleration:
+            acceleration = calc.unit_vector3(acceleration)
+            acceleration.x *= self.max_acceleration
+            acceleration.y *= self.max_acceleration
+            acceleration.z *= self.max_acceleration
+
+        velocity = calc.add_vectors(agent.v, acceleration)
+
+        if calc.vector_length(velocity) > self.max_velocity:
+            velocity = calc.unit_vector3(velocity)
+            velocity.x *= self.max_velocity
+            velocity.y *= self.max_velocity
+            velocity.z *= self.max_velocity
+
+        return velocity

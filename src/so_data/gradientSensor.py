@@ -37,6 +37,7 @@ class GradientSensor(Sensor):
         syncs sensor value setting self._value
         :return:
         """
+
         if self._sensor_type == 'gradient':
             self._value = self._buffer.get_current_gradient()
         elif self._sensor_type == 'distance':
@@ -49,5 +50,7 @@ class GradientSensor(Sensor):
             self._value = self._buffer.get_neighbors_bool()
         elif self._sensor_type == 'views_attractive':
             self._value = self._buffer.get_attractive_gradients_view()
+        elif self._sensor_type == 'flocking':
+            self._value = self._buffer.flocking()
 
         return self._value
