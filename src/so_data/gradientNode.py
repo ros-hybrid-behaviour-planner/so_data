@@ -12,7 +12,6 @@ from geometry_msgs.msg import Vector3
 from turtlesim.srv import DrawGradient
 
 
-
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
                     angle_y=0.0, direction=Vector3(), moving = False,
                     goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
@@ -29,16 +28,20 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     :param ev_factor: evaporation factor
     :return: soMessage
     """
+
+    now = rospy.Time.now()
+
     msg = soMessage()
     msg.p = position
     msg.attraction = attraction
-    msg.header.stamp = rospy.Time.now()
+    msg.header.stamp = now
     msg.diffusion = diffusion
     msg.goal_radius = goal_radius
     msg.angle_x = angle_x
     msg.angle_y = angle_y
     msg.ev_factor = ev_factor
     msg.ev_time = ev_time
+    msg.ev_stamp = now
     msg.direction = direction
     msg.moving = moving
     msg.payload = payload

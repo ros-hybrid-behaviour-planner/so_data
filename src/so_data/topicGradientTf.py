@@ -90,7 +90,9 @@ class PoseTopicGradientTf(TopicGradientTf):
         msg.p.z = pose.position.z
 
         # set current time
-        msg.header.stamp = rospy.Time.now()
+        now = rospy.Time.now()
+        msg.header.stamp = now
+        msg.ev_stamp = now
 
         # gradient parameters by class variables
         msg.header.frame_id = self._id

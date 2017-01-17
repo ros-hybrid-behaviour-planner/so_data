@@ -519,7 +519,7 @@ class SoBuffer(object):
 
     def get_neighbors_bool(self):
         """
-        :return: True (no neighbors within view / leading to repulsive
+        :return: True (no neighbors within view / not leading to repulsive
         behaviour), False (neighbors within view / leading to repulsive
         behaviour)
         """
@@ -623,8 +623,9 @@ class SoBuffer(object):
                 if val[-1].attraction == -1:
                     # shortest distance
                     distance = calc.get_gradient_distance(val[-1].p,
-                                                          self._own_pos[-1].p) \
+                                                          self._own_pos[-1].p)\
                                - self._own_pos[-1].goal_radius
+
                     # agents within view
                     if distance <= self._view_distance:
                         # only robots within repulsion
@@ -1011,20 +1012,17 @@ class SoBuffer(object):
         # interate through keys
         for fid in self._static:
             if self._static[fid]:  # array not empty
-                for i in xrange(len(self._static[fid]) - 1, -1,
-                                -1):  # go in reverse order
+                # go in reverse order
+                for i in xrange(len(self._static[fid]) - 1, -1, -1):
                     if self._static[fid][i].ev_time > 0:
                         diff = rospy.Time.now() - self._static[fid][
-                            i].header.stamp
+                            i].ev_stamp
                         if diff >= rospy.Duration(
                                 self._static[fid][i].ev_time):
                             n = diff.secs // self._static[fid][i].ev_time
                             self._static[fid][i].diffusion *= \
-                            self._static[fid][
-                                i].ev_factor \
-                            ** n
-                            self._static[fid][
-                                i].header.stamp += rospy.Duration(
+                            self._static[fid][i].ev_factor ** n
+                            self._static[fid][i].ev_stamp += rospy.Duration(
                                 n * self._static[fid][i].ev_time)
                     else:  # delta t for evaporation = 0 and evaporation
                         # applies, set diffusion immediately to 0
@@ -1038,6 +1036,32 @@ class SoBuffer(object):
                                         i].diffusion < self._min_diffusion:
                         del self._static[fid][i]  # remove element
 
+        for fid in self._moving:
+            if self._moving[fid]:
+                for i in xrange(len(self._moving[fid]) - 1, -1, -1):
+                    if self._moving[fid][i].ev_time > 0:
+                        diff = rospy.Time.now() - self._moving[fid][
+                            i].ev_stamp
+                        if diff >= rospy.Duration(
+                                self._moving[fid][i].ev_time):
+                            n = diff.secs // self._moving[fid][i].ev_time
+                            self._moving[fid][i].diffusion *= \
+                                self._moving[fid][i].ev_factor ** n
+                            self._moving[fid][i].ev_stamp += rospy.Duration(
+                                n * self._moving[fid][i].ev_time)
+                    else:  # delta t for evaporation = 0 and evaporation
+                        # applies, set diffusion immediately to 0
+                        if self._moving[fid][i].ev_factor < 1.0:
+                            self._moving[fid][i].diffusion = 0.0
+
+                            # in case that gradient concentration is lower than
+                            # minimum and no goal_radius exists, delete data
+                    if self._moving[fid][i].goal_radius == 0.0 and \
+                                    self._moving[fid][i].diffusion < \
+                                    self._min_diffusion:
+                        del self._moving[fid][i]  # remove element
+
+
     def _evaporate_msg(self, msg):
         """
         evaporate a single message
@@ -1045,11 +1069,11 @@ class SoBuffer(object):
         :return: evaporated message
         """
         if msg.ev_time > 0:
-            diff = rospy.Time.now() - msg.header.stamp
+            diff = rospy.Time.now() - msg.ev_stamp
             if diff >= rospy.Duration(msg.ev_time):
                 n = diff.secs // msg.ev_time
                 msg.diffusion *= msg.ev_factor ** n
-                msg.header.stamp += rospy.Duration(n * msg.ev_time)
+                msg.ev_stamp += rospy.Duration(n * msg.ev_time)
         else:  # delta t for evaporation = 0 and evaporation applies,
             # set diffusion immediately to 0
             if msg.ev_factor < 1.0:
