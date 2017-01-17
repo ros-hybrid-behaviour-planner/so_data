@@ -626,7 +626,7 @@ class SoBuffer(object):
                                                           self._own_pos[-1].p)\
                                - self._own_pos[-1].goal_radius
                     # agents within view
-                    if distance < self._view_distance:
+                    if distance <= self._view_distance:
                         # only robots within repulsion
                         if distance != 0:
                             diff = repulsion_radius - distance
