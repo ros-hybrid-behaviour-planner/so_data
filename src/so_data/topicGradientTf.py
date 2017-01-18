@@ -1,4 +1,3 @@
-#! /usr/bin/env python2
 """
 Created on 11.01.2017
 
@@ -10,7 +9,7 @@ from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
 from abc import ABCMeta, abstractmethod
-import geometry_msgs.msg
+import copy
 
 
 class TopicGradientTf(object):
@@ -23,6 +22,23 @@ class TopicGradientTf(object):
                  diffusion=1.0, goal_radius=0.5, ev_factor=1, ev_time=0,
                  angle_x=0, angle_y=0, direction=Vector3(), moving=True,
                  payload=[]):
+        """
+        subscription to topic and variable initializatoin
+        :param topic: topic to subscribe to
+        :param message_type: message type of topic
+        :param id: soMessage id
+        :param p: soMessage pose
+        :param attraction: soMessage attraction (1) or repulsion (-1)
+        :param diffusion: soMessage diffusion radius
+        :param goal_radius: soMessage goal radius
+        :param ev_factor: soMessage evaporation factor
+        :param ev_time: soMessage evaporation (delta) time
+        :param angle_x: soMessage sphere sector angle
+        :param angle_y: soMessage sphere sector angle
+        :param direction: soMessage sphere sector direction
+        :param moving: soMessage boolean to specify static / moving gradient
+        :param payload: soMessage payload data
+        """
         rospy.Subscriber(topic, message_type, self.callback)
 
         self._id = id
@@ -40,90 +56,61 @@ class TopicGradientTf(object):
 
         self._broadcast = SoBroadcaster()
 
+        self._current_msg = soMessage()
+
     @abstractmethod
-    def callback(self, msg):
+    def callback(self, topic_message):
         """
+        buffer received message
+        abstract - usually received message has to be assigned to some part of
+        soMessage
+
         abstract method: should assign received data to at least one
-        soMessage attribute and call self._broadcast.send_data(self.msg)
+        soMessage attribute, call self._broadcast.send_data(self.msg) for
+        sending gradient with frequency of subscribed topic
 
-        template:
+        :return:
+        """
+        pass
 
+        # create message
+        msg = copy.deepcopy(self.create_msg())
+
+        # To sth with topic_message
+        # TODO: implement
+
+        # set current message
+        self._current_msg = msg
+
+        # optional: send data here or in ROS Node loop
+        self.send()
+
+    def create_msg(self):
+        """
+        creates soMessage with set parameters
+        :return:
+        """
         msg = soMessage()
 
-        # gradient parameters by class variables
+        # current time
+        now = rospy.Time.now()
+
         msg.header.frame_id = self._id
-        msg.header.stamp = rospy.Time.now()  # current time
+        msg.header.stamp = now
         msg.p = self.p
         msg.attraction = self.attraction
         msg.diffusion = self.diffusion
         msg.goal_radius = self.goal_radius
         msg.ev_factor = self.ev_factor
         msg.ev_time = self.ev_time
-        msg.angle_x = self.angle_x
-        msg.angle_y = self.angle_y
-        msg.direction = self.direction
-        msg.moving = self.moving
-        msg.payload = self.payload
-
-        self._broadcast.send_data(msg)
-
-
-        :return:
-        """
-        pass
-
-
-class PoseTopicGradientTf(TopicGradientTf):
-    """
-    class to transform pose topic (geometry_msgs.msg.Pose) to a soMessage
-    """
-    def __init__(self, topic, message_type, id, **kwargs):
-        super(PoseTopicGradientTf, self).__init__(topic, message_type, id,
-                                                  **kwargs)
-
-    def callback(self, pose):
-        msg = soMessage()
-
-        # update by received msg
-        msg.p.x = pose.position.x
-        msg.p.y = pose.position.y
-        msg.p.z = pose.position.z
-
-        # set current time
-        now = rospy.Time.now()
-        msg.header.stamp = now
         msg.ev_stamp = now
-
-        # gradient parameters by class variables
-        msg.header.frame_id = self._id
-        msg.attraction = self.attraction
-        msg.diffusion = self.diffusion
-        msg.goal_radius = self.goal_radius
-        msg.ev_factor = self.ev_factor
-        msg.ev_time = self.ev_time
         msg.angle_x = self.angle_x
         msg.angle_y = self.angle_y
         msg.direction = self.direction
         msg.moving = self.moving
         msg.payload = self.payload
 
-        self._broadcast.send_data(msg)
+        return msg
 
-
-# ROS Node to spread gradients
-# sample setup with default values + pose specified in topic
-if __name__ == '__main__':
-    """
-    Node to convert topics to gradients
-    """
-
-    id = rospy.get_param("~id", 'robot1')
-
-    rospy.init_node('poseGradientTf'+id)
-    rate = rospy.Rate(rospy.get_param("~frequency", 1))
-
-    tf = PoseTopicGradientTf(rospy.get_param("~topic", 'turtle_1_pose'),
-                             geometry_msgs.msg.Pose, id)
-
-    while not rospy.is_shutdown():
-        rate.sleep()
+    def send(self):
+        self._broadcast.send_data(self._current_msg)

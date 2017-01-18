@@ -565,6 +565,7 @@ class SoBuffer(object):
                 if calc.get_gradient_distance(val[-1].p,
                                               self._own_pos[-1].p) <= val[-1] \
                         .diffusion + val[-1].goal_radius + self._view_distance:
+
                     # distinguish between attractive and repulsive gradients
                     if val[-1].attraction == -1:
                         grad = self._calc_repulsive_gradient(val[-1])
