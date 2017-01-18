@@ -4,9 +4,9 @@ Created on 14.11.2016
 @author: kaiser
 """
 
-import soBuffer
+import rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer
 import unittest
-import calc
+import rhbpSelfOrganizationTest.src.so_data.src.so_data.calc
 from so_data.msg import soMessage
 import rospy
 from geometry_msgs.msg import Point, Vector3
@@ -26,7 +26,7 @@ class SoBufferTest(unittest.TestCase):
         test quorum / density function
         :return:
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
 
         # 2 neighbors within view, one outside view
         bffr._moving = {
@@ -71,7 +71,7 @@ class SoBufferTest(unittest.TestCase):
         test quorum / density function
         :return:
         """
-        bffr = soBuffer.SoBuffer(view_distance=2.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(view_distance=2.0)
 
         self.assertEqual(bffr.quorum_list(), [])
 
@@ -118,7 +118,7 @@ class SoBufferTest(unittest.TestCase):
         test get_goal_reached method
         :return:
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
 
         # no gradients available --> True
         bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 0.0, 1.0,
@@ -171,7 +171,7 @@ class SoBufferTest(unittest.TestCase):
         test get_no_potential method
         :return:
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
 
         # no gradients available --> True
         bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
@@ -227,8 +227,8 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(view_distance=2.0,
-                                 collision_avoidance='repulsion')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(view_distance=2.0,
+                                                                                  collision_avoidance='repulsion')
 
         # no gradients available --> True
         bffr._own_pos = [soMessage(None, Vector3(2, 2, 2), -1, 3.0, 1.0, 1.0,
@@ -253,7 +253,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test _calc_attractive_gradient method for 2D and 3D
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
 
         # 2D - D < r <= C
         gradient = soMessage(None, Vector3(3, 4, 0), 1, 5.0, 1.0, 1.0, 0, None,
@@ -315,7 +315,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test _calc_repulsive_gradient method
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
 
         # 2D - D < r <= C
         gradient = soMessage(None, Vector3(3, 4, 0), -1, 5.0, 1.0, 1.0, 0,
@@ -378,7 +378,7 @@ class SoBufferTest(unittest.TestCase):
         test calc attractive gradient method based on Ge & Cui paper
         :return:
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
         # robot within diffusion radius + goal radius of gradient
         gradient = soMessage(None, Vector3(3, 5, 10), -1, 10.0, 2.0, 1.0, 0,
                              None, 0,
@@ -410,7 +410,7 @@ class SoBufferTest(unittest.TestCase):
         test repulsion vector calculation based on Ge
         :return:
         """
-        bffr = soBuffer.SoBuffer()
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer()
         gradient = soMessage(None, Vector3(4, 2, 0), -1, 4.0, 2.0, 1.0, 0,
                              None, 0,
                              0, Vector3(), False, [])
@@ -452,7 +452,7 @@ class SoBufferTest(unittest.TestCase):
         test evaporation of buffer data using evaporate_buffer method
         """
 
-        bffr = soBuffer.SoBuffer(aggregation='max', min_diffusion=1.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation='max', min_diffusion=1.0)
         now = rospy.Time.now()
 
         data = {'None': [  # message has goal radius - should be kept
@@ -546,7 +546,7 @@ class SoBufferTest(unittest.TestCase):
         test the evaporation of one specified message
         :return:
         """
-        bffr = soBuffer.SoBuffer(min_diffusion=1.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(min_diffusion=1.0)
         now = rospy.Time.now()
 
         # with goal radius --> should be kept
@@ -603,8 +603,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = max
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
-                                 aggregation_distance=1.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
+                                                                                  aggregation_distance=1.0)
         testlist = []
 
         msg = soMessage(None, Vector3(2, 0.8, 0), 1, 4.0, 1.0, 1.0, 0, None, 0,
@@ -658,8 +658,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = max, aggregation distance = 0.0
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
-                                 aggregation_distance=0.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
+                                                                                  aggregation_distance=0.0)
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, None, 0,
@@ -708,7 +708,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method with different frame IDs (all)
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
         testlist = {'None': [], 'grad': []}
         now = rospy.Time.now()
 
@@ -747,9 +747,9 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, only store gradients with specified frameids
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
-                                 store_all=False,
-                                 framestorage=['grad', 'silk'])
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'},
+                                                                                  store_all=False,
+                                                                                  framestorage=['grad', 'silk'])
         testlist = {'grad': [], 'silk': []}
         now = rospy.Time.now()
 
@@ -791,7 +791,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = min
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'min'})
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'min'})
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, None, 0,
@@ -831,8 +831,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = avg
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'avg'},
-                                 min_diffusion=1.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'avg'},
+                                                                                  min_diffusion=1.0)
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, None, 0,
@@ -878,7 +878,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = newest
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'newest'})
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'newest'})
         testlist = []
 
         msg = soMessage(None, Vector3(2, 2, 0), 1, 4.0, 1.0, 1.0, 0, None, 0,
@@ -923,7 +923,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, evaporation of received data
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max'})
         testlist = {'None': []}
         now = rospy.Time.now()
 
@@ -957,7 +957,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, store neighbor data and own pos
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', id='robot3')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation='max', id='robot3')
         testlist = {'robot1': [], 'robot2': []}
         ownpos = []
         now = rospy.Time.now()
@@ -1008,8 +1008,8 @@ class SoBufferTest(unittest.TestCase):
         test store_data method, neighbor gradients will not be stored
         :return:
         """
-        bffr = soBuffer.SoBuffer(aggregation='max', moving_storage_size=0,
-                                 id='')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation='max', moving_storage_size=0,
+                                                                                  id='')
         now = rospy.Time.now()
 
         # replaced by fourth robot1 message
@@ -1054,7 +1054,7 @@ class SoBufferTest(unittest.TestCase):
         test store data method with different aggregation options for different frame IDs
         :return:
         """
-        bffr = soBuffer.SoBuffer(aggregation={'DEFAULT': 'max', 'grad': 'avg'})
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(aggregation={'DEFAULT': 'max', 'grad': 'avg'})
         testlist = {'None': [], 'grad': []}
         now = rospy.Time.now()
 
@@ -1092,7 +1092,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(id='robot1')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(id='robot1')
 
         # no own position specified
         self.assertEqual(bffr._gradient_repulsion(), Vector3())
@@ -1141,7 +1141,7 @@ class SoBufferTest(unittest.TestCase):
             ]
         }
 
-        d = round(calc.vector_length(bffr._gradient_repulsion()), 0)
+        d = round(rhbpSelfOrganizationTest.src.so_data.src.so_data.calc.vector_length(bffr._gradient_repulsion()), 0)
 
         # calculate vector
         self.assertEqual(d, 2.0)
@@ -1151,7 +1151,7 @@ class SoBufferTest(unittest.TestCase):
         test gradient repulsion method based on Fernandez-Marquez et al.
         :return:
         """
-        bffr = soBuffer.SoBuffer(id='robot1', view_distance=2.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(id='robot1', view_distance=2.0)
 
         # no own position specified
         self.assertEqual(bffr._gradient_repulsion(), Vector3())
@@ -1206,7 +1206,7 @@ class SoBufferTest(unittest.TestCase):
             ]
         }
 
-        d = round(calc.vector_length(bffr._repulsion_vector()), 0)
+        d = round(rhbpSelfOrganizationTest.src.so_data.src.so_data.calc.vector_length(bffr._repulsion_vector()), 0)
 
         # calculate vector
         self.assertEqual(d, 3.0)
@@ -1217,8 +1217,8 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient',
-                                 result='', max_velocity=2.0)
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(id='robot1', collision_avoidance='gradient',
+                                                                                  result='', max_velocity=2.0)
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
@@ -1270,7 +1270,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate max method
         :return:
         """
-        bffr = soBuffer.SoBuffer(result='max')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(result='max')
 
         bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
@@ -1324,7 +1324,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate nearest repulsion method
         :return:
         """
-        bffr = soBuffer.SoBuffer(result='near')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(result='near')
         bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
 
@@ -1361,7 +1361,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(result='near')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(result='near')
         bffr._own_pos = [soMessage(None, Vector3(1, -2, 0), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
 
@@ -1399,7 +1399,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate all method
         :return:
         """
-        bffr = soBuffer.SoBuffer(result='all')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(result='all')
         bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, []),
@@ -1439,7 +1439,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = soBuffer.SoBuffer(result='all')
+        bffr = rhbpSelfOrganizationTest.src.so_data.src.so_data.soBuffer.SoBuffer(result='all')
         bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, []),
