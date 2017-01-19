@@ -9,8 +9,6 @@ import rospy
 from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3
-from turtlesim.srv import DrawGradient
-
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
                     angle_y=0.0, direction=Vector3(), moving = False,
@@ -100,20 +98,6 @@ if __name__ == '__main__':
     # artificial gradient - initialize spreading
     gradient = SoBroadcaster()
     gradients = get_gradient(gradient_poses_set_index)
-
-    # draw gradients within turtlesim
-    try:
-        print('Spawning environment')
-        rospy.wait_for_service('/draw_gradient', 5)
-        spawnEnv = rospy.ServiceProxy('/draw_gradient', DrawGradient)
-
-        for val in gradients:
-            spawnEnv(val.p.x, val.p.y, val.goal_radius,
-                 val.goal_radius + val.diffusion, val.attraction)
-
-
-    except (rospy.ServiceException, rospy.ROSException), e:
-        print('Could not spawn environment' + str(e))
 
     while not rospy.is_shutdown():
         # send gradients
