@@ -77,6 +77,9 @@ class SoBuffer(object):
                           collision avoidance between neighbors
                          * repulsion = repulsion vector calculation based on
                           Fernandez-Marquez et al.
+                         * reach = moving vectors are considered for repulsive
+                         vector calculation in Ge & Cui approach (only for
+                         result == reach)
         :type collision_avoidance: str
 
         :param moving_storage_size: how many gradient messages per moving
@@ -392,7 +395,8 @@ class SoBuffer(object):
 
     def get_attractive_gradients_view(self, frameids=[]):
         """
-        :return:
+        :return: True (attractive gradient within view),
+                False (no attractive gradients within view)
         """
         flag = False
 
@@ -622,10 +626,11 @@ class SoBuffer(object):
         if self._moving and self._own_pos:
             for val in self._moving.values():
                 if val[-1].attraction == -1:
-                    # shortest distance
+                    # shortest distance between two moving agents
                     distance = calc.get_gradient_distance(val[-1].p,
                                                           self._own_pos[-1].p)\
-                               - self._own_pos[-1].goal_radius
+                               - self._own_pos[-1].goal_radius \
+                               - val[-1].goal_radius
 
                     # agents within view
                     if distance <= self._view_distance:
@@ -833,7 +838,7 @@ class SoBuffer(object):
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
 
-            if fid in self._moving:
+            if self.collision_avoidance == 'reach' and fid in self._moving:
                 if self._moving[fid][-1].attraction == 1:
                     gradients_attractive.append(self._moving[fid][-1])
                 elif self._moving[fid][-1].attraction == -1:
