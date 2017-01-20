@@ -339,7 +339,7 @@ class SoBuffer(object):
             else:
                 self._static[msg.header.frame_id] = [msg]
 
-    def get_current_gradient(self, frameids=[]):  # TODO unit test anpassen?
+    def get_current_gradient(self, frameids=[]):
         """
         returns movement vector based on gradients & with or without collision
         avoidance
@@ -416,7 +416,7 @@ class SoBuffer(object):
                         if element.attraction == 1:
                             return True
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -457,7 +457,7 @@ class SoBuffer(object):
                         if element.attraction == 1:
                             gradients_attractive.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -480,9 +480,10 @@ class SoBuffer(object):
         else:
             return False
 
-    def get_attractive_distance(self, frameids=[]):  # TODO test
+    def get_attractive_distance(self, frameids=[]):
         """
         :return:  returns distance to closest attractive gradient
+        (min attraction)
         no attractive gradients: returns np.inf
         """
         gradients_attractive = []
@@ -508,7 +509,7 @@ class SoBuffer(object):
                         if element.attraction == 1:
                             gradients_attractive.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -603,7 +604,7 @@ class SoBuffer(object):
         if self._moving:
             for val in self._moving.values():
                 # check if neighbor is in sight
-                if calc.get_gradient_distance(val[-1].p,
+                if val and calc.get_gradient_distance(val[-1].p,
                                               self._own_pos[-1].p) <= val[-1] \
                         .diffusion + val[-1].goal_radius + self._view_distance:
 
@@ -659,7 +660,7 @@ class SoBuffer(object):
 
         if self._moving:
             for val in self._moving.values():
-                if val[-1].attraction == -1:
+                if val and val[-1].attraction == -1:
                     # shortest distance between two moving agents
                     distance = calc.get_gradient_distance(val[-1].p,
                                                           self._own_pos[-1].p)\
@@ -729,7 +730,7 @@ class SoBuffer(object):
                             element.goal_radius + self._view_distance:
                             gradients.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -808,7 +809,7 @@ class SoBuffer(object):
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -881,16 +882,10 @@ class SoBuffer(object):
         attractive_gradient = None
 
         # if no frameids are specified, use all data stored in buffer
-        #if not frameids:
-        #    frameids = self._static.keys()
-        #if self.collision_avoidance == 'reach':
-        #    frameids += self._moving.keys()
-
-        # if no frameids are specified, use all data stored in buffer
         if not frameids:
             if self.result_static:
                 frameids = self._static.keys()
-            if self.result_moving:
+            if self.result_moving or self.collision_avoidance=='reach':
                 frameids += self._moving.keys()
 
         # find moving and / or static gradients within view distance
@@ -905,12 +900,14 @@ class SoBuffer(object):
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if (self.result_moving or self.collision_avoidance=='reach') and \
+                            fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
                         self._moving[fid][-1].goal_radius + self._view_distance:
-                    if self._moving[fid][-1].attraction == 1:
+                    if self.result_moving and \
+                                    self._moving[fid][-1].attraction == 1:
                         gradients_attractive.append(self._moving[fid][-1])
                     elif self._moving[fid][-1].attraction == -1:
                         gradients_repulsive.append(self._moving[fid][-1])
@@ -1001,7 +998,7 @@ class SoBuffer(object):
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -1077,7 +1074,7 @@ class SoBuffer(object):
                             element.goal_radius + self._view_distance:
                         gradients.append(element)
 
-            if self.result_moving and fid in self._moving:
+            if self.result_moving and fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
                         <= self._moving[fid][-1].diffusion + \
@@ -1388,7 +1385,7 @@ class SoBuffer(object):
                 for val in self._moving.values():  # returns list
                     # of neighbor positions
                     # check if neighbor is in sight
-                    if calc.get_gradient_distance(val[-1].p,
+                    if val and calc.get_gradient_distance(val[-1].p,
                                                   self._own_pos[-1].p) <= val[
                         -1].diffusion + val[-1].goal_radius \
                             + self._view_distance:
@@ -1423,7 +1420,7 @@ class SoBuffer(object):
                 for val in self._moving.values():  # returns list
                     # of neighbor positions
                     # check if neighbor is in sight
-                    if calc.get_gradient_distance(val[-1].p,
+                    if val and calc.get_gradient_distance(val[-1].p,
                                                   self._own_pos[-1].p) <= \
                                             val[
                                                 -1].diffusion + val[

@@ -43,7 +43,8 @@ class SoBufferTest(unittest.TestCase):
                                                            1, 4.0, 1.0, 1.0, 0,
                                                            None,
                                                            0, 0, Vector3(),
-                                                           True, [])]}
+                                                           True, [])],
+            'robot4': []}
 
         bffr._static = {
             'None': [soMessage(None, Vector3(5, 6, 5), 1, 1.0,
@@ -1182,7 +1183,8 @@ class SoBufferTest(unittest.TestCase):
                           Vector3(3, 2, 0), -1, 1.0, 0.8, 1.0, 0,
                           rospy.Time.now(), 0, 0,
                           Vector3(), False, [])
-            ]
+            ],
+            'robot4': []
         }
         # calculate resulting vector
         result = bffr._repulsion_vector()
@@ -1267,10 +1269,16 @@ class SoBufferTest(unittest.TestCase):
         test aggregate max method
         :return:
         """
-        bffr = SoBuffer(result='max')
+        bffr = SoBuffer(result='max', result_moving=False)
 
         bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
+
+        bffr._moving = {
+            'robot1': [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 0.0, 1.0,
+                                   0, None, 0, 0, Vector3(), False, [])],
+            'robot2': []
+        }
 
         bffr._static = {
             'gradient': [soMessage(None, Vector3(2, 3, 1), 1, 3.0, 1.0, 1.0, 0,
@@ -1354,11 +1362,12 @@ class SoBufferTest(unittest.TestCase):
 
     def test_aggregate_nearest_ge(self):
         """
-        test aggregate nearest Ge method
+        test aggregate nearest Ge method, do not consider moving gradients
         :return:
         """
 
-        bffr = SoBuffer(result='near')
+        bffr = SoBuffer(result='reach', collision_avoidance='',
+                        result_moving=False)
         bffr._own_pos = [soMessage(None, Vector3(1, -2, 0), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
 
@@ -1374,6 +1383,12 @@ class SoBufferTest(unittest.TestCase):
                           0, Vector3(), False, []),
                 soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, None, 0,
                           0, Vector3(), False, [])]
+        }
+
+        bffr._moving = {
+            'robot1': [soMessage(None, Vector3(1, -2, 1), -1, 4.0, 0.0, 1.0,
+                                   0, None, 0, 0, Vector3(), False, [])],
+            'robot2': []
         }
 
         # only one frameID + repulsive gradient is not considered
@@ -1470,6 +1485,39 @@ class SoBufferTest(unittest.TestCase):
         result.z = round(result.z, 2)
 
         self.assertEqual(result, Vector3(0.02, -0.44, 0.85))
+
+
+    def test_get_attractive_distance(self):
+        """
+        test get_attractive_distance method
+        :return:
+        """
+        bffr = SoBuffer(result='near')
+
+        bffr._own_pos = [soMessage(None, Vector3(1, 2, 3), -1, 3.0, 0.0, 1.0,
+                                   0, None, 0, 0, Vector3(), False, [])]
+
+        bffr._static = {
+            'gradient': [soMessage(None, Vector3(2, 3, 1), -1, 1.0, 1.0, 1.0,
+                                   0, None, 0, 0, Vector3(), False, []),
+                         soMessage(None, Vector3(2, 2, 2), 1, 1.0, 1.0, 1.0, 0,
+                                   None, 0,
+                                   0, Vector3(), False, [])],
+            'None': [
+                soMessage(None, Vector3(0, 3, 2), -1, 3.0, 1.0, 1.0, 0, None,
+                          0,
+                          0, Vector3(), False, []),
+                soMessage(None, Vector3(5, 6, 3), 1, 2.0, 1.0, 1.0, 0, None, 0,
+                          0,
+                          Vector3(), False, [])]
+        }
+
+        self.assertEqual(bffr.get_attractive_distance(), np.sqrt(2)-1)
+
+
+
+
+
 
 
 # run tests - start roscore before running tests

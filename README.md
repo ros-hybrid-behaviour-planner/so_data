@@ -120,8 +120,13 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
   * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
   * **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
   * **avoid** = movement vector leading away from all sensed gradients will be returned 
+* **result_moving** (True): consider moving gradients (True) or not (False) in calculations 
+* **result_static** (True): consider static gradients (True) or not (False) in calculations (except for flocking and repulsion which are always based only on moving gradients)
   
-* **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents (moving gradients). Options:
+* **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents (moving gradients). 
+Consideres only repulsive moving gradients. 
+Should only be used on its own or in combination mit result_moving = False. 
+Options:
   * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
   * **reach** = moving vectors are considered in vector calculations based on Ge & Cui (result == reach is required)
@@ -144,8 +149,6 @@ Flocking parameters:
 Quorum Sensing parameters: 
 
 * **threshold** (2): quorum sensing threshold to be passed 
-* **quorum_moving** (True): consider moving gradients (True) or not (False) in quorum decision
-* **quorum_static** (False): consider static gradients (True) or not (False) in quorum decision
 
 
 ### Gradient Storage
@@ -386,6 +389,7 @@ The moving gradients are especially needed for repulsion, flocking and quorum se
 
 soBuffer aggregates with the `aggregation` option the incoming gradient data and stores per position / within a specified aggregation radius only one gradient. 
 But when requesting the `current_gradient` the stored data is aggregated to return one vector. 
+With parameters `result_moving` and `result_static` can be defined which gradients (moving/static/both) will be considered in the calculation. 
 There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
 
 ```python
