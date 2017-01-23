@@ -1296,7 +1296,12 @@ class SoBuffer(object):
         d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) \
             - self._own_pos[-1].goal_radius
 
-        if d <= gradient.goal_radius + gradient.diffusion:
+        if d <= gradient.goal_radius:
+            v.x = 0
+            v.y = 0
+            v.z = 0
+        elif gradient.goal_radius < d <= \
+                        gradient.goal_radius + gradient.diffusion:
             v.x = tmp.x
             v.y = tmp.y
             v.z = tmp.z
