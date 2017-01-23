@@ -393,7 +393,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [soMessage(None, Vector3(3, 7, 10), -1, 3.0, 0.0, 1.0,
                                    0, None, 0, 0, Vector3(), False, [])]
         self.assertEqual(bffr._calc_attractive_gradient_ge(gradient),
-                         Vector3(0, -2, 0))
+                         Vector3(0, 0, 0))
 
         # robot without radius + goal radius of gradient, but gradient is
         # within view_distance
@@ -1152,7 +1152,7 @@ class SoBufferTest(unittest.TestCase):
         bffr = SoBuffer(id='robot1', view_distance=2.0)
 
         # no own position specified
-        self.assertEqual(bffr._gradient_repulsion(), Vector3())
+        self.assertEqual(bffr._repulsion_vector(), Vector3())
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
@@ -1192,7 +1192,7 @@ class SoBufferTest(unittest.TestCase):
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         # calculate vector
-        self.assertEqual(result, Vector3(-0.88, -0.48, 0))
+        self.assertEqual(result, Vector3(-0.39, -0.41, 0))
 
         # neighbor within goal_radius - returns vector with
         # ||vector|| = repulsion_radius
@@ -1217,7 +1217,8 @@ class SoBufferTest(unittest.TestCase):
         """
 
         bffr = SoBuffer(id='robot1', collision_avoidance='gradient', result='',
-                        max_velocity=2.0, result_static=False, view_distance=1.5)
+                        max_velocity=2.0, result_static=False,
+                        view_distance=1.5)
 
         bffr._own_pos = [
             soMessage(Header(None, rospy.Time.now(), 'None'), Vector3(2, 4, 0),
@@ -1261,7 +1262,7 @@ class SoBufferTest(unittest.TestCase):
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         # calculate vector
-        self.assertEqual(result, Vector3(-0.88, -0.48, 0.0))
+        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
 
     # Aggregation return vectors
     def test_aggregate_max(self):
