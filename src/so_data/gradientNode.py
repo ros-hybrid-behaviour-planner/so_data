@@ -79,6 +79,15 @@ def get_gradient(index):
                               create_gradient(Vector3(6, 6, 0), attraction=1,
                                               diffusion=5.0)])
         gradients_set.append([])
+        gradients_set.append([create_gradient(Vector3(9, 9, 0), attraction=-1,
+                                              diffusion=2.5, goal_radius=1.5),
+                             create_gradient(Vector3(6, 10, 0), attraction=1,
+                                             diffusion=2.0, goal_radius=1.7),
+                             create_gradient(Vector3(14, 3, 0), attraction=1,
+                                              diffusion=2.0, goal_radius=0.75),
+                             create_gradient(Vector3(3, 2.25,0), attraction=-1,
+                                             diffusion=1.2, goal_radius=0.8)
+                             ])
 
         if index < len(gradients_set):
             return gradients_set[index]
