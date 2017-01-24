@@ -11,6 +11,7 @@ import numpy as np
 import calc
 from geometry_msgs.msg import Vector3
 import flocking
+import flockingAI
 import collections
 import random
 
@@ -365,6 +366,8 @@ class SoBuffer(object):
             result = self._aggregate_avoid_all(frameids=frameids)
         elif self.result == 'flocking':
             result = self.flocking()
+        elif self.result == 'flocking_ai':
+            result = self.flocking_ai()
 
         # collision avoidance / consider moving gradients
         if self.collision_avoidance == 'gradient':
@@ -546,7 +549,7 @@ class SoBuffer(object):
         """
         determines whether there is still some attraction/repulsion
         :param frameids: frameIDs of gradients to be considered in calculation
-        :return: True/False (bool)
+        :return: True (potential) /False (no potential) (bool)
         """
 
         # calculate gradient vector
@@ -555,9 +558,9 @@ class SoBuffer(object):
 
         # no gradient vector to follow --> "goal reached / repulsion avoided"
         if d == 0.0:
-            return True
-        else:
             return False
+        else:
+            return True
 
     def get_neighbors_bool(self):
         """
@@ -575,6 +578,8 @@ class SoBuffer(object):
             d = calc.vector_length(self._gradient_repulsion())
         elif self.result == 'flocking':
             d = calc.vector_length(self.flocking())
+        elif self.result == 'flocking_ai':
+            d = calc.vector_length(self.flocking_ai())
 
         if d > 0:
             flag = False
@@ -1522,3 +1527,51 @@ class SoBuffer(object):
             velocity.z *= self.max_velocity
 
         return velocity
+
+    def flocking_ai(self):
+        """
+        flocking approach based on Programming Game AI by Example
+        (Mat Buckland)
+        :return: movement vector
+        """
+        view = []
+
+        # at least one position of agent is available
+        if len(self._own_pos) == 0:
+            return Vector3()
+
+        # neighbors of agent
+        if self._moving:
+            for val in self._moving:
+                # check if neighbor is in sight
+                if calc.get_gradient_distance(self._moving[val][-1].p,
+                                          self._own_pos[-1].p) <= self._moving[val][
+                    -1].diffusion + self._moving[val][-1].goal_radius \
+                        + self._view_distance:
+                    view.append(self._moving[val])
+
+        # create array of tuples with neighbor position - neighbor velocity &
+        # own pos & heading (p, h)
+        Boid = collections.namedtuple('Boid', ['p', 'h'])
+
+        h = float(self._own_pos[-1].payload[0].value)
+        agent = Boid(self._own_pos[-1].p, h)
+
+        neighbors = []
+        for neighbor in view:
+            if len(neighbor) > 0:
+                h = [float(neighbor[-1].payload[0].value), float(neighbor[-1].payload[1].value), float(neighbor[-1].payload[2].value)]
+                neighbors.append(Boid(neighbor[-1].p, h))
+
+        mov = flockingAI.separation(agent, neighbors)
+        mov = calc.add_vectors(mov, flockingAI.cohesion(agent, neighbors))
+        mov = calc.add_vectors(mov, flockingAI.alignment(neighbors))
+
+        # set maximum velocity
+        if calc.vector_length(mov) > self.max_velocity:
+            mov = calc.unit_vector3(mov)
+            mov.x *= self.max_velocity
+            mov.y *= self.max_velocity
+            mov.z *= self.max_velocity
+
+        return mov
