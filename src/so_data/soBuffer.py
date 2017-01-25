@@ -1554,14 +1554,12 @@ class SoBuffer(object):
         # own pos & heading (p, h)
         Boid = collections.namedtuple('Boid', ['p', 'h'])
 
-        h = float(self._own_pos[-1].payload[0].value)
-        agent = Boid(self._own_pos[-1].p, h)
+        agent = Boid(self._own_pos[-1].p, self._own_pos[-1].q)
 
         neighbors = []
         for neighbor in view:
             if len(neighbor) > 0:
-                h = [float(neighbor[-1].payload[0].value), float(neighbor[-1].payload[1].value), float(neighbor[-1].payload[2].value)]
-                neighbors.append(Boid(neighbor[-1].p, h))
+                neighbors.append(Boid(neighbor[-1].p, neighbor[-1].q))
 
         mov = flockingAI.separation(agent, neighbors)
         mov = calc.add_vectors(mov, flockingAI.cohesion(agent, neighbors))

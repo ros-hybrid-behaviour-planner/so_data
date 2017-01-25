@@ -8,10 +8,10 @@ Created on 09.01.2017
 import rospy
 from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3, Quaternion
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
-                    angle_y=0.0, direction=Vector3(), moving = False,
+                    angle_y=0.0, q=Quaternion(), moving = False,
                     goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
     """
     creates a soMessage to specify a gradient
@@ -31,6 +31,7 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
 
     msg = soMessage()
     msg.p = position
+    msg.q = q
     msg.attraction = attraction
     msg.header.stamp = now
     msg.diffusion = diffusion
@@ -40,7 +41,6 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     msg.ev_factor = ev_factor
     msg.ev_time = ev_time
     msg.ev_stamp = now
-    msg.direction = direction
     msg.moving = moving
     msg.payload = payload
     return msg

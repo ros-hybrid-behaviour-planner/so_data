@@ -1,6 +1,7 @@
 Header header # standard ROS header
 
 geometry_msgs/Vector3 p  # gradient center
+geometry_msgs/Quaternion q  # orientation / direction
 
 int8 attraction # repulsion / attraction
 float32 diffusion # how far information will be spread
@@ -14,7 +15,6 @@ time ev_stamp # evaporation time stamp
 # to define a gradient sector
 float32 angle_x
 float32 angle_y
-geometry_msgs/Vector3 direction
 
 # indicates whether data is from a moving object (e.g. robot)
 bool moving

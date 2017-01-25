@@ -7,7 +7,7 @@ Created on 11.01.2017
 import rospy
 from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3, Quaternion
 from abc import ABCMeta, abstractmethod
 import copy
 
@@ -20,7 +20,7 @@ class TopicGradientTf(object):
 
     def __init__(self, topic, message_type, id, p=Vector3(), attraction=-1,
                  diffusion=1.0, goal_radius=0.5, ev_factor=1, ev_time=0,
-                 angle_x=0, angle_y=0, direction=Vector3(), moving=True,
+                 angle_x=0, angle_y=0, quaternion=Quaternion(), moving=True,
                  payload=[]):
         """
         subscription to topic and variable initializatoin
@@ -43,6 +43,7 @@ class TopicGradientTf(object):
 
         self._id = id
         self.p = p
+        self.q = quaternion
         self.attraction = attraction
         self.diffusion = diffusion
         self.goal_radius = goal_radius
@@ -50,7 +51,6 @@ class TopicGradientTf(object):
         self.ev_time = ev_time
         self.angle_x = angle_x
         self.angle_y = angle_y
-        self.direction = direction
         self.moving = moving
         self.payload = payload
 
@@ -98,6 +98,7 @@ class TopicGradientTf(object):
         msg.header.frame_id = self._id
         msg.header.stamp = now
         msg.p = self.p
+        msg.q = self.q
         msg.attraction = self.attraction
         msg.diffusion = self.diffusion
         msg.goal_radius = self.goal_radius
@@ -106,7 +107,6 @@ class TopicGradientTf(object):
         msg.ev_stamp = now
         msg.angle_x = self.angle_x
         msg.angle_y = self.angle_y
-        msg.direction = self.direction
         msg.moving = self.moving
         msg.payload = self.payload
 

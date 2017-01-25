@@ -42,6 +42,7 @@ def separation(agent, neighbors):
 
 def alignment(neighbors, orientation=[1, 0, 0, 1]):
     """
+    # TODO update for quaternion use
     calculates alignment steering force
     averaged angle of neighbors
     :param neighbors: list of neighbors specifying position and orientation
@@ -54,9 +55,15 @@ def alignment(neighbors, orientation=[1, 0, 0, 1]):
     result = Vector3()
 
     for q in neighbors:
-        yaw += q.h[0]
-        pitch += q.h[1]
-        roll += q.h[2]
+        (r, p, y) = tf.transformations.euler_from_quaternion([
+             q.h.x,
+             q.h.y,
+             q.h.z,
+             q.h.w])
+
+        yaw += y
+        pitch += p
+        roll += r
 
     if len(neighbors) > 0:
         yaw /= len(neighbors)
