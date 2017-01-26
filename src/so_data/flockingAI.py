@@ -1,17 +1,17 @@
 """
 Created on 24.01.2017
 
-flocking based on Programming Game AI by Example by Mat Buckland
+flocking based on Reynolds Description
+www.red3d.com/cwr/steer/gdc99/
 
 @author: kaiser
 """
 
 from __future__ import division  # ensures floating point divisions
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
 import calc
 import tf.transformations
-from geometry_msgs.msg import Quaternion
 
 
 def separation(agent, neighbors):
@@ -19,69 +19,78 @@ def separation(agent, neighbors):
     Calculates separation steering force between agent and neighbors
     :param agent: agent position and orientation
     :param neighbors: neighbor positions and orientations
-    :return: movement vector for separation
+    :return: normalized movement vector for separation
     """
     sep = Vector3()
 
-    for q in neighbors:
-        diff = calc.delta_vector(agent.p, q.p)
-        dist = calc.vector_length(diff)
-        if dist > 0.0:
-            diff = calc.unit_vector3(diff)
-            sep.x += diff.x / dist
-            sep.y += diff.y / dist
-            sep.z += diff.z / dist
-        else:  # two agents on top of each other: add random vector
-            tmp = np.random.rand(1, 3)
-            sep.x += tmp[0]
-            sep.y += tmp[1]
-            sep.z += tmp[2]
+    if len(neighbors) > 0:
+        # 1/r weighting
+        weight = 1.0 / len(neighbors)
+        for q in neighbors:
+            diff = calc.delta_vector(agent.p, q.p)
+            dist = calc.vector_length(diff)
+            if dist > 0.0:
+                diff = calc.unit_vector3(diff)
+                sep.x += weight * (diff.x / dist)
+                sep.y += weight * (diff.y / dist)
+                sep.z += weight * (diff.z / dist)
+            else:  # two agents on top of each other: add random vector
+                tmp = np.random.rand(1, 3)
+                dist = calc.vector_length(tmp)
+                sep.x += weight * (tmp[0] / dist)
+                sep.y += weight * (tmp[1] / dist)
+                sep.z += weight * (tmp[2] / dist)
 
     return sep
 
 
-def alignment(neighbors, orientation=[1, 0, 0, 1]):
+def alignment(agent, neighbors, orientation=[1, 0, 0, 1]):
     """
-    # TODO update for quaternion use
     calculates alignment steering force
-    averaged angle of neighbors
+    averaged quaternion of neighbors
+    :param agent: agent position and orientation (quaternion)
     :param neighbors: list of neighbors specifying position and orientation
-    :param orientation: specifies initial orientation of agent
-    :return: movement vector
+    (quaternion)
+    :param orientation: specifies initial orientation vector of agent
+    :return: normalized movement vector
     """
-    yaw = 0.0
-    pitch = 0.0
-    roll = 0.0
     result = Vector3()
 
-    for q in neighbors:
-        (r, p, y) = tf.transformations.euler_from_quaternion([
-             q.h.x,
-             q.h.y,
-             q.h.z,
-             q.h.w])
-
-        yaw += y
-        pitch += p
-        roll += r
-
     if len(neighbors) > 0:
-        yaw /= len(neighbors)
-        pitch /= len(neighbors)
-        roll /= len(neighbors)
-        # yaw -= agent.h[0] #TODO check if valid in our case with twists etc .
-        # --> no as angle between current orientation and returned vector is
-        #  handed back
+        # weight of quaternions
+        weight = 1.0 / len(neighbors)
 
-        quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
-        q = Quaternion(*quaternion)
+        tmp = Quaternion()
+        # average quaternion
+        for q in neighbors:
+            tmp.x += weight * q.h.x
+            tmp.y += weight * q.h.y
+            tmp.z += weight * q.h.z
+            tmp.w += weight * q.h.w
 
-        current_orientation = tf.transformations.quaternion_matrix(
-            [q.x, q.y, q.z, q.w]).dot(np.array(orientation))
+        # average unit forward vector of neighbors
+        neighbors_orientation = tf.transformations.quaternion_matrix(
+            [tmp.x, tmp.y, tmp.z, tmp.w]).dot(np.array(orientation))
 
-        result.x = current_orientation[0]
-        result.y = current_orientation[1]
-        result.z = current_orientation[2]
+        # orientation of agent (unit forward vector)
+        agent_orientation = tf.transformations.quaternion_matrix(
+            [agent.h.x, agent.h.y, agent.h.z, agent.h.w]).dot(
+            np.array(orientation))
+
+        # steering: difference neighbors and agent
+        steering = neighbors_orientation - agent_orientation
+
+        # resulting vector is
+        result.x = steering[0]
+        result.y = steering[1]
+        result.z = steering[2]
+
+        # normalized vector
+        length = calc.vector_length(result)
+        if length > 0:
+            result.x /= length
+            result.y /= length
+            result.z /= length
 
     return result
 
@@ -92,7 +101,7 @@ def cohesion(agent, neighbors):
     average of neighbor positions
     :param agent: agent position and orientation
     :param neighbors: list of neighbor positions and orientations
-    :return: vector steering towards average position of neighbors
+    :return: norm vector steering towards average position of neighbors
     """
 
     coh = Vector3()
@@ -106,5 +115,11 @@ def cohesion(agent, neighbors):
         coh.z /= len(neighbors)
 
         coh = calc.delta_vector(coh, agent.p)
+
+    length = calc.vector_length(coh)
+    if length > 0:
+        coh.x /= length
+        coh.y /= length
+        coh.z /= length
 
     return coh

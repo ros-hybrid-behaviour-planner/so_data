@@ -41,11 +41,15 @@ def angle_between(v1, v2):
     """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
+
     # det needs square matrix as input!
     angle = np.math.atan2(np.linalg.det([v1_u, v2_u]), np.dot(v1_u, v2_u))
 
     if np.isnan(angle):
-        return 0.0
+        if (v1_u == v2_u).all:
+            return 0.0
+        else:
+            return np.pi
 
     return angle
 

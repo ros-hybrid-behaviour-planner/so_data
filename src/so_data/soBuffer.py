@@ -1563,7 +1563,7 @@ class SoBuffer(object):
 
         mov = flockingAI.separation(agent, neighbors)
         mov = calc.add_vectors(mov, flockingAI.cohesion(agent, neighbors))
-        mov = calc.add_vectors(mov, flockingAI.alignment(neighbors))
+        mov = calc.add_vectors(mov, flockingAI.alignment(agent, neighbors))
 
         # set maximum velocity
         if calc.vector_length(mov) > self.max_velocity:
