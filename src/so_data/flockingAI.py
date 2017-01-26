@@ -35,8 +35,8 @@ def separation(agent, neighbors):
                 sep.y += weight * (diff.y / dist)
                 sep.z += weight * (diff.z / dist)
             else:  # two agents on top of each other: add random vector
-                tmp = np.random.rand(1, 3)
-                dist = calc.vector_length(tmp)
+                tmp = np.random.rand(1, 3)[0]
+                dist = np.linalg.norm(tmp)
                 sep.x += weight * (tmp[0] / dist)
                 sep.y += weight * (tmp[1] / dist)
                 sep.z += weight * (tmp[2] / dist)
