@@ -9,9 +9,6 @@ from so_data.topicGradientTf import TopicGradientTf
 import copy
 import rospy
 import geometry_msgs.msg
-from diagnostic_msgs.msg import KeyValue
-import numpy as np
-import tf.transformations
 
 
 class PoseTopicGradientTf(TopicGradientTf):
@@ -38,16 +35,6 @@ class PoseTopicGradientTf(TopicGradientTf):
         msg.p.z = pose.position.z
 
         msg.q = pose.orientation
-
-        # (roll, pitch, yaw) = tf.transformations.euler_from_quaternion([
-        #     pose.orientation.x,
-        #     pose.orientation.y,
-        #     pose.orientation.z,
-        #     pose.orientation.w])
-        # pld = KeyValue('yaw', "%.9f" % yaw)
-        # msg.payload.append(pld)
-        # msg.payload.append(KeyValue('pitch', "%.9f" % pitch))
-        # msg.payload.append(KeyValue('roll', "%.9f" % roll))
 
         # update self._current_gradient
         self._current_msg = msg
