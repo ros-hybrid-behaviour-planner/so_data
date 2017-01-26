@@ -25,7 +25,7 @@ def separation(agent, neighbors):
 
     if len(neighbors) > 0:
         # 1/r weighting
-        weight = 1.0 / len(neighbors)
+        weight = 1.0 / 1.0
         for q in neighbors:
             diff = calc.delta_vector(agent.p, q.p)
             dist = calc.vector_length(diff)
@@ -85,13 +85,6 @@ def alignment(agent, neighbors, orientation=[1, 0, 0, 1]):
         result.y = steering[1]
         result.z = steering[2]
 
-        # normalized vector
-        length = calc.vector_length(result)
-        if length > 0:
-            result.x /= length
-            result.y /= length
-            result.z /= length
-
     return result
 
 
@@ -115,11 +108,5 @@ def cohesion(agent, neighbors):
         coh.z /= len(neighbors)
 
         coh = calc.delta_vector(coh, agent.p)
-
-    length = calc.vector_length(coh)
-    if length > 0:
-        coh.x /= length
-        coh.y /= length
-        coh.z /= length
 
     return coh
