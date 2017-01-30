@@ -12,7 +12,8 @@ from geometry_msgs.msg import Vector3, Quaternion
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
                     angle_y=0.0, q=Quaternion(), moving = False,
-                    goal_radius=1.0, payload=[], ev_time=0, ev_factor=1.0):
+                    direction=Vector3(1,0,0), goal_radius=1.0, payload=[],
+                    ev_time=0, ev_factor=1.0):
     """
     creates a soMessage to specify a gradient
     :param position: agent position
@@ -36,6 +37,7 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     msg.header.stamp = now
     msg.diffusion = diffusion
     msg.goal_radius = goal_radius
+    msg.direction = direction
     msg.angle_x = angle_x
     msg.angle_y = angle_y
     msg.ev_factor = ev_factor

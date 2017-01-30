@@ -44,41 +44,25 @@ def separation(agent, neighbors):
     return sep
 
 
-def alignment(agent, neighbors, orientation=[1, 0, 0, 1]):
+def alignment(agent, neighbors):
     """
-    calculates alignment steering force
-    averaged quaternion of neighbors
-    :param agent: agent position and orientation (quaternion)
+    calculates alignment steering force based on direction vectors
+    :param agent: agent position and orientation (np.array, [Vector, 1])
     :param neighbors: list of neighbors specifying position and orientation
-    (quaternion)
-    :param orientation: specifies initial orientation vector of agent
     :return: normalized movement vector
     """
     result = Vector3()
+    tmp = np.zeros(4)
 
     if len(neighbors) > 0:
-        # weight of quaternions
-        weight = 1.0 / len(neighbors)
-
-        tmp = Quaternion()
-        # average quaternion
+        # sum of direction vectors
         for q in neighbors:
-            tmp.x += weight * q.h.x
-            tmp.y += weight * q.h.y
-            tmp.z += weight * q.h.z
-            tmp.w += weight * q.h.w
+            tmp += q.h
+        # average
+        tmp /= len(neighbors)
 
-        # average unit forward vector of neighbors
-        neighbors_orientation = tf.transformations.quaternion_matrix(
-            [tmp.x, tmp.y, tmp.z, tmp.w]).dot(np.array(orientation))
-
-        # orientation of agent (unit forward vector)
-        agent_orientation = tf.transformations.quaternion_matrix(
-            [agent.h.x, agent.h.y, agent.h.z, agent.h.w]).dot(
-            np.array(orientation))
-
-        # steering: difference neighbors and agent
-        steering = neighbors_orientation - agent_orientation
+        # diff agent direction and average direction
+        steering = tmp - agent.h
 
         # resulting vector is
         result.x = steering[0]

@@ -14,6 +14,7 @@ import flocking
 import flockingAI
 import collections
 import random
+import tf.transformations
 
 
 class SoBuffer(object):
@@ -1551,15 +1552,29 @@ class SoBuffer(object):
                     view.append(self._moving[val])
 
         # create array of tuples with neighbor position - neighbor velocity &
-        # own pos & heading (p, h)
+        # own pos & heading vector (p, h)
         Boid = collections.namedtuple('Boid', ['p', 'h'])
 
-        agent = Boid(self._own_pos[-1].p, self._own_pos[-1].q)
+        # calculate current direction vector
+        agent_orientation = tf.transformations.quaternion_matrix(
+            [self._own_pos[-1].q.x, self._own_pos[-1].q.y, self._own_pos[-1].q.z,
+             self._own_pos[-1].q.w]).dot(np.array([self._own_pos[-1].direction.x,
+                                               self._own_pos[-1].direction.y,
+                                               self._own_pos[-1].direction.z, 1]))
+
+        agent = Boid(self._own_pos[-1].p, agent_orientation)
 
         neighbors = []
         for neighbor in view:
             if len(neighbor) > 0:
-                neighbors.append(Boid(neighbor[-1].p, neighbor[-1].q))
+                # calculate direction vector of neighbors
+                orientation = tf.transformations.quaternion_matrix(
+                    [neighbor[-1].q.x, neighbor[-1].q.y,
+                     neighbor[-1].q.z, neighbor[-1].q.w]).dot(
+                    np.array([neighbor[-1].direction.x,
+                              neighbor[-1].direction.y,
+                              neighbor[-1].direction.z, 1]))
+                neighbors.append(Boid(neighbor[-1].p, orientation))
 
         mov = flockingAI.separation(agent, neighbors)
         mov = calc.add_vectors(mov, flockingAI.cohesion(agent, neighbors))

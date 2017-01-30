@@ -13,6 +13,7 @@ float32 ev_time # 0 - no evaporation (ev_factor = 1), instant evaporation (ev_fa
 time ev_stamp # evaporation time stamp
 
 # to define a gradient sector
+geometry_msgs/Vector3 direction
 float32 angle_x
 float32 angle_y
 
