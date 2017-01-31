@@ -8,6 +8,7 @@ Unit tests were done for the core components to ensure correctness of mathematic
 All methods work for up to three dimensions; the code can be adapted for use in more dimensions with minor enhancements. 
 The package can be used in combination with the RHBP, but as well on its own. 
 
+
 Package components
 -------------------
 

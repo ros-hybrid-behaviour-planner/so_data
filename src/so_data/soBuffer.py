@@ -432,6 +432,12 @@ class SoBuffer(object):
 
         return False
 
+    def get_own_pose(self):
+        """
+        :return: robots last position
+        """
+        return self._own_pos[-1]
+
     def get_goal_reached(self, frameids=[]):
         """
         determines whether nearest attractive gradient was reached - especially
