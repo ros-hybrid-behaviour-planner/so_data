@@ -42,7 +42,8 @@ The specification of frameIDs can help to assign gradients to specific tasks / b
 ```
 Header header 
 
-geometry_msgs/Vector3 p  
+geometry_msgs/Vector3 p
+geometry_msgs/Quaternion q
 
 int8 attraction 
 float32 diffusion 
@@ -52,9 +53,9 @@ float32 ev_factor
 float32 ev_time
 time ev_stamp
 
+geometry_msgs/Vector3 direction
 float32 angle_x
 float32 angle_y
-geometry_msgs/Vector3 direction
 
 bool moving
 
@@ -66,7 +67,8 @@ diagnostic_msgs/KeyValue[] payload
   * time stamp: sec + nsec - has to be set using ros Time 
   * string frame_id: to associate data for a purpose 
 * main gradient attributes:
-  * **p**: gradient center 
+  * **p**: gradient center
+  * **q**: quaternion indicating orientation (x,z,y,w as calculated by tf.transformations)
   * **attraction**: attractive `1` or repulsive `-1` gradient 
   * **diffusion**: radius in which information will be spread
   * **goal_radius**: area with minimum attraction or maximum repulsion; total reach of gradient = diffusion + goal_radius 
@@ -75,9 +77,9 @@ diagnostic_msgs/KeyValue[] payload
   * **ev_time**: delta time `>= 0` in which evaporation is applied 
   * **ev_stamp**: time stamp used for evaporation calculations; should be set equal to header time stamp initially 
 * gradient sector:
-  * **angle_x**: first gradient angle
-  * **angle_y**: second gradient angle
-  * **direction**: gradient sector direction
+  * **direction**: gradient sector direction; specifies the direction when quaternion indicates 0 angles
+  * **angle_x**: first gradient angle [0, 2*pi]
+  * **angle_y**: second gradient angle [0, 2*pi]
 * **moving**: gradient is moving (True) or static (False)
 * **payload**: array of key-value-pairs to store payload data 
 
@@ -465,7 +467,26 @@ Algorithm one consists of two parts:
 
 which incorporate the three flocking rules presented by Reynolds. 
 
-Please find more information about the formulas in the paper by Olfati-Saber. 
+Please find more information about the formulas in the paper by Olfati-Saber.
+
+The approach leads to some problems in combination with RHBP and some enhancements might be required.
+
+The calculations need the following input data: `Boid = collections.namedtuple('Boid', ['p', 'v'])` with `p` being the robot's current position and `v` being the robot's velocity.
+
+
+
+flockingAI(.py)
+---------------
+
+Approach based on formulas / description by Reynold in his paper [Steering Behaviors For Autonomous Characters](www.red3d.com/cwr/steer/gdc99/).
+
+Alignment calculation is based on heading vectors (not on velocity).
+
+The calculation is done either on the robot position or its heading vector.
+Therefore the input data for the flocking algorithms has the following form: `Boid = collections.namedtuple('Boid', ['p', 'h'])` with p being the neighbor's position and h being the neighbor's heading vector.
+The current heading vector is calculated using the values `q` (orientation) and `direction` of `soMessage`.
+The quaternion is transformed to a transformation matrix using method `tf.transformations.quaternion_matrix(quaternion)`.
+Multiplying the transformation matrix with the direction vector results in the current heading vector.
 
 
 calc(.py)
