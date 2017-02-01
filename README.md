@@ -484,8 +484,8 @@ Approach based on formulas / description by Reynold in his paper [Steering Behav
 Alignment calculation is based on heading vectors (not on velocity).
 
 The calculation is done either on the robot position or its heading vector.
-Therefore the input data for the flocking algorithms has the following form: `Boid = collections.namedtuple('Boid', ['p', 'h'])` with p being the neighbor's position and h being the neighbor's heading vector.
-The current heading vector is calculated using the values `q` (orientation) and `direction` of `soMessage`.
+The input of the flocking methods are the agents current gradient and a list of neighbor gradients (moving and repulsive).
+The current heading vector in method `alignment` is calculated using the values `q` (orientation) and `direction` of `soMessage`.
 The quaternion is transformed to a transformation matrix using method `tf.transformations.quaternion_matrix(quaternion)`.
 Multiplying the transformation matrix with the direction vector results in the current heading vector.
 

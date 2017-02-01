@@ -1576,38 +1576,15 @@ class SoBuffer(object):
                                             -1].diffusion + self._moving[val][
                                     -1].goal_radius \
                                 + self._view_distance:
-                    view.append(self._moving[val])
+                    if self._moving[val][-1].attraction == -1:
+                        view.append(self._moving[val][-1])
 
-        # create array of tuples with neighbor position - neighbor velocity &
-        # own pos & heading vector (p, h)
-        Boid = collections.namedtuple('Boid', ['p', 'h'])
-
-        # calculate current direction vector
-        agent_orientation = tf.transformations.quaternion_matrix(
-            [self._own_pos[-1].q.x, self._own_pos[-1].q.y,
-             self._own_pos[-1].q.z,
-             self._own_pos[-1].q.w]).dot(
-            np.array([self._own_pos[-1].direction.x,
-                      self._own_pos[-1].direction.y,
-                      self._own_pos[-1].direction.z, 1]))
-
-        agent = Boid(self._own_pos[-1].p, agent_orientation)
-
-        neighbors = []
-        for neighbor in view:
-            if len(neighbor) > 0:
-                # calculate direction vector of neighbors
-                orientation = tf.transformations.quaternion_matrix(
-                    [neighbor[-1].q.x, neighbor[-1].q.y,
-                     neighbor[-1].q.z, neighbor[-1].q.w]).dot(
-                    np.array([neighbor[-1].direction.x,
-                              neighbor[-1].direction.y,
-                              neighbor[-1].direction.z, 1]))
-                neighbors.append(Boid(neighbor[-1].p, orientation))
-
-        mov = flockingAI.separation(agent, neighbors)
-        mov = calc.add_vectors(mov, flockingAI.cohesion(agent, neighbors))
-        mov = calc.add_vectors(mov, flockingAI.alignment(agent, neighbors))
+        # calculate flocking vector
+        mov = flockingAI.separation(self._own_pos[-1], view)
+        mov = calc.add_vectors(mov,
+                               flockingAI.cohesion(self._own_pos[-1], view))
+        mov = calc.add_vectors(mov,
+                               flockingAI.alignment(self._own_pos[-1], view))
 
         # set maximum velocity
         if calc.vector_length(mov) > self.max_velocity:

@@ -14,21 +14,23 @@ import calc
 import tf.transformations
 
 
-def separation(agent, neighbors):
+def separation(agent, neighbors, r=1.0):
     """
     Calculates separation steering force between agent and neighbors
     :param agent: agent position and orientation
     :param neighbors: neighbor positions and orientations
+    :param r: weighting parameter (1/r)
     :return: normalized movement vector for separation
     """
     sep = Vector3()
 
     if len(neighbors) > 0:
         # 1/r weighting
-        weight = 1.0 / 1.0
+        weight = 1.0 / r
         for q in neighbors:
             diff = calc.delta_vector(agent.p, q.p)
-            dist = calc.vector_length(diff)
+            # shortest distance between two robots
+            dist = calc.vector_length(diff) - agent.goal_radius - q.goal_radius
             if dist > 0.0:
                 diff = calc.unit_vector3(diff)
                 sep.x += weight * (diff.x / dist)
@@ -47,22 +49,30 @@ def separation(agent, neighbors):
 def alignment(agent, neighbors):
     """
     calculates alignment steering force based on direction vectors
-    :param agent: agent position and orientation (np.array, [Vector, 1])
-    :param neighbors: list of neighbors specifying position and orientation
-    :return: normalized movement vector
+    :param agent: agent soMessage
+    :param neighbors: list of neighbors (soMessage)
+    :return: movement vector
     """
     result = Vector3()
     tmp = np.zeros(4)
 
     if len(neighbors) > 0:
         # sum of direction vectors
-        for q in neighbors:
-            tmp += q.h
+        for n in neighbors:
+            # add current heading vector
+            tmp += tf.transformations.quaternion_matrix(
+                [n.q.x, n.q.y, n.q.z, n.q.w]).dot(
+                np.array([n.direction.x, n.direction.y, n.direction.z, 1]))
+
         # average
         tmp /= len(neighbors)
 
         # diff agent direction and average direction
-        steering = tmp - agent.h
+        steering = tmp - tf.transformations.quaternion_matrix(
+                [agent.q.x, agent.q.y, agent.q.z, agent.q.w]).dot(
+                np.array([agent.direction.x, agent.direction.y,
+                          agent.direction.z, 1]))
+
 
         # resulting vector is
         result.x = steering[0]
