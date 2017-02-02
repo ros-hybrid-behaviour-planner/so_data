@@ -9,6 +9,7 @@ from so_data.soBroadcaster import SoBroadcaster
 from so_data.msg import soMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from abc import ABCMeta, abstractmethod
+from utils.ros_helpers import get_topic_type
 import copy
 
 
@@ -18,10 +19,10 @@ class TopicGradientTf(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, topic, message_type, id, p=Vector3(), attraction=-1,
-                 diffusion=1.0, goal_radius=0.5, ev_factor=1, ev_time=0,
-                 angle_x=0, angle_y=0, quaternion=Quaternion(), moving=True,
-                 payload=[], direction=Vector3(1, 0, 0)):
+    def __init__(self, topic, id, message_type=None, p=Vector3(),
+                 attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1,
+                 ev_time=0, angle_x=0, angle_y=0, quaternion=Quaternion(),
+                 moving=True, payload=[], direction=Vector3(1, 0, 0)):
         """
         subscription to topic and variable initializatoin
         :param topic: topic to subscribe to
@@ -39,7 +40,13 @@ class TopicGradientTf(object):
         :param moving: soMessage boolean to specify static / moving gradient
         :param payload: soMessage payload data
         """
-        rospy.Subscriber(topic, message_type, self.callback)
+
+        if message_type is None:
+            message_type = get_topic_type(topic)
+        if message_type is not None:
+            self._sub = rospy.Subscriber(topic, message_type, self.callback)
+        else:
+            rospy.logerr("Could not determine message type of: " + topic)
 
         self._id = id
         self.p = p

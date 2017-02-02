@@ -16,8 +16,9 @@ class PoseTopicGradientTf(TopicGradientTf):
     class to transform pose topic (geometry_msgs.msg.Pose) to a soMessage for
     use in a ROS node
     """
-    def __init__(self, topic, message_type, id, **kwargs):
-        super(PoseTopicGradientTf, self).__init__(topic, message_type, id,
+    def __init__(self, topic, id, message_type=geometry_msgs.msg.Pose,
+                 **kwargs):
+        super(PoseTopicGradientTf, self).__init__(topic, id, message_type,
                                                   **kwargs)
 
     def callback(self, pose):
@@ -44,9 +45,8 @@ class CallbackPoseTopicGradientTf(PoseTopicGradientTf):
     """
     class to transform pose topic to soMessage & send it within callback
     """
-    def __init__(self, topic, message_type, id, **kwargs):
-        super(CallbackPoseTopicGradientTf, self).__init__(topic, message_type,
-                                                          id, **kwargs)
+    def __init__(self, topic, id, **kwargs):
+        super(CallbackPoseTopicGradientTf, self).__init__(topic, id, **kwargs)
 
     def callback(self, pose):
         """
@@ -73,7 +73,6 @@ if __name__ == '__main__':
     rate = rospy.Rate(rospy.get_param("~frequency", 1))
 
     tf = PoseTopicGradientTf(rospy.get_param("~topic", 'turtle_1_pose'),
-                             geometry_msgs.msg.Pose,
                              rospy.get_param("~id", 'robot1'))
 
     while not rospy.is_shutdown():
