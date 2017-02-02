@@ -16,16 +16,64 @@ import collections
 import random
 import tf.transformations
 
+# ENUMERATIONS
+class RESULT(object):
+    """
+    Enumeration specifying result options
+    * near = return vector to nearest attractive vector avoiding obstacles
+    * all = return vector considering all vectors of potential field
+    * max = return vector with max attraction / repulsion
+    * reach = return vector which enables to reach nearest attractive gradient
+    * avoid = return vector leading away form all gradients
+    * flocking: return flocking vector based on Olfati-Saber
+    * flockingrey: return flocking vector based on Reynolds
+    """
+    NEAR = 0
+    ALL = 1
+    MAX = 2
+    REACH = 3
+    AVOID = 4
+    FLOCKING = 5
+    FLOCKINGREY = 6
+
+
+class AGGREGATION(object):
+    """
+    Enumeration specifying aggregation options
+    * min = keep gradients with minimum diffusion radius + goal radius
+    * max = keep gradients with maximum diffusion radius + goal radius
+    * avg = combine gradients / average
+    * new = store newest received gradient
+    """
+    MIN = 0
+    MAX = 1
+    AVG = 2
+    NEW = 3
+
+
+class COLLISION(object):
+    """
+    Enumeration specifying collision avoidance options
+    * gradient = potential field approach to realize collision avoidance
+                between neighbors
+    * repulsion = repulsion vector calculation based on Fernandez-Marquez et al.
+    * reach = moving vectors are considered for repulsive vector calculation
+              in Ge & Cui approach (only for result == reach)
+    """
+    GRADIENT = 0
+    REPULSION = 1
+    REACH = 2
+
 
 class SoBuffer(object):
     """
     This class is the buffer for received self-organization data
     """
 
-    def __init__(self, aggregation={'DEFAULT': 'max'},
+    def __init__(self, aggregation={'DEFAULT': AGGREGATION.MAX},
                  aggregation_distance=1.0, min_diffusion=0.1,
-                 view_distance=1.5, id='', result='near',
-                 collision_avoidance='',
+                 view_distance=1.5, id='', result=RESULT.NEAR,
+                 collision_avoidance=None,
                  moving_storage_size=2, store_all=True,
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
@@ -37,13 +85,8 @@ class SoBuffer(object):
         applied per frameID at a gradient center / within aggregation_distance
         of gradient center. "DEFAULT" used for gradients without own
         aggregation option.
-                options: * min = keep gradients with minimum diffusion radius
-                                 + goal radius
-                         * max = keep gradients with maximum diffusion radius
-                                 + goal radius
-                         * avg = combine gradients / average
-                         * newest = store newest received gradient
-        :type aggregation: dictionary - key: frameID value: aggregation option
+        :type aggregation: dictionary - key:
+            frameID value: aggregation option (enum AGGREGATION)
 
         :param aggregation_distance: radius in which gradient data is
         aggregated
@@ -63,26 +106,10 @@ class SoBuffer(object):
 
         :param result: specifies vector which should be returned
         (gradients within view distance considered);
-                options: * all = return vector considering all vectors of
-                          potential field
-                         * max = return vector with max attraction / repulsion
-                         * near = return vector to nearest attractive vector
-                          avoiding obstacles
-                         * reach = return vector which enables to reach nearest
-                          attractive gradient
-                         * avoid = return vector leading away form all
-                          gradients
-        :type result: str
+        :type result: enum (RESULT)
 
         :param collision_avoidance: avoidance of neighbors
-                options: * gradient = potential field approach to realize
-                          collision avoidance between neighbors
-                         * repulsion = repulsion vector calculation based on
-                          Fernandez-Marquez et al.
-                         * reach = moving vectors are considered for repulsive
-                         vector calculation in Ge & Cui approach (only for
-                         result == reach)
-        :type collision_avoidance: str
+        :type collision_avoidance: enum (COLLISION)
 
         :param moving_storage_size: how many gradient messages per moving
          gradient will be stored, set 0 not to store any neighbor gradients
@@ -144,15 +171,8 @@ class SoBuffer(object):
         self.result_moving = result_moving
         self.result_static = result_static
 
-        if collision_avoidance != 'repulsion' and \
-                        collision_avoidance != 'gradient' and \
-                        collision_avoidance != '' and \
-                        collision_avoidance != 'reach':
-            rospy.logerr("No valid option for collision avoidance entered. "
-                         "Set to gradient.")
-            self.collision_avoidance = 'gradient'
-        else:
-            self.collision_avoidance = collision_avoidance
+        # Collision Avoidance
+        self.collision_avoidance = collision_avoidance
 
         # quorum
         self.threshold = threshold
@@ -193,7 +213,6 @@ class SoBuffer(object):
                 return
 
         # store own position and neighbor / moving agents data
-        # if msg.header.frame_id[:5] == 'robot':
         if msg.moving:
             if self._moving_storage_size > 0:
                 if self._id and msg.header.frame_id == self._id:
@@ -266,7 +285,7 @@ class SoBuffer(object):
                     else:
                         k = result[0]
 
-                    if aggregation == 'max':  # keep data with max reach
+                    if aggregation == AGGREGATION.MAX:  # keep data with max reach
                         if msg.diffusion + msg.goal_radius >= \
                                         self._static[msg.header.frame_id][k]. \
                                                 diffusion \
@@ -274,7 +293,7 @@ class SoBuffer(object):
                                         goal_radius:
                             del self._static[msg.header.frame_id][k]
                             self._static[msg.header.frame_id].append(msg)
-                    elif aggregation == 'min':  # keep data with min reach
+                    elif aggregation == AGGREGATION.MIN:  # keep data with min reach
                         if msg.diffusion + msg.goal_radius <= \
                                         self._static[msg.header.frame_id][k]. \
                                                 diffusion \
@@ -282,7 +301,7 @@ class SoBuffer(object):
                                         goal_radius:
                             del self._static[msg.header.frame_id][k]
                             self._static[msg.header.frame_id].append(msg)
-                    elif aggregation == 'avg':
+                    elif aggregation == AGGREGATION.AVG:
                         # attraction is the same direction
                         if msg.attraction == \
                                 self._static[msg.header.frame_id][k]. \
@@ -328,7 +347,7 @@ class SoBuffer(object):
                         if msg.diffusion >= self._min_diffusion or \
                                         msg.goal_radius != 0.0:
                             self._static[msg.header.frame_id].append(msg)
-                    elif aggregation == 'newest':  # keep last received
+                    elif aggregation == AGGREGATION.NEW:  # keep last received
                         # gradient at one position
                         if msg.header.stamp >= \
                                 self._static[msg.header.frame_id][k]. \
@@ -355,28 +374,28 @@ class SoBuffer(object):
         result = Vector3()
 
         # distance vector based on gradients - merges available information
-        if self.result == 'near':
+        if self.result == RESULT.NEAR:
             result = self._aggregate_nearest_repulsion(frameids=frameids)
-        elif self.result == 'max':
+        elif self.result == RESULT.MAX:
             result = self._aggregate_max(frameids=frameids)
-        elif self.result == 'all':
+        elif self.result == RESULT.ALL:
             result = self._aggregate_all(frameids=frameids)
-        elif self.result == 'reach':
+        elif self.result == RESULT.AVOID:
             result = self._aggregate_nearest_ge(frameids=frameids)
-        elif self.result == 'avoid':
+        elif self.result == RESULT.AVOID:
             result = self._aggregate_avoid_all(frameids=frameids)
-        elif self.result == 'flocking':
+        elif self.result == RESULT.FLOCKING:
             result = self.flocking()
-        elif self.result == 'flocking_ai':
+        elif self.result == RESULT.FLOCKINGREY:
             result = self.flocking_ai()
 
         # collision avoidance / consider moving gradients
-        if self.collision_avoidance == 'gradient':
+        if self.collision_avoidance == COLLISION.GRADIENT:
             collision = self._gradient_repulsion()
             result.x += collision.x
             result.y += collision.y
             result.z += collision.z
-        elif self.collision_avoidance == 'repulsion':
+        elif self.collision_avoidance == COLLISION.REPULSION:
             collision = self._repulsion_vector()
             result.x += collision.x
             result.y += collision.y
@@ -496,7 +515,7 @@ class SoBuffer(object):
 
     def get_attractive_distance(self, frameids=[]):
         """
-        :return:  returns distance to closest attractive gradient
+        :return: returns distance to closest attractive gradient
         (min attraction)
         no attractive gradients: returns np.inf
         """
@@ -585,13 +604,13 @@ class SoBuffer(object):
 
         d = 0.0
 
-        if self.collision_avoidance == 'repulsion':
+        if self.collision_avoidance == COLLISION.REPULSION:
             d = calc.vector_length(self._repulsion_vector())
-        elif self.collision_avoidance == 'gradient':
+        elif self.collision_avoidance == COLLISION.GRADIENT:
             d = calc.vector_length(self._gradient_repulsion())
-        elif self.result == 'flocking':
+        elif self.result == RESULT.FLOCKING:
             d = calc.vector_length(self.flocking())
-        elif self.result == 'flocking_ai':
+        elif self.result == RESULT.FLOCKINGREY:
             d = calc.vector_length(self.flocking_ai())
 
         if d > 0:
@@ -910,7 +929,8 @@ class SoBuffer(object):
         if not frameids:
             if self.result_static:
                 frameids = self._static.keys()
-            if self.result_moving or self.collision_avoidance == 'reach':
+            if self.result_moving or \
+                            self.collision_avoidance == AGGREGATION.REACH:
                 frameids += self._moving.keys()
 
         # find moving and / or static gradients within view distance
@@ -925,7 +945,8 @@ class SoBuffer(object):
                         elif element.attraction == -1:
                             gradients_repulsive.append(element)
 
-            if (self.result_moving or self.collision_avoidance == 'reach') and \
+            if (self.result_moving or
+                        self.collision_avoidance == AGGREGATION.REACH) and \
                             fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \

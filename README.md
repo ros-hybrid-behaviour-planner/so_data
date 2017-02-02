@@ -107,7 +107,7 @@ The soBuffer provides several parameters which can be set to adjust the data sto
 The following parameters can be set (default values specified in brackets):
 
 * **aggregation** ({'DEFAULT': 'max'}): dictionary (key: frameID, value: aggregation option) of aggregation type per frameID. 'DEFAULT' is used for all frameIDs which have no option specified in 
-the dictionary and has to be specified. Does not affect storage of moving gradients. Aggregation options:
+the dictionary and has to be specified. Does not affect storage of moving gradients. Enumeration `AGGREGATION` includes the following options:
   * **min** = keep gradient with minimum diffusion radius + goal radius (at a position / within aggregation_distance)
   * **max** = keep gradient with maximum diffusion radius + goal radius(at a position / within aggregation_distance)
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
@@ -118,7 +118,7 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
 * **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): agent's id, gradients with this id are stored in self._own_pos 
 
-* **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Options:
+* **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Enumeration `RESULT` provides the following options:
   * **all** = movement vector considering all vectors of the potential field will be returned 
   * **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
   * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
@@ -130,7 +130,7 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
 * **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents (moving gradients). 
 Consideres only repulsive moving gradients. 
 Should only be used on its own or in combination mit result_moving = False. 
-Options:
+Options can be specified via enumeration `COLLISION` and the following settings:
   * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
   * **reach** = moving vectors are considered in vector calculations based on Ge & Cui (result == reach is required)
