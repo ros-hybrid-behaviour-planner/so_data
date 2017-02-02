@@ -558,7 +558,7 @@ class SoBuffer(object):
 
         return d
 
-    def get_no_potential(self, frameids=[]):
+    def get_attraction_bool(self, frameids=[]):
         """
         determines whether there is still some attraction/repulsion
         :param frameids: frameIDs of gradients to be considered in calculation

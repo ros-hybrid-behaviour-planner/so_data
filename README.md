@@ -222,6 +222,8 @@ def flocking(self)
 
 The method `get_goal_reached` returns True / False based on whether the gradient source was reached or not (attraction == 0, if attractive gradient is available). 
 E.g. to be used in sensors to bind activation on achievement of goal (e.g. with Boolean Activator). 
+In case that more than one goal exists (>1 attractive gradient within view distance), the sensor will only consider the goal which is relatively nearest (smallest attraction value).
+If no goal is available, the method will return False. 
 Parameters: `frameids` specifying which gradients should be considered in the calculation (optional). 
 
 ```python
@@ -262,11 +264,11 @@ def get_attractive_distance(self, frameids=[])
 
 ##### Determine if agent senses potential field
 
-`get_no_potential` determines whether the agent is currently under influence of a potential field. 
+`get_attraction_bool` determines whether the agent is currently under influence of a potential field. 
 Returns True if there is no potential sensed, False otherweise. 
 
 ```python
-def get_no_potential(self, frameids=[])
+def get_attraction_bool(self, frameids=[])
 ```
 
 
@@ -314,7 +316,10 @@ Evaporation is one of the basic mechanisms presented in the paper by Fernandez-M
 It is applied both before storing received data as well as when requesting the current movement gradient (get_current_gradient). 
 To ensure that all data is up-to-date, each received message is evaporated before it is stored using `_evaporate_msg(msg)`. Parameters: `msg` is a soMessage. 
 It returns the evaporated message or `None` in cases where the diffusion radius is smaller than the specified minimum diffusion and the goal radius of the gradient is zero. 
-The whole buffer (self._static and self._moving) can be evaporated using `_evaporate_buffer()`.
+
+The whole buffer can be evaporated using `_evaporate_buffer()`. 
+It will iterate through all stored data (in self._static and self._moving) and update the data based on the evaporation settings. 
+This ensures that the used data is always up to date. 
 
 ```python 
 def _evaporate_msg(self, msg)
