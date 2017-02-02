@@ -2,6 +2,8 @@
 Created on 21.12.2016
 
 @author: kaiser
+
+Module with unit test for flockingrey.py
 """
 
 import unittest

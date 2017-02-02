@@ -2,6 +2,8 @@
 Created on 21.12.2016
 
 @author: kaiser
+
+Unit Test for flocking.py
 """
 
 import unittest

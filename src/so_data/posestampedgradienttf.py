@@ -3,6 +3,9 @@
 Created on 18.01.2017
 
 @author: kaiser
+
+Module to transform pose topic messages (geometry.msgs.poseStamped) to
+SoMessages
 """
 
 from so_data.topicGradientTf import TopicGradientTf

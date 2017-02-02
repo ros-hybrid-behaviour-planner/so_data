@@ -2,6 +2,9 @@
 Created on 11.01.2017
 
 @author: kaiser
+
+Module contains abstract base class to transform data of a topic to
+SoMessages
 """
 
 import rospy

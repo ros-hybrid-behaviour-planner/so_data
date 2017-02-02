@@ -1,6 +1,8 @@
 """ Created on 07.11.2016
 .. module:: soBuffer
 .. moduleauthor:: kaiser
+
+Module for receiving, storing and manipulating gradient data
 """
 
 from __future__ import \

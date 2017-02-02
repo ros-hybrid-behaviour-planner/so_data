@@ -2,7 +2,10 @@
 Created on 03.11.2016
 
 @author: kaiser
+
+Module allows to broadcast SoMessage data to topic so_data
 """
+
 import rospy 
 from so_data.msg import * 
 

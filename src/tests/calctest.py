@@ -2,6 +2,8 @@
 Created on 15.12.2016
 
 @author: kaiser
+
+Module containing unit test for calc.py
 """
 
 import unittest

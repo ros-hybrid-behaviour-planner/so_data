@@ -2,6 +2,8 @@
 Created on 14.11.2016
 
 @author: kaiser
+
+Unit test for sobuffer.py
 """
 
 from so_data.sobuffer import SoBuffer

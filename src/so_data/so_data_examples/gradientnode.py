@@ -3,6 +3,9 @@
 Created on 09.01.2017
 
 @author: kaiser
+
+Module contains (sample) node to spread artificial gradients
+(e.g. assumed to be existent in the environment)
 """
 
 import rospy

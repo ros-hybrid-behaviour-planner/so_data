@@ -2,6 +2,9 @@
 Created on 01.12.2016
 
 @author: kaiser
+
+Module offers various methods for vector calculations
+
 """
 
 import numpy as np

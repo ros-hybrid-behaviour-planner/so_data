@@ -1,7 +1,7 @@
 """
 Created on 24.01.2017
 
-flocking based on Reynolds Description
+Module contains flocking based on Reynolds Description
 www.red3d.com/cwr/steer/gdc99/
 
 @author: kaiser

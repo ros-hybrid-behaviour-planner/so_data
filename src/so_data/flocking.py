@@ -1,8 +1,8 @@
 """
 Created on 20.12.2016
 
-contains different functions for the flocking pattern
-based on paper / algorithms by Olfati-Saber
+Module contains various methods for the flocking pattern
+based on paper / algorithm 1 by Olfati-Saber
 
 @author: kaiser
 """
