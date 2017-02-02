@@ -5,7 +5,7 @@ Created on 18.01.2017
 @author: kaiser
 """
 
-from so_data.topicGradientTf import TopicGradientTf
+from so_data.topicgradienttf import TopicGradientTf
 import copy
 import rospy
 import geometry_msgs.msg

@@ -2,7 +2,7 @@ SO_DATA MANUAL
 ===============
 
 The package so_data provides components which are required to implement self-organization. 
-It provides functionality to send data to the `soData` topic as well as to aggregate, store and use it for calculations. 
+It provides functionality to send data to the `so_data` topic as well as to aggregate, store and use it for calculations. 
 Therewith, it provides the basic mechanisms and the gradient patterns specified by in "Description and composition of bio-inspired design patterns: a complete overview" by Fernandez-Marquez et al. (2013). 
 Unit tests were done for the core components to ensure correctness of mathematical computations. 
 All methods work for up to three dimensions; the code can be adapted for use in more dimensions with minor enhancements. 
@@ -18,11 +18,11 @@ src:
 
 * **calc.py**: provides helper functions which are used by several components of the package (+ unit test)
 * **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber (+ unit test) 
-* **gradientNode.py**: allows to create nodes which spread artificial gradients 
-* **soBroadcaster.py**: allows to publish data to the soData topic which will be subscribed to in the soBuffer 
-* **soBuffer.py**: implements a layer which allows to store gradient data and to do calculations necessary for self-organizing behaviour (+ unit test)  
-* **topicGradientTf.py**: abstract class which can be used as a blueprint to transform topics in soMessages and publish them to the `soData` topic 
-* **poseGradientTf.py**: implementation of `topicGradientTf` for the pose topic 
+* **gradientnode.py**: allows to create nodes which spread artificial gradients 
+* **sobroadcaster.py**: allows to publish data to the so_data topic which will be subscribed to in the soBuffer 
+* **sobuffer.py**: implements a layer which allows to store gradient data and to do calculations necessary for self-organizing behaviour (+ unit test)  
+* **topicgradienttf.py**: abstract class which can be used as a blueprint to transform topics in soMessages and publish them to the `so_data` topic 
+* **posegradienttf.py**: implementation of `topicGradientTf` for the pose topic 
 
 msg:
 
@@ -31,7 +31,7 @@ msg:
 The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.ros.org/kinetic/api/geometry_msgs/html/msg/Pose.html) Message. 
 
 
-soMessage
+SoMessage
 ---------
 
 soMessages are used to specify gradients: either in environment or as robot data. 
@@ -91,11 +91,11 @@ diagnostic_msgs/KeyValue[] payload
 
 
 
-soBuffer(.py)
+sobuffer(.py)
 -------------
 
 The central component of the so_data package is the soBuffer. 
-It subscribes to the soData topic and stores all received gradients in an aggregated manner. 
+It subscribes to the so_data topic and stores all received gradients in an aggregated manner. 
 Furthermore, it includes several calculation options which are based on gradients. 
 The soBuffer provides calculations necessary to implement self-organizing behaviours. 
 Various parameters allow to adjust the soBuffer to the needs of a self-organization pattern. 
@@ -163,10 +163,10 @@ One key part of the buffer is the storage of incoming gradients.
 def store_data(self, msg)
 ```
 
-All gradients are received via the `soData` topic. Each buffer subscribes to this topic when initialized and defines `store_data` as the subscription callback. 
+All gradients are received via the `so_data` topic. Each buffer subscribes to this topic when initialized and defines `store_data` as the subscription callback. 
 
 ```python
-rospy.Subscriber('soData', soMessage, self.store_data)
+rospy.Subscriber('so_data', SoMessage, self.store_data)
 ```
 
 `store_data` will then care about storing the data as specified with the soBuffer parameters `aggregation`, `min_diffusion`, `id`, `store_neighbors`, `neighbor_storage_size`, `framestorage` and `aggregation_distance`. 
@@ -372,11 +372,11 @@ In case that two robots are at the same position, it returns a random repulsion 
 #### Spreading
 
 The basic mechanism spreading is realized as a publisher - subscriber scenario in ROS. 
-Every agent / soBuffer listens to the soData topic and data can be published to this topic by all agents. 
+Every agent / soBuffer listens to the so_data topic and data can be published to this topic by all agents. 
 To be able to control the spreading frequency, it is necessary to create separate nodes for each publisher. 
 Currently, only a single master setup is used, but real spreading decentralisation can be reached in a multi master setup (future work). 
 
-More information can be found in the section **soBroadcaster.py**. 
+More information can be found in the section **sobroadcaster.py**. 
 
 #### Aggregation 
 
@@ -476,7 +476,7 @@ The calculations need the following input data: `Boid = collections.namedtuple('
 
 
 
-flockingAI(.py)
+flockingrey(.py)
 ---------------
 
 Approach based on formulas / description by Reynold in his paper [Steering Behaviors For Autonomous Characters](www.red3d.com/cwr/steer/gdc99/).
@@ -503,10 +503,10 @@ The file calc.py includes some basic vector (Vector3) calculations which are com
 * `def add_vectors(q1, q2)`: returns sum of two vectors 
 
 
-soBroadcaster(.py)
+sobroadcaster(.py)
 ------------------
 
-The class SoBroadcaster can be used to publish data to the topic `soData`. This topic is used for self-organization purposes and requires the message format `soMessage`. 
+The class SoBroadcaster can be used to publish data to the topic `so_data`. This topic is used for self-organization purposes and requires the message format `soMessage`. 
 Within a message all necessary gradient information can be specified to enable the calculations for different self-organization behaviours. 
 It can be used to spread gradients present in the environment or to let the robots spread specific gradients. 
 
@@ -522,7 +522,7 @@ The soBroadcaster can either be used in a separate node to send data in a certai
 Therewith, `soBroadcaster` is the basis for the implementation of spreading behaviour. 
 
 
-gradient_node(.py)
+gradientnode(.py)
 ------------------
 Node enabling to send artificial gradients in the environment. 
 Gradients can be specified in the list in method get_gradient(index) and set via the gradient launch file. 
@@ -534,7 +534,7 @@ The second method is `get_gradient(index)` which returns a gradient list based o
 New gradient lists can be added to the currently available set and the method can be used in other files, e.g. in main.py of the swarm_behaviour package to draw the gradients in the turtlesim environment. 
 
 
-topicGradientTf(.py) and poseGradientTf(.py)
+topicgradienttf(.py) and posegradienttf(.py)
 --------------------------------------------
 
 topicGradientTf offers an abstract class which can be used as a blueprint to transform data received by a topic to a gradient message and spreach it. 

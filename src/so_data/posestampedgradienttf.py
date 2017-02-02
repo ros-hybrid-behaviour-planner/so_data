@@ -13,8 +13,8 @@ import geometry_msgs.msg
 
 class PoseStampedTopicGradientTf(TopicGradientTf):
     """
-    class to transform pose topic (geometry_msgs.msg.PoseStamped) to a soMessage for
-    use in a ROS node
+    class to transform pose topic (geometry_msgs.msg.PoseStamped) to a
+    soMessage for use in a ROS node
     """
     def __init__(self, topic, id, message_type=geometry_msgs.msg.PoseStamped,
                  **kwargs):
@@ -44,7 +44,7 @@ class PoseStampedTopicGradientTf(TopicGradientTf):
 
 class CallbackPoseStampedTopicGradientTf(PoseStampedTopicGradientTf):
     """
-    class to transform pose topic to soMessage & send it within callback
+    class to transform poseStamped topic to soMessage & send it within callback
     """
     def __init__(self, topic, id, **kwargs):
         super(CallbackPoseStampedTopicGradientTf, self).__init__(topic,
@@ -65,7 +65,7 @@ class CallbackPoseStampedTopicGradientTf(PoseStampedTopicGradientTf):
 
 
 # ROS Node to spread gradients
-# sample setup with default values + pose specified in topic
+# sample setup with default values + poseStamped specified in topic
 if __name__ == '__main__':
     """
     Node to convert topics to gradients

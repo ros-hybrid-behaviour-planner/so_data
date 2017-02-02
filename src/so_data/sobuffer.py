@@ -6,12 +6,12 @@
 from __future__ import \
     division  # force floating point division when using plain /
 import rospy
-from so_data.msg import soMessage
+from so_data.msg import SoMessage
 import numpy as np
 import calc
 from geometry_msgs.msg import Vector3
 import flocking
-import flockingAI
+import flockingrey
 import collections
 import random
 import tf.transformations
@@ -167,7 +167,7 @@ class SoBuffer(object):
 
         self.min_velocity = min_velocity
 
-        rospy.Subscriber('soData', soMessage, self.store_data)
+        rospy.Subscriber('so_data', SoMessage, self.store_data)
 
     def store_data(self, msg):
         """
@@ -533,7 +533,7 @@ class SoBuffer(object):
                     if self._moving[fid][-1].attraction == 1:
                         gradients_attractive.append(element)
 
-        tmp_grad = soMessage()
+        tmp_grad = SoMessage()
         d = np.inf
 
         if gradients_attractive:
@@ -1580,11 +1580,11 @@ class SoBuffer(object):
                         view.append(self._moving[val][-1])
 
         # calculate flocking vector
-        mov = flockingAI.separation(self._own_pos[-1], view)
+        mov = flockingrey.separation(self._own_pos[-1], view)
         mov = calc.add_vectors(mov,
-                               flockingAI.cohesion(self._own_pos[-1], view))
+                               flockingrey.cohesion(self._own_pos[-1], view))
         mov = calc.add_vectors(mov,
-                               flockingAI.alignment(self._own_pos[-1], view))
+                               flockingrey.alignment(self._own_pos[-1], view))
 
         # set maximum velocity
         if calc.vector_length(mov) > self.max_velocity:

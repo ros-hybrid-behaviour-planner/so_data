@@ -5,8 +5,8 @@ Created on 11.01.2017
 """
 
 import rospy
-from so_data.soBroadcaster import SoBroadcaster
-from so_data.msg import soMessage
+from so_data.sobroadcaster import SoBroadcaster
+from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from abc import ABCMeta, abstractmethod
 from utils.ros_helpers import get_topic_type
@@ -64,7 +64,7 @@ class TopicGradientTf(object):
 
         self._broadcast = SoBroadcaster()
 
-        self._current_msg = soMessage()
+        self._current_msg = SoMessage()
 
     @abstractmethod
     def callback(self, topic_message):
@@ -79,8 +79,6 @@ class TopicGradientTf(object):
 
         :return:
         """
-        pass
-
         # create message
         msg = copy.deepcopy(self.create_msg())
 
@@ -98,7 +96,7 @@ class TopicGradientTf(object):
         creates soMessage with set parameters
         :return:
         """
-        msg = soMessage()
+        msg = SoMessage()
 
         # current time
         now = rospy.Time.now()

@@ -6,8 +6,8 @@ Created on 09.01.2017
 """
 
 import rospy
-from so_data.soBroadcaster import SoBroadcaster
-from so_data.msg import soMessage
+from so_data.sobroadcaster import SoBroadcaster
+from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
@@ -30,7 +30,7 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
 
     now = rospy.Time.now()
 
-    msg = soMessage()
+    msg = SoMessage()
     msg.p = position
     msg.q = q
     msg.attraction = attraction
