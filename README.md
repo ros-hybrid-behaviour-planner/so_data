@@ -85,6 +85,7 @@ diagnostic_msgs/KeyValue[] payload
 * **payload**: array of key-value-pairs to store payload data 
 
 
+The parameters for the gradient sector are already included in the `SoMessage` file, but at the moment always the whole gradient (sphere) is used in calculations.
 ###### reserved frameIDs:
 * **'DEFAULT'**: value is used to specify aggregation option (store_data in soBuffer) for frameIDs having no specific option assigned to  
 * **'None'**: value is assigned to all gradient messages which have no frameID when received 

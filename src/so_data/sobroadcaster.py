@@ -21,10 +21,17 @@ class SoBroadcaster():
 
     def send_data(self, message):
         """
-        :param message: msg to be send
+        :param message: msg to be send or list of messages
         :return:
         """
         if isinstance(message, SoMessage):
             self._pub.publish(message)
+        elif isinstance(message, list):
+            for m in message:
+                if isinstance(m, SoMessage):
+                    self._pub.publish(m)
+                else:
+                    rospy.logwarn("SoBroadcaster: Wrong message type")
+
         else:
-            rospy.loginfo("Wrong message type")
+            rospy.logwarn("SoBroadcaster: Wrong message type")

@@ -112,7 +112,6 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         # send gradients
-        for val in gradients:
-            gradient.send_data(val)
+        gradient.send_data(gradients)
 
         rate.sleep()
