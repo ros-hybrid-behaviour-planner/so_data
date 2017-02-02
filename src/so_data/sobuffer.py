@@ -382,7 +382,7 @@ class SoBuffer(object):
             result = self._aggregate_max(frameids=frameids)
         elif self.result == RESULT.ALL:
             result = self._aggregate_all(frameids=frameids)
-        elif self.result == RESULT.AVOID:
+        elif self.result == RESULT.REACH:
             result = self._aggregate_nearest_ge(frameids=frameids)
         elif self.result == RESULT.AVOID:
             result = self._aggregate_avoid_all(frameids=frameids)
@@ -932,7 +932,7 @@ class SoBuffer(object):
             if self.result_static:
                 frameids = self._static.keys()
             if self.result_moving or \
-                            self.collision_avoidance == AGGREGATION.REACH:
+                            self.collision_avoidance == COLLISION.REACH:
                 frameids += self._moving.keys()
 
         # find moving and / or static gradients within view distance
@@ -948,7 +948,7 @@ class SoBuffer(object):
                             gradients_repulsive.append(element)
 
             if (self.result_moving or
-                        self.collision_avoidance == AGGREGATION.REACH) and \
+                        self.collision_avoidance == COLLISION.REACH) and \
                             fid in self._moving and self._moving[fid]:
                 if calc.get_gradient_distance(self._moving[fid][-1].p,
                                               self._own_pos[-1].p) \
