@@ -102,3 +102,17 @@ def add_vectors(q1, q2):
 
     return d
 
+
+def adjust_length(q, length):
+    """
+    :param q: Vector3
+    :param length: desired vector length
+    :return: Vector3 with lenght = length
+    """
+    result = unit_vector3(q)
+    result.x *= length
+    result.y *= length
+    result.z *= length
+
+    return result
+

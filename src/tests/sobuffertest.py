@@ -6,7 +6,7 @@ Created on 14.11.2016
 Unit test for sobuffer.py
 """
 
-from so_data.sobuffer import SoBuffer
+from so_data.sobuffer import SoBuffer, AGGREGATION, COLLISION, RESULT
 import unittest
 import so_data.calc
 from so_data.msg import SoMessage
@@ -175,7 +175,7 @@ class SoBufferTest(unittest.TestCase):
                          False)
 
     # no potential
-    def test_get_no_potential(self):
+    def test_get_attraction_bool(self):
         """
         test get_no_potential method
         :return:
@@ -186,7 +186,7 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [
             SoMessage(None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0, 1.0,
                       0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_no_potential(), False)
+        self.assertEqual(bffr.get_attraction_bool(), False)
 
         bffr._static = {
             'gradient': [
@@ -211,25 +211,26 @@ class SoBufferTest(unittest.TestCase):
         bffr._own_pos = [
             SoMessage(None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0, 1.0,
                       0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_no_potential(), True)
+        self.assertEqual(bffr.get_attraction_bool(), True)
         bffr._own_pos = [
             SoMessage(None, Vector3(2, 2, 1), Quaternion(), -1, 3.0, 1.0, 1.0,
                       0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_no_potential(), True)
+        self.assertEqual(bffr.get_attraction_bool(), True)
         # no potential
         bffr._own_pos = [
             SoMessage(None, Vector3(0, 9, 9), Quaternion(), -1, 3.0, 1.0, 1.0,
                       0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_no_potential(), False)
+        self.assertEqual(bffr.get_attraction_bool(), False)
 
         # only consider some frameIDs
         # no potential
         bffr._own_pos = [
             SoMessage(None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0, 1.0,
                       0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_no_potential(frameids=['gradient']), False)
+        self.assertEqual(bffr.get_attraction_bool(frameids=['gradient']),
+                         False)
         # potential
-        self.assertEqual(bffr.get_no_potential(frameids=['None', 'test']),
+        self.assertEqual(bffr.get_attraction_bool(frameids=['None', 'test']),
                          True)
 
     def test_get_neighbors_bool(self):
@@ -238,7 +239,8 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = SoBuffer(view_distance=2.0, collision_avoidance='repulsion')
+        bffr = SoBuffer(view_distance=2.0,
+                        collision_avoidance=COLLISION.REPULSION)
 
         # no gradients available --> True
         bffr._own_pos = [
@@ -459,7 +461,7 @@ class SoBufferTest(unittest.TestCase):
         test evaporation of buffer data using evaporate_buffer method
         """
 
-        bffr = SoBuffer(aggregation='max', min_diffusion=1.0)
+        bffr = SoBuffer(aggregation=AGGREGATION.MAX, min_diffusion=1.0)
         now = rospy.Time.now()
 
         data = {'None': [  # message has goal radius - should be kept
@@ -612,7 +614,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = max
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max'},
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX},
                         aggregation_distance=1.0)
         testlist = []
 
@@ -660,7 +662,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = max, aggregation distance = 0.0
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max'},
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX},
                         aggregation_distance=0.0)
         testlist = []
 
@@ -704,7 +706,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method with different frame IDs (all)
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max'})
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX})
         testlist = {'None': [], 'grad': []}
         now = rospy.Time.now()
 
@@ -743,8 +745,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, only store gradients with specified frameids
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max'}, store_all=False,
-                        framestorage=['grad', 'silk'])
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX},
+                        store_all=False, framestorage=['grad', 'silk'])
         testlist = {'grad': [], 'silk': []}
         now = rospy.Time.now()
 
@@ -787,7 +789,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = min
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'min'})
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MIN},
+                        store_all=True)
         testlist = []
 
         msg = SoMessage(None, Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 1.0,
@@ -822,7 +825,8 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = avg
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'avg'}, min_diffusion=1.0)
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.AVG},
+                        min_diffusion=1.0)
         testlist = []
 
         msg = SoMessage(None, Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 1.0,
@@ -864,7 +868,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method aggregation option = newest
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'newest'})
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.NEW})
         testlist = []
 
         msg = SoMessage(None, Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 1.0,
@@ -903,7 +907,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, evaporation of received data
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max'})
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX})
         testlist = {'None': []}
         now = rospy.Time.now()
 
@@ -934,7 +938,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, store neighbor data and own pos
         """
-        bffr = SoBuffer(aggregation='max', id='robot3')
+        bffr = SoBuffer(aggregation=AGGREGATION.MAX, id='robot3')
         testlist = {'robot1': [], 'robot2': []}
         ownpos = []
         now = rospy.Time.now()
@@ -1032,7 +1036,8 @@ class SoBufferTest(unittest.TestCase):
         test store data method with different aggregation options for different frame IDs
         :return:
         """
-        bffr = SoBuffer(aggregation={'DEFAULT': 'max', 'grad': 'avg'})
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX,
+                                     'grad': AGGREGATION.AVG})
         testlist = {'None': [], 'grad': []}
         now = rospy.Time.now()
 
@@ -1200,8 +1205,8 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = SoBuffer(id='robot1', collision_avoidance='gradient', result='',
-                        max_velocity=2.0, result_static=False,
+        bffr = SoBuffer(id='robot1', collision_avoidance=COLLISION.GRADIENT,
+                        result=None, max_velocity=2.0, result_static=False,
                         view_distance=1.5)
 
         bffr._own_pos = [
@@ -1237,7 +1242,7 @@ class SoBufferTest(unittest.TestCase):
         # calculate vector
         self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
 
-        bffr.collision_avoidance = 'repulsion'
+        bffr.collision_avoidance = COLLISION.REPULSION
 
         # calculate resulting vector
         result = bffr.get_current_gradient()
@@ -1253,7 +1258,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate max method
         :return:
         """
-        bffr = SoBuffer(result='max', result_moving=False)
+        bffr = SoBuffer(result=RESULT.MAX, result_moving=False)
 
         bffr._own_pos = [
             SoMessage(None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0, 1.0,
