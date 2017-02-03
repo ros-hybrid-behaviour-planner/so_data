@@ -12,6 +12,8 @@ import rospy
 from so_data.sobroadcaster import SoBroadcaster
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
+from so_data.srv import EnvGradient, EnvGradientResponse
+
 
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
                     angle_y=0.0, q=Quaternion(), moving = False,
@@ -50,55 +52,75 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     msg.payload = payload
     return msg
 
+# def get_gradient(index):
+#     """
+#     :param index: index of gradient list to be returned
+#     :return: gradient list
+#     """
+#     # possible gradients, can be changed / enhanced as required
+#     if index >= 0:
+#         gradients_set = []
+#         gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1,
+#                                               diffusion=1.0, goal_radius=1.0),
+#                               create_gradient(Vector3(5, 3, 0), attraction=1,
+#                                               diffusion=3.0),
+#                               create_gradient(Vector3(8, 3, 0), attraction=-1,
+#                                               diffusion=1.0, goal_radius=1.0)])
+#         gradients_set.append([create_gradient(Vector3(4, 3, 0), attraction=1,
+#                                               diffusion=3.0),
+#                               create_gradient(Vector3(6, 3, 0), attraction=-1,
+#                                               diffusion=2.0, goal_radius=1.0)
+#                                ])
+#         gradients_set.append([create_gradient(Vector3(4, 3, 0), attraction=1,
+#                                               diffusion=3.0)
+#                             ])
+#         gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
+#                                               diffusion=3.0)])
+#         gradients_set.append([create_gradient(Vector3(6, 6, 0), attraction=1,
+#                                               diffusion=3.0),
+#                               create_gradient(Vector3(4, 4, 0), attraction=-1,
+#                                               diffusion=5.0)])
+#         gradients_set.append([create_gradient(Vector3(4, 4, 0), attraction=-1,
+#                                               diffusion=2.0),
+#                               create_gradient(Vector3(6, 6, 0), attraction=1,
+#                                               diffusion=5.0)])
+#         gradients_set.append([])
+#         gradients_set.append([create_gradient(Vector3(9, 9, 0), attraction=-1,
+#                                               diffusion=2.5, goal_radius=1.5),
+#                              create_gradient(Vector3(6, 10, 0), attraction=1,
+#                                              diffusion=2.0, goal_radius=1.7),
+#                              create_gradient(Vector3(14, 3, 0), attraction=1,
+#                                               diffusion=2.0, goal_radius=0.75),
+#                              create_gradient(Vector3(3, 2.25,0), attraction=-1,
+#                                              diffusion=1.2, goal_radius=0.8)
+#                              ])
+#
+#         if index < len(gradients_set):
+#             return gradients_set[index]
+#         else:
+#             rospy.logwarn("gradientSet index out of range")
+#             return []
 
-def get_gradient(index):
-    """
-    :param index: index of gradient list to be returned
-    :return: gradient list
-    """
-    # possible gradients, can be changed / enhanced as required
-    if index >= 0:
-        gradients_set = []
-        gradients_set.append([create_gradient(Vector3(2, 3, 0), attraction=-1,
-                                              diffusion=1.0, goal_radius=1.0),
-                              create_gradient(Vector3(5, 3, 0), attraction=1,
-                                              diffusion=3.0),
-                              create_gradient(Vector3(8, 3, 0), attraction=-1,
-                                              diffusion=1.0, goal_radius=1.0)])
-        gradients_set.append([create_gradient(Vector3(4, 3, 0), attraction=1,
-                                              diffusion=3.0),
-                              create_gradient(Vector3(6, 3, 0), attraction=-1,
-                                              diffusion=2.0, goal_radius=1.0)
-                               ])
-        gradients_set.append([create_gradient(Vector3(4, 3, 0), attraction=1,
-                                              diffusion=3.0)
-                            ])
-        gradients_set.append([create_gradient(Vector3(2, 1, 0), attraction=1,
-                                              diffusion=3.0)])
-        gradients_set.append([create_gradient(Vector3(6, 6, 0), attraction=1,
-                                              diffusion=3.0),
-                              create_gradient(Vector3(4, 4, 0), attraction=-1,
-                                              diffusion=5.0)])
-        gradients_set.append([create_gradient(Vector3(4, 4, 0), attraction=-1,
-                                              diffusion=2.0),
-                              create_gradient(Vector3(6, 6, 0), attraction=1,
-                                              diffusion=5.0)])
-        gradients_set.append([])
-        gradients_set.append([create_gradient(Vector3(9, 9, 0), attraction=-1,
-                                              diffusion=2.5, goal_radius=1.5),
-                             create_gradient(Vector3(6, 10, 0), attraction=1,
-                                             diffusion=2.0, goal_radius=1.7),
-                             create_gradient(Vector3(14, 3, 0), attraction=1,
-                                              diffusion=2.0, goal_radius=0.75),
-                             create_gradient(Vector3(3, 2.25,0), attraction=-1,
-                                             diffusion=1.2, goal_radius=0.8)
-                             ])
 
-        if index < len(gradients_set):
-            return gradients_set[index]
-        else:
-            rospy.logwarn("gradientSet index out of range")
-            return []
+class EnvironmentGradients(object):
+    """
+    class offering service to store gradient set for usage in artificial
+    gradient node
+    """
+    def __init__(self):
+        self.gradients = []
+        s = rospy.Service('env_gradients', EnvGradient, self.store_gradients)
+
+    def store_gradients(self, req):
+        """
+        stores list of environment gradients
+        :param req: EnvGradient.srv request - list of soMessages
+        :return: string
+        """
+        self.gradients = req.gradients
+        resp = EnvGradientResponse()
+        resp.name = "Updated Gradient Set."
+        return resp
 
 
 if __name__ == '__main__':
@@ -107,14 +129,13 @@ if __name__ == '__main__':
     """
     rospy.init_node('artificialGradient')
     rate = rospy.Rate(rospy.get_param("~frequency", 1))
-    gradient_poses_set_index = rospy.get_param("~gradientPosesSetIndex", -1)
 
     # artificial gradient - initialize spreading
+    env = EnvironmentGradients()
     gradient = SoBroadcaster()
-    gradients = get_gradient(gradient_poses_set_index)
 
     while not rospy.is_shutdown():
         # send gradients
-        gradient.send_data(gradients)
+        gradient.send_data(env.gradients)
 
         rate.sleep()
