@@ -9,6 +9,7 @@ Module offers various methods for vector calculations
 
 import numpy as np
 from geometry_msgs.msg import Vector3
+import random
 
 
 def unit_vector(vector):
@@ -23,9 +24,11 @@ def unit_vector3(vector):
     Returns the unit vector of a vector3
     """
     d = vector_length(vector)
-    vector.x /= d
-    vector.y /= d
-    vector.z /= d
+    if d > 0:
+        vector.x /= d
+        vector.y /= d
+        vector.z /= d
+
     return vector
 
 
@@ -116,3 +119,15 @@ def adjust_length(q, length):
 
     return result
 
+
+def random_vector(length):
+    """
+    :return: random vector with length = length
+    """
+    tmp = unit_vector3(Vector3(random.uniform(-1, 1), random.uniform(-1, 1),
+                  random.uniform(-1, 1)))
+    tmp.x *= length
+    tmp.y *= length
+    tmp.z *= length
+
+    return tmp
