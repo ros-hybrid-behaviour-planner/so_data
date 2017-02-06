@@ -81,7 +81,7 @@ class SoBuffer(object):
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
-                 min_velocity=0.1, state=None):
+                 min_velocity=0.1, state=None, key=None, frameid=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -192,7 +192,10 @@ class SoBuffer(object):
 
         # morphogenesis
         self.state = state
-        self.last_values = {}
+        # payload data key
+        self.key = key
+        # morphogenetic frame_id (first part, afterwards robot id)
+        self.frameid = frameid
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -1531,17 +1534,17 @@ class SoBuffer(object):
 
     # Morphogenesis
     # TODO testing
-    def morphogenesis(self, frameid):
+    def morphogenesis(self):
         """
         calculates sum of distances to morphogenetic gradients
         :return:
         """
         avg = 0.0
-        l = len(frameid)
+        l = len(self.frameid)
 
         if self._moving and self._own_pos:
             for val in self._moving.keys():
-                if val[:l] == frameid:
+                if val[:l] == self.frameid:
                     # distance own pos - morphogenetic gradient
                     d = calc.get_gradient_distance(self._own_pos[-1].p,
                                                self._moving[val][-1].p)
@@ -1552,63 +1555,65 @@ class SoBuffer(object):
 
         return avg
 
-    def morph_avg_changed(self, frameid, key):
+    def morph_dist_changed(self):
         """
         "SENSOR" option: checks if data changed
-        :param frameid:
-        :param key:
-        :return:
+        :return: bool - True (data changed or no data available),
+                        False (otherwise)
         """
-        if self._moving and frameid + self._id in self._moving.keys():
+        if self._moving and self.frameid + self._id in self._moving.keys():
             # calculate current avg
-            avg = round(self.morphogenesis(frameid), 9)
-            # no change
+            avg = round(self.morphogenesis(), 9)
             # index for payload info distance to neighbors
-            keys = [i.key for i in self._moving[frameid+self._id][-1].payload]
-            index = keys.index(key)
+            keys = [i.key for i in
+                    self._moving[self.frameid+self._id][-1].payload]
+            index = keys.index(self.key)
             # change
-            if avg != float(self._moving[frameid+self._id][-1].payload[index].value):
-                rospy.logerr("avg changed")
+            if avg != float(self._moving[self.frameid+self._id][-1].
+                                    payload[index].value):
                 return True
-        else: # no data available
-            rospy.logerr("no data")
+        else:  # no data available
             return True
 
-        # so umbauen, dass evtl neuer Wert auch mit bedacht wird
-        if self._moving and self.last_values:
-            for element in self.last_values.keys():
-                keys = [i.key for i in
-                        self._moving[frameid + self._id][-1].payload]
-                index = keys.index(key)
-                if self.last_values[element] != float(self._moving[element][-1].payload[index].value):
-                    rospy.logerr("other data")
-                    return True
+        l = len(self.frameid)
+        if self._moving:
+            for val in self._moving.keys():
+                if val[:l] == self.frameid and not val == \
+                                self.frameid + self._id:
+                    keys = [i.key for i in
+                            self._moving[self.frameid + self._id][-1].payload]
+                    index = keys.index(self.key)
+                    # check if new / changed data was received
+                    if len(self._moving[val])>1 and \
+                                    float(self._moving[val][-1].payload[index].
+                                                  value) != \
+                                    float(self._moving[val][-2].payload[index].
+                                                  value):
+                        return True
 
         # no data changed
         return False
 
-
-    def morph_center(self, frameid, key):
+    def morph_center(self):
         """
-        :param frameid:
-        :param key:
         :return:
         """
 
-        avg = round(self.morphogenesis(frameid), 9)
-        nNeighbors = -1  # don't consider own distance calculation
-        count = -1
+        avg = round(self.morphogenesis(), 9)
+        nNeighbors = 0
+        count = 0
 
-        l = len(frameid)
+        l = len(self.frameid)
         if self._moving and self._own_pos:
             for val in self._moving.keys():
-                if val[:l] == frameid and not val == frameid+self._id:
+                # only consider neighbors
+                if val[:l] == self.frameid and \
+                        not val == self.frameid+self._id:
                     nNeighbors += 1
                     # index for payload info distance to neighbors
                     keys = [i.key for i in self._moving[val][-1].payload]
-                    index = keys.index(key)
+                    index = keys.index(self.key)
                     # remember last used values
-                    self.last_values[val] = float(self._moving[val][-1].payload[index].value)
                     if float(self._moving[val][-1].payload[index].value) > avg:
                         count += 1
 
