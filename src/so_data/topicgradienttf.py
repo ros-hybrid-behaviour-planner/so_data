@@ -23,7 +23,7 @@ class TopicGradientTf(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, topic, id, message_type=None, p=Vector3(),
-                 attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1,
+                 attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
                  ev_time=0, angle_x=0, angle_y=0, quaternion=Quaternion(),
                  moving=True, payload=[], direction=Vector3(1, 0, 0)):
         """

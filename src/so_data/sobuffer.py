@@ -81,7 +81,7 @@ class SoBuffer(object):
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
-                 min_velocity=0.1):
+                 min_velocity=0.1, state=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -190,6 +190,10 @@ class SoBuffer(object):
 
         self.min_velocity = min_velocity
 
+        # morphogenesis
+        self.state = state
+        self.last_values = {}
+
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
     def store_data(self, msg):
@@ -198,6 +202,7 @@ class SoBuffer(object):
         :param msg: received gradient (soMessage)
         :return:
         """
+
         # store msgs with no frame id with dictionary key 'None'
         if not msg.header.frame_id:
             msg.header.frame_id = 'None'
@@ -1365,7 +1370,7 @@ class SoBuffer(object):
                             + self._view_distance:
                         count += 1.0
         if self.result_static:
-            for fid in self._static:
+            for fid in self._static.keys():
                 if self._static[fid]:
                     for val in self._static[fid]:  # returns list
                         # of neighbor positions
@@ -1404,7 +1409,7 @@ class SoBuffer(object):
                         view.append(val[-1])
 
         if self.result_static:
-            for fid in self._static:
+            for fid in self._static.keys():
                 if self._static[fid]:
                     for val in self._static[fid]:  # returns list
                         # of neighbor positions
@@ -1420,7 +1425,6 @@ class SoBuffer(object):
         return view
 
     # FLOCKING
-    # TODO: unittest
     def flocking(self):
         """
 
@@ -1436,7 +1440,7 @@ class SoBuffer(object):
 
         # neighbors of agent
         if self._moving:
-            for val in self._moving:
+            for val in self._moving.keys():
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(self._moving[val][-1].p,
                                               pose) <= self._moving[val][
@@ -1501,7 +1505,7 @@ class SoBuffer(object):
 
         # neighbors of agent
         if self._moving:
-            for val in self._moving:
+            for val in self._moving.keys():
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(self._moving[val][-1].p,
                                               self._own_pos[-1].p) <= \
@@ -1524,3 +1528,91 @@ class SoBuffer(object):
             mov = calc.adjust_length(mov, self.max_velocity)
 
         return mov
+
+    # Morphogenesis
+    # TODO testing
+    def morphogenesis(self, frameid):
+        """
+        calculates sum of distances to morphogenetic gradients
+        :return:
+        """
+        avg = 0.0
+        l = len(frameid)
+
+        if self._moving and self._own_pos:
+            for val in self._moving.keys():
+                if val[:l] == frameid:
+                    # distance own pos - morphogenetic gradient
+                    d = calc.get_gradient_distance(self._own_pos[-1].p,
+                                               self._moving[val][-1].p)
+                    if d <= self._moving[val][-1].diffusion + \
+                        self._moving[val][-1].goal_radius + \
+                       self._view_distance:
+                        avg += d
+
+        return avg
+
+    def morph_avg_changed(self, frameid, key):
+        """
+        "SENSOR" option: checks if data changed
+        :param frameid:
+        :param key:
+        :return:
+        """
+        if self._moving and frameid + self._id in self._moving.keys():
+            # calculate current avg
+            avg = round(self.morphogenesis(frameid), 9)
+            # no change
+            # index for payload info distance to neighbors
+            keys = [i.key for i in self._moving[frameid+self._id][-1].payload]
+            index = keys.index(key)
+            # change
+            if avg != float(self._moving[frameid+self._id][-1].payload[index].value):
+                rospy.logerr("avg changed")
+                return True
+        else: # no data available
+            rospy.logerr("no data")
+            return True
+
+        # so umbauen, dass evtl neuer Wert auch mit bedacht wird
+        if self._moving and self.last_values:
+            for element in self.last_values.keys():
+                keys = [i.key for i in
+                        self._moving[frameid + self._id][-1].payload]
+                index = keys.index(key)
+                if self.last_values[element] != float(self._moving[element][-1].payload[index].value):
+                    rospy.logerr("other data")
+                    return True
+
+        # no data changed
+        return False
+
+
+    def morph_center(self, frameid, key):
+        """
+        :param frameid:
+        :param key:
+        :return:
+        """
+
+        avg = round(self.morphogenesis(frameid), 9)
+        nNeighbors = -1  # don't consider own distance calculation
+        count = -1
+
+        l = len(frameid)
+        if self._moving and self._own_pos:
+            for val in self._moving.keys():
+                if val[:l] == frameid and not val == frameid+self._id:
+                    nNeighbors += 1
+                    # index for payload info distance to neighbors
+                    keys = [i.key for i in self._moving[val][-1].payload]
+                    index = keys.index(key)
+                    # remember last used values
+                    self.last_values[val] = float(self._moving[val][-1].payload[index].value)
+                    if float(self._moving[val][-1].payload[index].value) > avg:
+                        count += 1
+
+        if count == nNeighbors:
+            return True
+        else:
+            return False
