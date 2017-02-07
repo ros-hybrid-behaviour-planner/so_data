@@ -26,7 +26,7 @@ src:
 
 msg:
 
-* **soMessage.msg**: message file describing gradients 
+* **SoMessage.msg**: message file describing gradients 
 
 The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.ros.org/kinetic/api/geometry_msgs/html/msg/Pose.html) Message. 
 
@@ -124,6 +124,8 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
   * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
   * **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
   * **avoid** = movement vector leading away from all sensed gradients will be returned 
+  * **flocking** = movement vector for flocking motion based on Olfati-Saber
+  * **flockingrey** = movement vector for flocking motion based on Reynolds 
 * **result_moving** (True): consider moving gradients (True) or not (False) in calculations 
 * **result_static** (True): consider static gradients (True) or not (False) in calculations (except for flocking and repulsion which are always based only on moving gradients)
   
@@ -153,6 +155,12 @@ Flocking parameters:
 Quorum Sensing parameters: 
 
 * **threshold** (2): quorum sensing threshold to be passed 
+
+Morpogenesis parameters: 
+* **state** (None): can be set to any kind of float; e.g. 'center' to mark the center 
+* **key** (None): specifies payload KeyValue key for morphogenetic data
+* **frameid** (None): specifies first part of frame ID for morphogenetic gradients, e.g. 'morphogenetic'; the second part has to be the robot id 
+
 
 
 ### Gradient Storage
@@ -272,6 +280,34 @@ Returns True if there is no potential sensed, False otherweise.
 def get_attraction_bool(self, frameids=[])
 ```
 
+
+##### Morphogenesis 
+Morphogenesis is a very application specific behaviour. 
+One implementation was integrated which allows to determine the center of a group of agents.
+To differentiate morphogenetic gradients from other gradients, they are expected to have a key word as the first part of their frame_id. 
+It can be specified with the paramter `self.frame_id` and could be, e.g., 'morphogenesis'.
+The second part is ideally the ID of the robot, s.t. each agent knows which morphogenetic gradient is it's own. 
+Furthermore, the morphogene gradients are expected to have a payload attribute which has the key `self._key`. 
+It is possible to add more payload data, e.g. for use in different functions. 
+
+```python
+def morphogenesis(self)
+```
+This method calculates the sum of the distances to the received morphogenetic gradient messages. 
+The own morphogenetic gradient is not considered (it is expected to have the frame ID: self.frame_id + self._id). 
+
+```python
+def morph_dist_changed(self)
+```
+For use in sensors, the method `morph_dist_changed` returns a boolean value indicating whether the data used for the state calculation has changed. 
+In cases that the data has changed, it might be necessarry to recalculate the state. 
+
+
+```python
+def morph_center(self)
+```
+determines if the robot has the minimum summed distance of all robots. 
+If yes, it sets the state to STATE.CENTER and to STATE.NONE otherwise. 
 
 ### Gradient calculation 
 

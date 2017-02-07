@@ -68,6 +68,16 @@ class COLLISION(object):
     REACH = 2
 
 
+class STATE(object):
+    """
+    Enumeration containing states for morphogenesis
+    * None = no state
+    * center = robot is barycenter of its group of robots
+    """
+    NONE = "None"
+    CENTER = "Center"
+
+
 class SoBuffer(object):
     """
     This class is the buffer for received self-organization data
@@ -81,7 +91,7 @@ class SoBuffer(object):
                  framestorage=[], threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
-                 min_velocity=0.1, state=None, key=None, frameid=None):
+                 min_velocity=0.1, state=STATE.NONE, key=None, frameid=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -192,6 +202,7 @@ class SoBuffer(object):
 
         # morphogenesis
         self.state = state
+        self._morph_values = {}
         # payload data key
         self.key = key
         # morphogenetic frame_id (first part, afterwards robot id)
@@ -704,7 +715,7 @@ class SoBuffer(object):
         return flag
 
     # Collision avoidance between neighbors
-    def _gradient_repulsion(self):
+    def _gradient_repulsion(self, frameids=[]):
         """
         returns repulsion vector (collision avoidance between neighbors)
          based on potential field approach
@@ -719,17 +730,21 @@ class SoBuffer(object):
         if not self._own_pos:
             return repulsion
 
+        # if no frameids are specified, use all data stored in moving
+        if not frameids:
+            frameids = self._moving.keys()
+
         # repulsion radius of robot, <= view_distance w
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
         if self._moving:
-            for val in self._moving.values():
+            for fid in frameids:
+                val = self._moving[fid]
                 # check if neighbor is in sight
                 if val and calc.get_gradient_distance(val[-1].p,
                                                       self._own_pos[-1].p) <= \
-                                        val[-1] \
-                                                .diffusion + val[
+                                        val[-1].diffusion + val[
                                     -1].goal_radius + self._view_distance:
 
                     # distinguish between attractive and repulsive gradients
@@ -751,7 +766,7 @@ class SoBuffer(object):
 
         return repulsion
 
-    def _repulsion_vector(self):
+    def _repulsion_vector(self, frameids=[]):
         """
         return a repulsion vector based on formula presented by
         Fernandez-Marquez et al., use of received gradients (p)
@@ -766,11 +781,16 @@ class SoBuffer(object):
         if not self._own_pos:
             return m
 
+        # if no frameids are specified, use all data stored in moving
+        if not frameids:
+            frameids = self._moving.keys()
+
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
         if self._moving:
-            for val in self._moving.values():
+            for fid in frameids:
+                val = self._moving[fid]
                 if val and val[-1].attraction == -1:
                     # distance between gradient centers
                     distance = calc.get_gradient_distance(val[-1].p,
@@ -1430,8 +1450,8 @@ class SoBuffer(object):
     # FLOCKING
     def flocking(self):
         """
-
-        :return:
+        flocking calculations based on Olfati-Saber
+        :return: movement vector
         """
         view = []
 
@@ -1494,10 +1514,9 @@ class SoBuffer(object):
 
         return velocity
 
-    def flocking_ai(self):
+    def flocking_ai(self, frameids=[]):
         """
-        flocking approach based on Programming Game AI by Example
-        (Mat Buckland)
+        flocking approach based on Reynolds
         :return: movement vector
         """
         view = []
@@ -1506,9 +1525,13 @@ class SoBuffer(object):
         if len(self._own_pos) == 0:
             return Vector3()
 
+        # if no frameids are specified, use all data stored in moving
+        if not frameids:
+            frameids = self._moving.keys()
+
         # neighbors of agent
         if self._moving:
-            for val in self._moving.keys():
+            for val in frameids:
                 # check if neighbor is in sight
                 if calc.get_gradient_distance(self._moving[val][-1].p,
                                               self._own_pos[-1].p) <= \
@@ -1539,25 +1562,30 @@ class SoBuffer(object):
         calculates sum of distances to morphogenetic gradients
         :return:
         """
-        avg = 0.0
+        sum = 0.0
         l = len(self.frameid)
 
         if self._moving and self._own_pos:
             for val in self._moving.keys():
-                if val[:l] == self.frameid:
+                if val[:l] == self.frameid and val != self.frameid + self._id:
                     # distance own pos - morphogenetic gradient
                     d = calc.get_gradient_distance(self._own_pos[-1].p,
                                                self._moving[val][-1].p)
                     if d <= self._moving[val][-1].diffusion + \
                         self._moving[val][-1].goal_radius + \
-                       self._view_distance:
-                        avg += d
+                        self._view_distance:
+                        sum += d
 
-        return avg
+        sum = round(sum, 9)
+
+        # determine if center & set state
+        self.morph_center(sum)
+
+        return sum
 
     def morph_dist_changed(self):
         """
-        "SENSOR" option: checks if data changed
+        checks if morphogenetic data was changed
         :return: bool - True (data changed or no data available),
                         False (otherwise)
         """
@@ -1576,7 +1604,7 @@ class SoBuffer(object):
             return True
 
         l = len(self.frameid)
-        if self._moving:
+        if self._moving and self._morph_values:
             for val in self._moving.keys():
                 if val[:l] == self.frameid and not val == \
                                 self.frameid + self._id:
@@ -1584,23 +1612,22 @@ class SoBuffer(object):
                             self._moving[self.frameid + self._id][-1].payload]
                     index = keys.index(self.key)
                     # check if new / changed data was received
-                    if len(self._moving[val])>1 and \
-                                    float(self._moving[val][-1].payload[index].
-                                                  value) != \
-                                    float(self._moving[val][-2].payload[index].
-                                                  value):
+                    if float(self._moving[val][-1].payload[index].value) != \
+                                    self._morph_values[val]:
                         return True
 
         # no data changed
         return False
 
-    def morph_center(self):
+    def morph_center(self, sum):
         """
-        :return:
+        determines if gradient source (robot) is the center of the group;
+        has to have minimum total distance to neighbors to be barycenter
+        :return: True (center), False otherwise
         """
 
-        avg = round(self.morphogenesis(), 9)
-        nNeighbors = 0
+        dist = sum
+        neighbors = 0
         count = 0
 
         l = len(self.frameid)
@@ -1609,15 +1636,22 @@ class SoBuffer(object):
                 # only consider neighbors
                 if val[:l] == self.frameid and \
                         not val == self.frameid+self._id:
-                    nNeighbors += 1
+                    neighbors += 1
                     # index for payload info distance to neighbors
                     keys = [i.key for i in self._moving[val][-1].payload]
                     index = keys.index(self.key)
                     # remember last used values
-                    if float(self._moving[val][-1].payload[index].value) > avg:
+                    self._morph_values[val] = \
+                        float(self._moving[val][-1].payload[index].value)
+                    # distance larger
+                    if float(self._moving[val][-1].payload[index].value) > dist:
                         count += 1
 
-        if count == nNeighbors:
-            return True
+        if count == neighbors:
+            self.state = STATE.CENTER
         else:
-            return False
+            self.state = STATE.NONE
+
+    @property
+    def id(self):
+        return self._id
