@@ -558,7 +558,7 @@ Data can be send using the method
 def send_data(self, message)
 ```
 
-which requires a SoMessage as the input. 
+which requires a SoMessage or a list of SoMessages as input. 
 
 The soBroadcaster can either be used in a separate node to send data in a certain frequency (to be specified by `rospy.Rate()`) or within behaviours to send gradient messages when necessary. 
 Therewith, `soBroadcaster` is the basis for the implementation of spreading behaviour. 
