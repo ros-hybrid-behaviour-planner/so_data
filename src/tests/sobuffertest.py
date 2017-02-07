@@ -954,7 +954,7 @@ class SoBufferTest(unittest.TestCase):
         """
         test store_data method, store neighbor data and own pos
         """
-        bffr = SoBuffer(aggregation=AGGREGATION.MAX, id='robot3')
+        bffr = SoBuffer(aggregation={'DEFAULT':AGGREGATION.MAX}, id='robot3')
         testlist = {'robot1': [], 'robot2': []}
         ownpos = []
         now = rospy.Time.now()
@@ -1006,7 +1006,8 @@ class SoBufferTest(unittest.TestCase):
         test store_data method, neighbor gradients will not be stored
         :return:
         """
-        bffr = SoBuffer(aggregation='max', moving_storage_size=0, id='')
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX},
+                        moving_storage_size=0, id='')
         now = rospy.Time.now()
 
         # replaced by fourth robot1 message
@@ -1222,7 +1223,7 @@ class SoBufferTest(unittest.TestCase):
         """
 
         bffr = SoBuffer(id='robot1', collision_avoidance=COLLISION.GRADIENT,
-                        result=None, max_velocity=2.0, result_static=False,
+                        result=[], max_velocity=2.0, result_static=False,
                         view_distance=1.5)
 
         bffr._own_pos = [
@@ -1274,7 +1275,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate max method
         :return:
         """
-        bffr = SoBuffer(result=RESULT.MAX, result_moving=False)
+        bffr = SoBuffer(result=[RESULT.MAX], result_moving=False)
 
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
@@ -1335,7 +1336,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate nearest repulsion method
         :return:
         """
-        bffr = SoBuffer(result='near')
+        bffr = SoBuffer(result=[RESULT.NEAR])
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
                       1.0, 0, None, Vector3(), 0, 0, False, [])]
@@ -1374,7 +1375,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = SoBuffer(result='reach', collision_avoidance='',
+        bffr = SoBuffer(result=[RESULT.REACH], collision_avoidance=None,
                         result_moving=False)
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), -1, 3.0,
@@ -1420,7 +1421,7 @@ class SoBufferTest(unittest.TestCase):
         test aggregate all method
         :return:
         """
-        bffr = SoBuffer(result='all')
+        bffr = SoBuffer(result=[RESULT.ALL])
         bffr._static = {
             'gradient': [
                 SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
@@ -1460,7 +1461,7 @@ class SoBufferTest(unittest.TestCase):
         :return:
         """
 
-        bffr = SoBuffer(result='all')
+        bffr = SoBuffer(result=[RESULT.ALL])
         bffr._static = {
             'gradient': [
                 SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
@@ -1499,7 +1500,7 @@ class SoBufferTest(unittest.TestCase):
         test get_attractive_distance method
         :return:
         """
-        bffr = SoBuffer(result='near')
+        bffr = SoBuffer(result=[RESULT.NEAR])
 
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
