@@ -83,12 +83,10 @@ class SoBuffer(object):
     This class is the buffer for received self-organization data
     """
 
-    def __init__(self, aggregation={'DEFAULT': AGGREGATION.MAX},
-                 aggregation_distance=1.0, min_diffusion=0.1,
-                 view_distance=1.5, id='', result=RESULT.NEAR,
-                 collision_avoidance=None,
-                 moving_storage_size=2, store_all=True,
-                 framestorage=[], threshold=2, a=1.0,
+    def __init__(self, aggregation=None, aggregation_distance=1.0,
+                 min_diffusion=0.1, view_distance=1.5, id='', result=None,
+                 collision_avoidance=None, moving_storage_size=2,
+                 store_all=True, framestorage=None, threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
                  min_velocity=0.1, state=STATE.NONE, key=None, frameid=None):
@@ -170,9 +168,18 @@ class SoBuffer(object):
         self._moving = {}  # moving gradients storage, e.g. robots, dict
 
         self._store_all = store_all
-        self._frames = framestorage
 
-        self._aggregation = aggregation
+        # handle mutable parameters
+        if framestorage is None:
+            self._frames = []
+        else:
+            self._frames = framestorage
+
+        if aggregation is None:
+            self._aggregation = {'DEFAULT': AGGREGATION.MAX}
+        else:
+            self._aggregation = aggregation
+
         self._aggregation_distance = aggregation_distance
         self._min_diffusion = min_diffusion
         self._id = id  # fixed, no setter
@@ -180,7 +187,10 @@ class SoBuffer(object):
 
         # RETURN AGGREGATED DATA
         self._view_distance = view_distance
-        self.result = result
+        if result is None:
+            self.result = [RESULT.NEAR]
+        else:
+            self.result = result
         self.result_moving = result_moving
         self.result_static = result_static
 
@@ -423,25 +433,30 @@ class SoBuffer(object):
         result = Vector3()
 
         # distance vector based on gradients - merges available information
-        if self.result == RESULT.NEAR:
-            result = self._aggregate_nearest_repulsion(frameids=frameids)
-        elif self.result == RESULT.MAX:
-            result = self._aggregate_max(frameids=frameids)
-        elif self.result == RESULT.ALL:
-            result = self._aggregate_all(frameids=frameids)
-        elif self.result == RESULT.REACH:
-            result = self._aggregate_nearest_ge(frameids=frameids)
-        elif self.result == RESULT.AVOID:
-            result = self._aggregate_avoid_all(frameids=frameids)
-        elif self.result == RESULT.FLOCKING:
-            result = self.flocking()
-        elif self.result == RESULT.FLOCKINGREY:
-            result = self.flocking_ai()
+        if RESULT.NEAR in self.result:
+            result = calc.add_vectors(result,
+                                      self._aggregate_nearest_repulsion(
+                                          frameids=frameids))
+        if RESULT.MAX in self.result:
+            result = calc.add_vectors(result,
+                                      self._aggregate_max(frameids=frameids))
+        if RESULT.ALL in self.result:
+            result = calc.add_vectors(result,
+                                      self._aggregate_all(frameids=frameids))
+        if RESULT.REACH in self.result:
+            result = calc.add_vectors(result, self._aggregate_nearest_ge(
+                frameids=frameids))
+        if RESULT.AVOID in self.result:
+            result = calc.add_vectors(result, self._aggregate_avoid_all(
+                frameids=frameids))
+        if RESULT.FLOCKING in self.result:
+            result = calc.add_vectors(result, self.flocking())
+        if RESULT.FLOCKINGREY in self.result:
+            result = calc.add_vectors(result, self.flocking_ai())
 
-        # collision avoidance / consider moving gradients
+        # collision avoidance / consider moving repulsive gradients
         if self.collision_avoidance == COLLISION.GRADIENT:
-            collision = self._gradient_repulsion()
-            result = calc.add_vectors(result, collision)
+            result = calc.add_vectors(result, self._gradient_repulsion())
         elif self.collision_avoidance == COLLISION.REPULSION:
             collision = self._repulsion_vector()
             result = calc.add_vectors(result, collision)
@@ -704,9 +719,9 @@ class SoBuffer(object):
             d = calc.vector_length(self._repulsion_vector())
         elif self.collision_avoidance == COLLISION.GRADIENT:
             d = calc.vector_length(self._gradient_repulsion())
-        elif self.result == RESULT.FLOCKING:
+        elif RESULT.FLOCKING in self.result:
             d = calc.vector_length(self.flocking())
-        elif self.result == RESULT.FLOCKINGREY:
+        elif RESULT.FLOCKINGREY in self.result:
             d = calc.vector_length(self.flocking_ai())
 
         if d > 0:
@@ -754,8 +769,8 @@ class SoBuffer(object):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length=repulsion radius
                         repulsion = calc.add_vectors(repulsion,
-                                             calc.random_vector(
-                                                 repulsion_radius))
+                                                     calc.random_vector(
+                                                         repulsion_radius))
                     else:
                         repulsion = calc.add_vectors(repulsion, grad)
 
@@ -886,9 +901,9 @@ class SoBuffer(object):
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
                         vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                        calc.random_vector(
-                                                        gradient.goal_radius
-                                                        + gradient.diffusion))
+                                                            calc.random_vector(
+                                                                gradient.goal_radius
+                                                                + gradient.diffusion))
                     else:
                         tmp_grad = grad
 
@@ -946,9 +961,9 @@ class SoBuffer(object):
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
                     vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                         calc.random_vector(
-                                                         gradient.goal_radius
-                                                         + gradient.diffusion))
+                                                        calc.random_vector(
+                                                            gradient.goal_radius
+                                                            + gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1030,9 +1045,9 @@ class SoBuffer(object):
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
                     vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                         calc.random_vector(
-                                                         gradient.goal_radius
-                                                         + gradient.diffusion))
+                                                        calc.random_vector(
+                                                            gradient.goal_radius
+                                                            + gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1079,9 +1094,9 @@ class SoBuffer(object):
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length=goal radius + diffusion
                     vector_repulsion = calc.add_vectors(vector_repulsion,
-                                         calc.random_vector(
-                                             gradient.goal_radius +
-                                             gradient.diffusion))
+                                                        calc.random_vector(
+                                                            gradient.goal_radius +
+                                                            gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1129,8 +1144,8 @@ class SoBuffer(object):
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
                     v = calc.add_vectors(v, calc.random_vector(
-                                             gradient.goal_radius +
-                                             gradient.diffusion))
+                        gradient.goal_radius +
+                        gradient.diffusion))
                 else:
                     v = calc.add_vectors(v, grad)
 
@@ -1570,10 +1585,10 @@ class SoBuffer(object):
                 if val[:l] == self.frameid and val != self.frameid + self._id:
                     # distance own pos - morphogenetic gradient
                     d = calc.get_gradient_distance(self._own_pos[-1].p,
-                                               self._moving[val][-1].p)
+                                                   self._moving[val][-1].p)
                     if d <= self._moving[val][-1].diffusion + \
-                        self._moving[val][-1].goal_radius + \
-                        self._view_distance:
+                            self._moving[val][-1].goal_radius + \
+                            self._view_distance:
                         sum += d
 
         sum = round(sum, 9)
@@ -1594,10 +1609,10 @@ class SoBuffer(object):
             avg = round(self.morphogenesis(), 9)
             # index for payload info distance to neighbors
             keys = [i.key for i in
-                    self._moving[self.frameid+self._id][-1].payload]
+                    self._moving[self.frameid + self._id][-1].payload]
             index = keys.index(self.key)
             # change
-            if avg != float(self._moving[self.frameid+self._id][-1].
+            if avg != float(self._moving[self.frameid + self._id][-1].
                                     payload[index].value):
                 return True
         else:  # no data available
@@ -1613,7 +1628,7 @@ class SoBuffer(object):
                     index = keys.index(self.key)
                     # check if new / changed data was received
                     if float(self._moving[val][-1].payload[index].value) != \
-                                    self._morph_values[val]:
+                            self._morph_values[val]:
                         return True
 
         # no data changed
@@ -1635,7 +1650,7 @@ class SoBuffer(object):
             for val in self._moving.keys():
                 # only consider neighbors
                 if val[:l] == self.frameid and \
-                        not val == self.frameid+self._id:
+                        not val == self.frameid + self._id:
                     neighbors += 1
                     # index for payload info distance to neighbors
                     keys = [i.key for i in self._moving[val][-1].payload]
@@ -1644,7 +1659,8 @@ class SoBuffer(object):
                     self._morph_values[val] = \
                         float(self._moving[val][-1].payload[index].value)
                     # distance larger
-                    if float(self._moving[val][-1].payload[index].value) > dist:
+                    if float(
+                            self._moving[val][-1].payload[index].value) > dist:
                         count += 1
 
         if count == neighbors:
