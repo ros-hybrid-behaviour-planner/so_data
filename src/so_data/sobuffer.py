@@ -719,10 +719,6 @@ class SoBuffer(object):
             d = calc.vector_length(self._repulsion_vector())
         elif self.collision_avoidance == COLLISION.GRADIENT:
             d = calc.vector_length(self._gradient_repulsion())
-        elif RESULT.FLOCKING in self.result:
-            d = calc.vector_length(self.flocking())
-        elif RESULT.FLOCKINGREY in self.result:
-            d = calc.vector_length(self.flocking_ai())
 
         if d > 0:
             flag = False
