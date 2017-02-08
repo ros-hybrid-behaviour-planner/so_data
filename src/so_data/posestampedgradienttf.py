@@ -8,7 +8,7 @@ Module to transform pose topic messages (geometry.msgs.poseStamped) to
 SoMessages
 """
 
-from so_data.topicGradientTf import TopicGradientTf
+from so_data.topicgradienttf import TopicGradientTf
 import copy
 import rospy
 import geometry_msgs.msg

@@ -584,6 +584,11 @@ class SoBuffer(object):
         # within view distance
         gradients_repulsive = []
         gradients_attractive = []
+
+        # no own position available
+        if not self._own_pos:
+            return [[],[]]
+
         for fid in frameids:
             # static gradients
             if fid in self._static and self.result_static:
