@@ -1199,7 +1199,7 @@ class SoBufferTest(unittest.TestCase):
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         # calculate vector
-        self.assertEqual(result, Vector3(-0.39, -0.41, 0))
+        self.assertEqual(result, Vector3(-0.88, -0.48, 0))
 
         # neighbor within goal_radius - returns vector with
         # ||vector|| = repulsion_radius
@@ -1267,7 +1267,7 @@ class SoBufferTest(unittest.TestCase):
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
         # calculate vector
-        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
+        self.assertEqual(result, Vector3(-0.88, -0.48, 0.0))
 
     # Aggregation return vectors
     def test_aggregate_max(self):

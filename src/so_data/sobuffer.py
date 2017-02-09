@@ -768,9 +768,16 @@ class SoBuffer(object):
                     # two robots are at the same position
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length=repulsion radius
-                        repulsion = calc.add_vectors(repulsion,
+                        dv = calc.delta_vector(self._own_pos[-1].p, val[-1].p)
+
+                        if calc.vector_length(dv) == 0:
+                            repulsion = calc.add_vectors(repulsion,
                                                      calc.random_vector(
                                                          repulsion_radius))
+                        else:
+                            repulsion = calc.add_vectors(repulsion,
+                                                         calc.adjust_length(dv,
+                                                            repulsion_radius))
                     else:
                         repulsion = calc.add_vectors(repulsion, grad)
 
@@ -809,7 +816,7 @@ class SoBuffer(object):
                 if val and val[-1].attraction == -1:
                     # distance between gradient centers
                     distance = calc.get_gradient_distance(val[-1].p,
-                                                          self._own_pos[-1].p) \
+                                                          self._own_pos[-1].p)\
                                - val[-1].goal_radius
                     # agents within view
                     if distance <= self._view_distance:
@@ -827,9 +834,15 @@ class SoBuffer(object):
                                 -1].p.z) * diff / distance
                         elif distance <= 0:
                             # create random vector with length=repulsion radius
-                            m = calc.add_vectors(m,
-                                                 calc.random_vector(
+                            if distance == -val[-1].goal_radius:
+                                m = calc.add_vectors(m, calc.random_vector(
                                                      repulsion_radius))
+                            # use direction leading away if available
+                            else:
+                                m = calc.add_vectors(m, calc.adjust_length(
+                                    calc.delta_vector(self._own_pos[-1].p,
+                                                      val[-1].p),
+                                    repulsion_radius))
 
         # max repulsion vector length = repulsion radius of robot
         d = np.linalg.norm([m.x, m.y, m.z])
@@ -900,10 +913,17 @@ class SoBuffer(object):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                            calc.random_vector(
-                                                                gradient.goal_radius
-                                                                + gradient.diffusion))
+
+                        dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                        if calc.vector_length(dv) == 0:
+                            tmp_grad = calc.random_vector(gradient.goal_radius
+                                                  + gradient.diffusion)
+                        else:
+                            tmp_grad = calc.adjust_length(dv,
+                                                          gradient.goal_radius
+                                                          + gradient.diffusion)
+
                     else:
                         tmp_grad = grad
 
@@ -960,10 +980,18 @@ class SoBuffer(object):
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
-                    vector_repulsion = calc.add_vectors(vector_repulsion,
+                    dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                    if calc.vector_length(dv) == 0:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
                                                         calc.random_vector(
-                                                            gradient.goal_radius
-                                                            + gradient.diffusion))
+                                                        gradient.goal_radius
+                                                        + gradient.diffusion))
+                    else:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            calc.adjust_length(
+                                                                dv,
+                                    gradient.goal_radius + gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1044,10 +1072,18 @@ class SoBuffer(object):
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
-                    vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                        calc.random_vector(
-                                                            gradient.goal_radius
-                                                            + gradient.diffusion))
+                    dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                    if calc.vector_length(dv) == 0:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            calc.random_vector(
+                                                        gradient.goal_radius +
+                                                        gradient.diffusion))
+                    else:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            calc.adjust_length(
+                                                                dv,
+                                    gradient.goal_radius + gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1093,10 +1129,18 @@ class SoBuffer(object):
                 # obstacle
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length=goal radius + diffusion
-                    vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                        calc.random_vector(
-                                                            gradient.goal_radius +
-                                                            gradient.diffusion))
+                    dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                    if calc.vector_length(dv) == 0:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            calc.random_vector(
+                                                        gradient.goal_radius
+                                                        + gradient.diffusion))
+                    else:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            calc.adjust_length(
+                                                                dv,
+                                    gradient.goal_radius + gradient.diffusion))
                 else:
                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
 
@@ -1143,9 +1187,16 @@ class SoBuffer(object):
                 if grad.x == np.inf or grad.x == -1 * np.inf:
                     # create random vector with length (goal_radius +
                     # gradient.diffusion)
-                    v = calc.add_vectors(v, calc.random_vector(
-                        gradient.goal_radius +
-                        gradient.diffusion))
+                    dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                    if calc.vector_length(dv) == 0:
+                        v = calc.add_vectors(v, calc.random_vector(
+                                            gradient.goal_radius
+                                            + gradient.diffusion))
+                    else:
+                        v = calc.add_vectors(v, calc.adjust_length(dv,
+                                    gradient.goal_radius + gradient.diffusion))
+
                 else:
                     v = calc.add_vectors(v, grad)
 
