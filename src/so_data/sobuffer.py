@@ -94,7 +94,7 @@ class SoBuffer(object):
                  max_velocity=1.0, result_moving=True, result_static=True,
                  min_velocity=0.1, state=STATE.NONE, key=None,
                  morph_frame='morphogenesis', pose_frame='robot',
-                 chem_frames=None):
+                 chem_frames=None, gossip_frame='gossip', gossip_key=''):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -230,6 +230,11 @@ class SoBuffer(object):
             self.chem_frames = []
         else:
             self.chem_frames = chem_frames
+
+        # gossip
+        self.gossip_frame = gossip_frame
+        self.gossip_key = gossip_key
+        self.gossip_values = {}
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -1656,6 +1661,7 @@ class SoBuffer(object):
 
     # Morphogenesis
     # TODO testing
+    # TODO include ueberall distance calculation
     def morphogenesis(self):
         """
         calculates sum of distances to morphogenetic gradients
@@ -1751,6 +1757,66 @@ class SoBuffer(object):
             self.state = STATE.CENTER
         else:
             self.state = STATE.NONE
+
+    # Gossip
+    def gossip(self):
+        """
+        returns list of gossip gradients within view, the one with own id is
+        excluded
+        :return: list of gradients
+        """
+
+        view = []
+
+        # clear dictionary with stored values
+        self.gossip_values.clear()
+
+        if self.gossip_frame in self._moving.keys():
+            for pid in self._moving[self.gossip_frame]:
+                if pid != self._id and self._moving[self.gossip_frame][pid]:
+                    val = self._moving[self.gossip_frame][pid][-1]
+                    d = calc.get_gradient_distance(self._own_pos[-1].p, val.p)
+                    if d <= val.diffusion + val.goal_radius + \
+                            self._view_distance:
+                        view.append(val)
+                        # store data for comparison if data has changed
+                        self.gossip_values[pid] = val
+
+        return view
+
+    def gossip_sensor(self):
+        """
+        returns true when no data is available / data has changed; false
+        otherwise
+        :return: bool
+        """
+        # no gossip data available --> start process
+        if not self.gossip_frame in self._moving.keys():
+            return True
+
+        for pid in self._moving[self.gossip_frame]:
+            # new value
+            if pid != self._id and self._moving[self.gossip_frame][pid]:
+                val = self._moving[self.gossip_frame][pid][-1]
+                d = calc.get_gradient_distance(self._own_pos[-1].p, val.p)
+                if d <= val.diffusion + val.goal_radius + self._view_distance:
+                    # new value
+                    if pid not in self.gossip_values.keys():
+                        return True
+
+                    keys = [i.key for i in self._moving[self.gossip_frame][pid]
+                    [-1].payload]
+                    index = keys.index(self.gossip_key)
+                    ntmp = float(self._moving[self.gossip_frame][pid][-1].
+                                 payload[index].value)
+
+                    if float(self.gossip_values[pid].payload[index].value) \
+                            != ntmp:
+                        return True
+
+        return False
+
+
 
     @property
     def id(self):
