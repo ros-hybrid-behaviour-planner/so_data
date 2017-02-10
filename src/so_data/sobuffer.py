@@ -29,6 +29,7 @@ class RESULT(object):
     * avoid = return vector leading away form all gradients
     * flocking: return flocking vector based on Olfati-Saber
     * flockingrey: return flocking vector based on Reynolds
+    * collision = return vector avoiding all repulsive gradients
     """
     NEAR = 0
     ALL = 1
@@ -37,6 +38,7 @@ class RESULT(object):
     AVOID = 4
     FLOCKING = 5
     FLOCKINGREY = 6
+    COLLISION = 7
 
 
 class AGGREGATION(object):
@@ -46,14 +48,16 @@ class AGGREGATION(object):
     * max = keep gradients with maximum diffusion radius + goal radius
     * avg = combine gradients / average
     * new = store newest received gradient
+    * newparent = store neweste received gradient per parent frame
     """
     MIN = 0
     MAX = 1
     AVG = 2
     NEW = 3
+    NEWPARENT = 4
 
 
-class COLLISION(object):
+class REPULSION(object):
     """
     Enumeration specifying collision avoidance options
     * gradient = potential field approach to realize collision avoidance
@@ -84,12 +88,13 @@ class SoBuffer(object):
 
     def __init__(self, aggregation=None, aggregation_distance=1.0,
                  min_diffusion=0.1, view_distance=1.5, id='', result=None,
-                 collision_avoidance=None, moving_storage_size=2,
+                 repulsion=None, moving_storage_size=2,
                  store_all=True, framestorage=None, threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
                  min_velocity=0.1, state=STATE.NONE, key=None,
-                 morph_frame=None, pose_frame='robot'):
+                 morph_frame='morphogenesis', pose_frame='robot',
+                 chem_frames=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -183,6 +188,7 @@ class SoBuffer(object):
         self._aggregation_distance = aggregation_distance
         self._min_diffusion = min_diffusion
         self._id = id
+        # frame specifying agent / neighbor data
         self._pose_frame = pose_frame
         self._moving_storage_size = moving_storage_size
 
@@ -196,7 +202,7 @@ class SoBuffer(object):
         self.result_static = result_static
 
         # Collision Avoidance
-        self.collision_avoidance = collision_avoidance
+        self.repulsion = repulsion
 
         # quorum
         self.threshold = threshold
@@ -216,8 +222,14 @@ class SoBuffer(object):
         self._morph_values = {}
         # payload data key
         self.key = key
-        # morphogenetic frame_id (first part, afterwards robot id)
+        # frame ID for morphogenetic gradients
         self.morph_frame = morph_frame
+
+        # chemotaxis frames
+        if chem_frames is None:
+            self.chem_frames = []
+        else:
+            self.chem_frames = chem_frames
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -301,46 +313,53 @@ class SoBuffer(object):
             return
 
         if msg.header.frame_id in self._static:
-            # indicates whether data point at same position / within
-            # aggregation radius is already stored
-            view = {}
 
-            # find all points which are in aggregation range of message
-            for i in xrange(len(self._static[msg.header.frame_id])
-                                    - 1, -1, -1):
-                distance = calc.get_gradient_distance(
-                    self._static[msg.header.frame_id][i].p, msg.p)
-                # data point lies within aggregation distance
-                if distance <= self._aggregation_distance:
-                    view[i] = distance
+            # aggregation based on parent frame
+            if aggregation == AGGREGATION.NEWPARENT:
+                self.aggregation_newparent(msg)
 
-            # find minimum distance to gradient centers within aggregation
-            # distance
-            if view:
-                min_val = min(view.values())  # get minimum distance
-                result = [j for j, v in view.items() if v == min_val]
-
-                # several with same distance - random value of list
-                if len(result) > 1:
-                    k = random.choice(result)
-                # only one minimum - use found index
-                else:
-                    k = result[0]
-
-                # keep data with max reach
-                if aggregation == AGGREGATION.MAX:
-                    self.aggregation_max(msg, k)
-                # keep data with min reach
-                elif aggregation == AGGREGATION.MIN:
-                    self.aggregation_min(msg, k)
-                # keep average gradient
-                elif aggregation == AGGREGATION.AVG:
-                    self.aggregation_average(msg, k)
-                # keep last received gradient at one position
-                elif aggregation == AGGREGATION.NEW:
-                    self.aggregation_new(msg, k)
+            # aggregation based on position
             else:
-                self._static[msg.header.frame_id].append(msg)
+                # indicates whether data point at same position / within
+                # aggregation radius is already stored
+                view = {}
+
+                # find all points which are in aggregation range of message
+                for i in xrange(len(self._static[msg.header.frame_id])
+                                        - 1, -1, -1):
+                    distance = calc.get_gradient_distance(
+                     self._static[msg.header.frame_id][i].p, msg.p)
+                    # data point lies within aggregation distance
+                    if distance <= self._aggregation_distance:
+                        view[i] = distance
+
+                # find minimum distance to gradient centers within aggregation
+                # distance
+                if view:
+                    min_val = min(view.values())  # get minimum distance
+                    result = [j for j, v in view.items() if v == min_val]
+
+                    # several with same distance - random value of list
+                    if len(result) > 1:
+                        k = random.choice(result)
+                    # only one minimum - use found index
+                    else:
+                        k = result[0]
+
+                    # keep data with max reach
+                    if aggregation == AGGREGATION.MAX:
+                        self.aggregation_max(msg, k)
+                    # keep data with min reach
+                    elif aggregation == AGGREGATION.MIN:
+                        self.aggregation_min(msg, k)
+                    # keep average gradient
+                    elif aggregation == AGGREGATION.AVG:
+                        self.aggregation_average(msg, k)
+                    # keep last received gradient at one position
+                    elif aggregation == AGGREGATION.NEW:
+                        self.aggregation_new(msg, k)
+                else:
+                    self._static[msg.header.frame_id].append(msg)
         else:
             self._static[msg.header.frame_id] = [msg]
 
@@ -359,6 +378,25 @@ class SoBuffer(object):
         else:
             rospy.logerr("No DEFAULT value specified for aggregation!")
             return
+
+    def aggregation_newparent(self, msg):
+        """
+        stores newest message per parent
+        :param msg: received gradient message
+        """
+        found = False
+        for i in range(0, len(self._static[msg.header.frame_id])):
+            if self._static[msg.header.frame_id][i].parent_frame == \
+                    msg.parent_frame:
+                found = True
+                if msg.header.stamp >= \
+                        self._static[msg.header.frame_id][i].header.stamp:
+                    del self._static[msg.header.frame_id][i]
+                    self._static[msg.header.frame_id].append(msg)
+                    return
+
+        if not found:
+            self._static[msg.header.frame_id].append(msg)
 
     def aggregation_new(self, msg, k):
         """
@@ -430,7 +468,7 @@ class SoBuffer(object):
         if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
             self._static[msg.header.frame_id].append(msg)
 
-    def get_current_gradient(self, frameids=[]):
+    def get_current_gradient(self):
         """
         returns movement vector based on gradients & with or without collision
         avoidance
@@ -445,31 +483,27 @@ class SoBuffer(object):
 
         # distance vector based on gradients - merges available information
         if RESULT.NEAR in self.result:
-            result = calc.add_vectors(result,
-                                      self._aggregate_nearest_repulsion(
-                                          frameids=frameids))
+            result = calc.add_vectors(result, self.result_near())
         if RESULT.MAX in self.result:
-            result = calc.add_vectors(result,
-                                      self._aggregate_max(frameids=frameids))
+            result = calc.add_vectors(result, self.result_max())
         if RESULT.ALL in self.result:
-            result = calc.add_vectors(result,
-                                      self._aggregate_all(frameids=frameids))
+            result = calc.add_vectors(result, self.result_all())
         if RESULT.REACH in self.result:
-            result = calc.add_vectors(result, self._aggregate_nearest_ge(
-                frameids=frameids))
+            result = calc.add_vectors(result, self.result_reach())
         if RESULT.AVOID in self.result:
-            result = calc.add_vectors(result, self._aggregate_avoid_all(
-                frameids=frameids))
+            result = calc.add_vectors(result, self.result_avoid())
         if RESULT.FLOCKING in self.result:
-            result = calc.add_vectors(result, self.flocking())
+            result = calc.add_vectors(result, self.result_flocking())
         if RESULT.FLOCKINGREY in self.result:
-            result = calc.add_vectors(result, self.flocking_ai())
+            result = calc.add_vectors(result, self.result_flockingrey())
+        if RESULT.COLLISION in self.result:
+            result = calc.add_vectors(result, self.result_collision())
 
-        # collision avoidance / consider moving repulsive gradients
-        if self.collision_avoidance == COLLISION.GRADIENT:
-            result = calc.add_vectors(result, self._gradient_repulsion())
-        elif self.collision_avoidance == COLLISION.REPULSION:
-            collision = self._repulsion_vector()
+        # collision avoidance / consider neighbor gradients
+        if self.repulsion == REPULSION.GRADIENT:
+            result = calc.add_vectors(result, self.repulsion_gradient())
+        elif self.repulsion == REPULSION.REPULSION:
+            collision = self.repulsion_repulsion()
             result = calc.add_vectors(result, collision)
 
         # adjust length to be max within view_distance
@@ -481,17 +515,20 @@ class SoBuffer(object):
 
         return result
 
-    def get_attractive_gradients_view(self, frameids=[]):
+    def get_attractive_gradients_view(self):
         """
         :return: True (attractive gradient within view),
                 False (no attractive gradients within view)
         """
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        frameids = []
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # check if moving and / or static attractive gradients are
         # within view distance
@@ -592,8 +629,11 @@ class SoBuffer(object):
         return gradients_repulsive
 
     def gradients(self, frameids):
-        # check if moving and / or static attractive gradients are
-        # within view distance
+        """
+        function determines all gradients within view distance
+        :param frameids: frame IDs to be considered looking for gradients
+        :return: list of gradients
+        """
         gradients_repulsive = []
         gradients_attractive = []
 
@@ -629,7 +669,7 @@ class SoBuffer(object):
 
         return [gradients_attractive, gradients_repulsive]
 
-    def get_goal_reached(self, frameids=[]):
+    def get_goal_reached(self):
         """
         determines whether nearest attractive gradient was reached - especially
         for return == reach option
@@ -638,13 +678,16 @@ class SoBuffer(object):
         :return: True/False (bool)
         """
         tmp_att = np.inf  # attractive gradient calculation return values [0,1]
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         gradients_attractive = self.attractive_gradients(frameids)
 
@@ -663,7 +706,7 @@ class SoBuffer(object):
         else:
             return False
 
-    def get_attractive_distance(self, frameids=[]):
+    def get_attractive_distance(self):
         """
         :return: returns distance to closest attractive gradient
         (min attraction)
@@ -671,13 +714,16 @@ class SoBuffer(object):
         """
         tmp_att = np.inf  # attractive gradient calculations return values
         # between 0 and 1
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         gradients_attractive = self.attractive_gradients(frameids)
 
@@ -706,15 +752,14 @@ class SoBuffer(object):
 
         return d
 
-    def get_attraction_bool(self, frameids=[]):
+    def get_attraction_bool(self):
         """
         determines whether there is still some attraction/repulsion
-        :param frameids: frameIDs of gradients to be considered in calculation
         :return: True (potential) /False (no potential) (bool)
         """
 
         # calculate gradient vector
-        vector = self.get_current_gradient(frameids)
+        vector = self.get_current_gradient()
         d = calc.vector_length(vector)
 
         # no gradient vector to follow --> "goal reached / repulsion avoided"
@@ -733,10 +778,10 @@ class SoBuffer(object):
 
         d = 0.0
 
-        if self.collision_avoidance == COLLISION.REPULSION:
-            d = calc.vector_length(self._repulsion_vector())
-        elif self.collision_avoidance == COLLISION.GRADIENT:
-            d = calc.vector_length(self._gradient_repulsion())
+        if self.repulsion == REPULSION.REPULSION:
+            d = calc.vector_length(self.repulsion_repulsion())
+        elif self.repulsion == REPULSION.GRADIENT:
+            d = calc.vector_length(self.repulsion_gradient())
 
         if d > 0:
             flag = False
@@ -744,7 +789,7 @@ class SoBuffer(object):
         return flag
 
     # Collision avoidance between neighbors
-    def _gradient_repulsion(self):
+    def repulsion_gradient(self):
         """
         returns repulsion vector (collision avoidance between neighbors)
          based on potential field approach
@@ -798,7 +843,7 @@ class SoBuffer(object):
 
         return repulsion
 
-    def _repulsion_vector(self):
+    def repulsion_repulsion(self):
         """
         return a repulsion vector based on formula presented by
         Fernandez-Marquez et al., use of received gradients (p)
@@ -856,26 +901,27 @@ class SoBuffer(object):
         return m
 
     # AGGREGATION - build potential field (merging of information)
-    def _aggregate_max(self, frameids=[]):
+    def result_max(self):
         """
         follow higher gradient values (= gradient with shortest relative
         distance to gradient source)
         sets current gradient to direction vector (length <= 1)
-        :param pose: current position of agent
-        :param frameids: frameIDs of gradients to be considered in calculation
         :return gradient vector
         """
 
         gradients = []
         tmp_att = -1
         tmp_grad = Vector3()
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # find moving and / or static gradients within view distance
         gradients = self.gradients(frameids)
@@ -921,27 +967,74 @@ class SoBuffer(object):
 
         return tmp_grad
 
-    def _aggregate_nearest_repulsion(self, frameids=[]):
+    def result_collision(self):
+        """
+        aggregate gradients to avoid all repulsive gradients
+        :return: repulsive gradient vector
+        """
+        vector_repulsion = Vector3()
+        frameids = []
+
+        # if no frameids are specified, use all data stored in buffer
+        if not self.chem_frames:
+            if self.result_static:
+                frameids += self._static.keys()
+            if self.result_moving:
+                frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
+
+        gradients = self.repulsive_gradients(frameids)
+
+        # aggregate repulsive gradients
+        if gradients:
+            for gradient in gradients:
+                grad = self._calc_repulsive_gradient(gradient)
+                # robot position is within obstacle radius, inf can't be
+                # handled as direction
+                # --> add vector which brings robot to the boarder of the
+                # obstacle
+                if grad.x == np.inf or grad.x == -1 * np.inf:
+                    # create random vector with length (goal_radius +
+                    # gradient.diffusion)
+                    dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
+
+                    if calc.vector_length(dv) == 0:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                calc.random_vector(
+                                                    gradient.goal_radius +
+                                                    gradient.diffusion))
+                    else:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                    calc.adjust_length(dv,
+                                                        gradient.goal_radius +
+                                                        gradient.diffusion))
+                else:
+                    vector_repulsion = calc.add_vectors(vector_repulsion, grad)
+
+        return vector_repulsion
+
+    def result_near(self):
         """
         aggregate nearest attractive gradient with repulsive gradients s.t.
         robot finds gradient source avoiding the
         repulsive gradient sources
-        :param pose: current agent's pose
-        :param frameids: frameids of gradients to be considered in the
-        calculation
         :return gradient vector
         """
 
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
         tmp_att = np.inf
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # find attractive / repulsive gradients within view
         gradients = self.gradients(frameids)
@@ -987,28 +1080,29 @@ class SoBuffer(object):
 
         return calc.add_vectors(vector_attraction, vector_repulsion)
 
-    def _aggregate_nearest_ge(self, frameids=[]):
+    def result_reach(self):
         """
         aggregate nearest attractive gradient with repulsive gradients s.t.
         robot finds gradient source avoiding the
         repulsive gradient sources based on Ge & Cui
         requires at least one attractive gradient to be sensed
-        :param pose: current robot pose
-        :param frameids: frameIDs of gradients to be considered in calculation
         :return gradient vector
         """
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
         tmp_att = np.inf
         attractive_gradient = None
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving or \
-                            self.collision_avoidance == COLLISION.REACH:
+                            self.repulsion == REPULSION.REACH:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # find gradients within view distance
         gradients = self.gradients(frameids)
@@ -1018,7 +1112,7 @@ class SoBuffer(object):
         # moving gradients not considered in general, but collision avoidance
         # should be applied: add moving repulsive gradients to gradient set
         if not self.result_moving and \
-                        self.collision_avoidance == COLLISION.REACH:
+                        self.repulsion == REPULSION.REACH:
             if self._pose_frame in self._moving.keys():
                 for pid in self._moving[self._pose_frame].keys():
                     if self._moving[self._pose_frame][pid]:
@@ -1079,23 +1173,24 @@ class SoBuffer(object):
         # return sum of gradients
         return calc.add_vectors(vector_attraction, vector_repulsion)
 
-    def _aggregate_all(self, frameids=[]):
+    def result_all(self):
         """
         aggregate all vectors within view distance
-        :param pose: current robot position
-        :param frameids: frameIDs of gradients to be considered in calculation
         :return: gradient vector
         """
 
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # find gradients within view distance
         gradients = self.gradients(frameids)
@@ -1135,22 +1230,23 @@ class SoBuffer(object):
 
         return calc.add_vectors(vector_attraction, vector_repulsion)
 
-    def _aggregate_avoid_all(self, frameids=[]):
+    def result_avoid(self):
         """
         calculate vector which avoids all gradients within view distance
-        :param pose: current pose of agent
-        :param frameids: frameIDs of gradients to be considered in calculation
         :return gradient vector
         """
         gradients = []
         v = Vector3()
+        frameids = []
 
         # if no frameids are specified, use all data stored in buffer
-        if not frameids:
+        if not self.chem_frames:
             if self.result_static:
-                frameids = self._static.keys()
+                frameids += self._static.keys()
             if self.result_moving:
                 frameids += self._moving.keys()
+        else:
+            frameids = self.chem_frames
 
         # find moving and / or static gradients within view distance
         gradients = self.gradients(frameids)
@@ -1290,7 +1386,6 @@ class SoBuffer(object):
     def _calc_repulsive_gradient(self, gradient):
         """
         :param gradient: position of the goal
-        :param pose: position of the robot
         :return: repulsive vector
         """
         v = Vector3()
@@ -1335,7 +1430,6 @@ class SoBuffer(object):
         vectors!
         normalized version same as _calc_attractive_gradient
         :param gradient: position of the goal
-        :param pose: position of the robot
         :return: attractive vector
         """
         v = Vector3()
@@ -1361,7 +1455,7 @@ class SoBuffer(object):
     def _calc_repulsive_gradient_ge(self, gradient, goal):
         """
         :param gradient: position of the goal
-        :param pose: position of the robot
+        :param goal: attractive gradient to be followed
         :return: repulsive vector
         distance of influence of obstacle = goal_radius + diffusion
         """
@@ -1459,7 +1553,7 @@ class SoBuffer(object):
         return view
 
     # FLOCKING
-    def flocking(self):
+    def result_flocking(self):
         """
         flocking calculations based on Olfati-Saber
         :return: movement vector
@@ -1525,7 +1619,7 @@ class SoBuffer(object):
 
         return velocity
 
-    def flocking_ai(self):
+    def result_flockingrey(self):
         """
         flocking approach based on Reynolds
         :return: movement vector
