@@ -1632,24 +1632,40 @@ class SoBuffer(object):
 
     # TODO testing
     # Gossip & Morphogenesis & Quorum sensing
-    def decision_list(self, option):
+
+    def get_decision(self, option):
+
+        result = None
+
+        if option == DECISION.GOSSIP:
+            result = self.decision_list(self.gossip_frame)
+
+            # store last used values for calculation
+            self.gossip_values.clear()
+            for el in result:
+                self.gossip_values[el.parent_frame] = el
+
+        elif option == DECISION.MORPH:
+            result = self.decision_list(self.morph_frame)
+
+            # store last used values for calculation
+            self._morph_values.clear()
+            for el in result:
+                self._morph_values[el.parent_frame] = el
+
+        elif option == DECISION.QUORUM:
+            result = self.decision_list(self._pose_frame)
+
+        return result
+
+    def decision_list(self, frame):
         """
         returns list of gossip gradients within view, the one with own id is
         excluded
         :return: list of gradients
         """
         view = []
-        frame = None
-
-        if option == DECISION.GOSSIP:
-            # clear dictionary with stored values
-            self.gossip_values.clear()
-            frame = self.gossip_frame
-        elif option == DECISION.MORPH:
-            self._morph_values.clear()
-            frame = self.morph_frame
-        elif option == DECISION.QUORUM:
-            frame = self._pose_frame
+        frame = frame
 
         if frame in self._moving.keys():
             for pid in self._moving[frame]:
@@ -1660,12 +1676,6 @@ class SoBuffer(object):
                     if d <= val.diffusion + val.goal_radius + \
                             self._view_distance:
                         view.append(val)
-
-                        # store data for comparison if data has changed
-                        if option == DECISION.GOSSIP:
-                            self.gossip_values[pid] = val
-                        elif option == DECISION.MORPH:
-                            self._morph_values[pid] = val
         return view
 
     # Gossip
