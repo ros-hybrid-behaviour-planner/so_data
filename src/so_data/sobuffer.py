@@ -21,7 +21,7 @@ import random
 # ENUMERATIONS
 class RESULT(object):
     """
-    Enumeration specifying result options
+    Enumeration specifying result options for movement patterns
     * near = return vector to nearest attractive vector avoiding obstacles
     * all = return vector considering all vectors of potential field
     * max = return vector with max attraction / repulsion
@@ -39,6 +39,18 @@ class RESULT(object):
     FLOCKING = 5
     FLOCKINGREY = 6
     COLLISION = 7
+
+
+class DECISION(object):
+    """
+    Enumeration specifying result options for decision patterns
+    * morph: return list for morphogenesis pattern (morphogenesis frame)
+    * gossip: return list for gossip pattern (gossip frame)
+    * quorum: return list for quorum pattern (pose frame of neighbors)
+    """
+    MORPH = 0
+    GOSSIP = 1
+    QUORUM = 2
 
 
 class AGGREGATION(object):
@@ -1515,48 +1527,6 @@ class SoBuffer(object):
 
         return v
 
-    # QUORUM SENSING: DENSITY FUNCTION
-    def quorum(self):
-        """
-        calculates agent density within view; only considers agent data
-        :return: True (threshold passed), False (threshold not passed)
-        """
-        count = 0
-
-        if self._pose_frame in self._moving.keys():
-            for pid in self._moving[self._pose_frame].keys():
-                if self._moving[self._pose_frame][pid]:
-                    val = self._moving[self._pose_frame][pid][-1]
-                    # check if neighbor is in sight
-                    if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-                        <= val.diffusion + val.goal_radius + \
-                        self._view_distance:
-                        count += 1
-
-        if count >= self.threshold:
-            return True
-        else:
-            return False
-
-    def quorum_list(self):
-        """
-        returns agent gradients within view
-        :return: list
-        """
-        view = []
-
-        if self._pose_frame in self._moving.keys():
-            for pid in self._moving[self._pose_frame].keys():
-                if self._moving[self._pose_frame][pid]:
-                    val = self._moving[self._pose_frame][pid][-1]
-                    # check if neighbor is in sight
-                    if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-                            <= val.diffusion + val.goal_radius + \
-                                    self._view_distance:
-                        view.append(val)
-
-        return view
-
     # FLOCKING
     def result_flocking(self):
         """
@@ -1659,132 +1629,47 @@ class SoBuffer(object):
 
         return mov
 
-    # Morphogenesis
+
     # TODO testing
-    # TODO include ueberall distance calculation
-    def morphogenesis(self):
-        """
-        calculates sum of distances to morphogenetic gradients
-        :return:
-        """
-        sum = 0.0
-
-        if self.morph_frame in self._moving.keys() and self._own_pos:
-            for pid in self._moving[self.morph_frame]:
-                if pid != self._id:
-                    d = calc.get_gradient_distance(self._own_pos[-1].p,
-                                                   self._moving[
-                                                       self.morph_frame]
-                                                   [pid][-1].p)
-                    if d <= self._moving[self.morph_frame][pid][-1].diffusion \
-                            + self._moving[self.morph_frame][pid][-1].\
-                                    goal_radius + self._view_distance:
-                        sum += d
-
-        sum = round(sum, 9)
-
-        # determine if center & set state
-        self.morph_center(sum)
-
-        return sum
-
-    def morph_dist_changed(self):
-        """
-        checks if morphogenetic data was changed
-        :return: bool - True (data changed or no data available),
-                        False (otherwise)
-        """
-
-        if self.morph_frame in self._moving.keys() and \
-                        self._id in self._moving[self.morph_frame].keys():
-            # calculate current avg
-            avg = round(self.morphogenesis(), 9)
-            # index for payload info distance to neighbors
-            keys = [i.key for i in
-                    self._moving[self.morph_frame][self._id][-1].payload]
-            index = keys.index(self.key)
-            # change
-            if avg != float(self._moving[self.morph_frame][self._id][-1].
-                                    payload[index].value):
-                return True
-
-            if self._morph_values:
-                for pid in self._moving[self.morph_frame]:
-                    if pid != self._id:
-                        keys = [i.key for i in self._moving[self.morph_frame]
-                                [pid][-1].payload]
-                        index = keys.index(self.key)
-                        if index and float(self._moving[self.morph_frame][pid]
-                                           [-1].payload[index].value) != \
-                                self._morph_values[pid]:
-                            return True
-
-        else: # no data available
-            return True
-
-        # no data changed
-        return False
-
-    def morph_center(self, sum):
-        """
-        determines if gradient source (robot) is the center of the group;
-        has to have minimum total distance to neighbors to be barycenter
-        :return: True (center), False otherwise
-        """
-
-        dist = sum
-        neighbors = 0
-        count = 0
-
-        if self.morph_frame in self._moving.keys() and self._own_pos:
-            for pid in self._moving[self.morph_frame]:
-                # do not consider own gradient
-                if pid != self._id:
-                    neighbors += 1
-                    # payload index of morphogenetic info
-                    keys = [i.key for i in self._moving[self.morph_frame][pid]
-                            [-1].payload]
-                    index = keys.index(self.key)
-                    # store value for morph_dist_changed method
-                    ndist = float(self._moving[self.morph_frame][pid][-1].
-                                  payload[index].value)
-                    self._morph_values[pid] = ndist
-                    # distances of neighbor larger than own
-                    if ndist > dist:
-                        count += 1
-
-        if count != 0 and count == neighbors:
-            self.state = STATE.CENTER
-        else:
-            self.state = STATE.NONE
-
-    # Gossip
-    def gossip(self):
+    # Gossip & Morphogenesis & Quorum sensing
+    def decision_list(self, option):
         """
         returns list of gossip gradients within view, the one with own id is
         excluded
         :return: list of gradients
         """
-
         view = []
+        frame = None
 
-        # clear dictionary with stored values
-        self.gossip_values.clear()
+        if option == DECISION.GOSSIP:
+            # clear dictionary with stored values
+            self.gossip_values.clear()
+            frame = self.gossip_frame
+        elif option == DECISION.MORPH:
+            self._morph_values.clear()
+            frame = self.morph_frame
+        elif option == DECISION.QUORUM:
+            frame = self._pose_frame
 
-        if self.gossip_frame in self._moving.keys():
-            for pid in self._moving[self.gossip_frame]:
-                if pid != self._id and self._moving[self.gossip_frame][pid]:
-                    val = self._moving[self.gossip_frame][pid][-1]
+        if frame in self._moving.keys():
+            for pid in self._moving[frame]:
+                if pid != self._id and self._moving[frame][pid]:
+                    val = self._moving[frame][pid][-1]
                     d = calc.get_gradient_distance(self._own_pos[-1].p, val.p)
+                    # gradient in sight
                     if d <= val.diffusion + val.goal_radius + \
                             self._view_distance:
                         view.append(val)
-                        # store data for comparison if data has changed
-                        self.gossip_values[pid] = val
 
+                        # store data for comparison if data has changed
+                        if option == DECISION.GOSSIP:
+                            self.gossip_values[pid] = val
+                        elif option == DECISION.MORPH:
+                            self._morph_values[pid] = val
         return view
 
-    def gossip_sensor(self):
+    # Gossip
+    def gossip_changed(self):
         """
         returns true when no data is available / data has changed; false
         otherwise
@@ -1815,6 +1700,67 @@ class SoBuffer(object):
                         return True
 
         return False
+
+    # Morphogenesis
+    def morph_changed(self):
+        """
+        checks if morphogenetic data was changed
+        :return: bool - True (data changed or no data available),
+                        False (otherwise)
+        """
+
+        # no morph data available --> start process
+        if self.morph_frame not in self._moving.keys():
+            return True
+
+        # update necessary when own position has changed
+        if self._id in self._moving[self.morph_frame].keys():
+            p = self._moving[self.morph_frame][self._id][-1].p
+            p_cur = self._own_pos[-1].p
+            if p.x != p_cur.x or p.y != p_cur.y or p.z != p_cur.z:
+                return True
+
+        # check if last used data has changed
+        for pid in self._moving[self.morph_frame].keys():
+            if pid != self._id:
+                if pid not in self._morph_values.keys():
+                    return True
+
+                keys = [i.key for i in self._moving[self.morph_frame][pid][-1].
+                        payload]
+                index = keys.index(self.key)
+
+                if index is not None and \
+                                float(self._moving[self.morph_frame][pid][-1].
+                                              payload[index].value) != \
+                        float(self._morph_values[pid].payload[index].value):
+                    return True
+
+        # no data changed
+        return False
+
+    # QUORUM SENSING: DENSITY FUNCTION
+    def quorum(self):
+        """
+        calculates agent density within view; only considers agent data
+        :return: True (threshold passed), False (threshold not passed)
+        """
+        count = 0
+
+        if self._pose_frame in self._moving.keys():
+            for pid in self._moving[self._pose_frame].keys():
+                if self._moving[self._pose_frame][pid]:
+                    val = self._moving[self._pose_frame][pid][-1]
+                    # check if neighbor is in sight
+                    if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
+                        <= val.diffusion + val.goal_radius + \
+                        self._view_distance:
+                        count += 1
+
+        if count >= self.threshold:
+            return True
+        else:
+            return False
 
 
 
