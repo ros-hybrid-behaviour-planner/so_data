@@ -106,7 +106,8 @@ class SoBuffer(object):
                  max_velocity=1.0, result_moving=True, result_static=True,
                  min_velocity=0.1, state=STATE.NONE, key=None,
                  morph_frame='morphogenesis', pose_frame='robot',
-                 chem_frames=None, gossip_frame='gossip', gossip_key=''):
+                 chem_frames=None, gossip_frame='gossip', gossip_key='',
+                 decision=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -228,6 +229,8 @@ class SoBuffer(object):
         self.max_velocity = max_velocity
 
         self.min_velocity = min_velocity
+
+        self.decision = decision
 
         # morphogenesis
         self.state = state
@@ -1633,11 +1636,11 @@ class SoBuffer(object):
     # TODO testing
     # Gossip & Morphogenesis & Quorum sensing
 
-    def get_decision(self, option):
+    def get_decision(self):
 
         result = None
 
-        if option == DECISION.GOSSIP:
+        if self.decision == DECISION.GOSSIP:
             result = self.decision_list(self.gossip_frame)
 
             # store last used values for calculation
@@ -1645,7 +1648,7 @@ class SoBuffer(object):
             for el in result:
                 self.gossip_values[el.parent_frame] = el
 
-        elif option == DECISION.MORPH:
+        elif self.decision == DECISION.MORPH:
             result = self.decision_list(self.morph_frame)
 
             # store last used values for calculation
@@ -1653,7 +1656,7 @@ class SoBuffer(object):
             for el in result:
                 self._morph_values[el.parent_frame] = el
 
-        elif option == DECISION.QUORUM:
+        elif self.decision == DECISION.QUORUM:
             result = self.decision_list(self._pose_frame)
 
         return result
