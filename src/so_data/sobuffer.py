@@ -67,6 +67,7 @@ class AGGREGATION(object):
     AVG = 2
     NEW = 3
     NEWPARENT = 4
+    NEWFRAME = 5
 
 
 class REPULSION(object):
@@ -89,8 +90,6 @@ class STATE(object):
     * None = no state
     * center = robot is barycenter of its group of robots
     """
-    NONE = "None"
-    CENTER = "Center"
     RED = "red"
     BLUE = "blue"
 
@@ -106,7 +105,7 @@ class SoBuffer(object):
                  store_all=True, framestorage=None, threshold=2, a=1.0,
                  b=1.0, h=0.5, epsilon=1.0, max_acceleration=1.0,
                  max_velocity=1.0, result_moving=True, result_static=True,
-                 min_velocity=0.1, state=STATE.NONE, key=None,
+                 min_velocity=0.1, key=None,
                  morph_frame='morphogenesis', pose_frame='robot',
                  chem_frames=None, gossip_frame='gossip', gossip_key='',
                  decision=None, phase=None):
@@ -235,7 +234,7 @@ class SoBuffer(object):
         self.decision = decision
 
         # morphogenesis
-        self.state = state
+        #self.state = state
         self._morph_values = {}
         # payload data key
         self.key = key
@@ -315,11 +314,13 @@ class SoBuffer(object):
                 if msg.parent_frame in self._moving[msg.header.frame_id]:
                     # check if data is newer
                     if msg.header.stamp > \
-                            self._moving[msg.header.frame_id][msg.parent_frame][-1].header.stamp:
-                        self._moving[msg.header.frame_id][msg.parent_frame].append(msg)
+                            self._moving[msg.header.frame_id]\
+                                        [msg.parent_frame][-1].header.stamp:
+                        self._moving[msg.header.frame_id][msg.parent_frame].\
+                            append(msg)
                     # maximum length of stored neighbor gradients exceeded
-                    if len(self._moving[msg.header.frame_id][msg.parent_frame]) > \
-                            self._moving_storage_size:
+                    if len(self._moving[msg.header.frame_id][msg.parent_frame])\
+                            > self._moving_storage_size:
                         del self._moving[msg.header.frame_id][msg.parent_frame][0]
                 else:
                     self._moving[msg.header.frame_id][msg.parent_frame] = [msg]
@@ -342,6 +343,8 @@ class SoBuffer(object):
             # aggregation based on parent frame
             if aggregation == AGGREGATION.NEWPARENT:
                 self.aggregation_newparent(msg)
+            elif aggregation == AGGREGATION.NEWFRAME:
+                self.aggregation_newframe(msg)
 
             # aggregation based on position
             else:
@@ -403,6 +406,16 @@ class SoBuffer(object):
         else:
             rospy.logerr("No DEFAULT value specified for aggregation!")
             return
+
+    def aggregation_newframe(self, msg):
+        """
+        stores newest message per frame ID
+        :param msg: received gradient message
+        """
+
+        if msg.header.stamp >= self._static[msg.header.frame_id][-1].\
+            header.stamp:
+            self._static[msg.header.frame_id] = [msg]
 
     def aggregation_newparent(self, msg):
         """
