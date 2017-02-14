@@ -91,6 +91,8 @@ class STATE(object):
     """
     NONE = "None"
     CENTER = "Center"
+    RED = "red"
+    BLUE = "blue"
 
 
 class SoBuffer(object):
@@ -107,7 +109,7 @@ class SoBuffer(object):
                  min_velocity=0.1, state=STATE.NONE, key=None,
                  morph_frame='morphogenesis', pose_frame='robot',
                  chem_frames=None, gossip_frame='gossip', gossip_key='',
-                 decision=None):
+                 decision=None, phase=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -250,6 +252,9 @@ class SoBuffer(object):
         self.gossip_frame = gossip_frame
         self.gossip_key = gossip_key
         self.gossip_values = {}
+
+        # indicate in which phase robot is
+        self.phase = phase
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -590,6 +595,10 @@ class SoBuffer(object):
         # check if moving and / or static attractive gradients are
         # within view distance
         gradients_attractive = []
+
+        if not self._own_pos:
+            return gradients_attractive
+
         for fid in frameids:
             # static gradients
             if fid in self._static and self.result_static:
@@ -1774,8 +1783,6 @@ class SoBuffer(object):
             return True
         else:
             return False
-
-
 
     @property
     def id(self):

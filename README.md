@@ -213,7 +213,7 @@ All of these options stores data based on it's position (p).
 Option `newparent` stores the last received gradient based on the parent frame.
 All options might be suitable for movement related gradients while `newest` is most appropriate for gradients including payload used for decision making. 
 The storing mechanisms allows to store only gradients with certain frameIDs. 
-In case that **only** moving gradients should be stored, `store_all` should be set to `False` and no frameId specified in `framestorage`. 
+In this case `store_all` has to be set to `false` and the frameIDs to be stored will be specified in `frameids`. 
 The `aggregation_distance` attribute ensures that gradients within a certain distance will be aggregated, e.g. gradients centered at (9|9|0) and (8|9|0) will be aggregated when the `aggregation_distance` is set to 1.0. 
 Setting this parameter to 0 means that only gradients at the exact same position will be aggregated. 
  
