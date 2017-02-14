@@ -18,7 +18,7 @@ from so_data.srv import EnvGradient, EnvGradientResponse
 def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
                     angle_y=0.0, q=Quaternion(), moving = False,
                     direction=Vector3(1,0,0), goal_radius=1.0, payload=[],
-                    ev_time=0, ev_factor=1.0, frameid=None):
+                    ev_time=0, ev_factor=1.0, frameid=''):
     """
     creates a soMessage to specify a gradient
     :param position: agent position
