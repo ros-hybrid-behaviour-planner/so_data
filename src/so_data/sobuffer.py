@@ -13,7 +13,6 @@ import numpy as np
 import calc
 from geometry_msgs.msg import Vector3
 import flocking
-import flockingrey
 import collections
 import random
 
@@ -188,7 +187,7 @@ class SoBuffer(object):
         self._min_diffusion = min_diffusion
 
         # frame specifying agent / neighbor data
-        self._pose_frame = pose_frame
+        self.pose_frame = pose_frame
         self._id = id  # own ID
         self._moving_storage_size = moving_storage_size
 
@@ -263,7 +262,7 @@ class SoBuffer(object):
         """
         if self._moving_storage_size > 0:
             # own position data
-            if self._id and msg.header.frame_id == self._pose_frame and \
+            if self._id and msg.header.frame_id == self.pose_frame and \
                             msg.parent_frame == self._id:
                 # check if data is newer
                 if self._own_pos:  # own data already stored
@@ -571,7 +570,10 @@ class SoBuffer(object):
         """
         :return: robots last position
         """
-        return self._own_pos[-1]
+        if self._own_pos:
+            return self._own_pos[-1]
+        else:
+            return
 
     def attractive_gradients(self, frameids):
         """
@@ -822,10 +824,10 @@ class SoBuffer(object):
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
-        if self._pose_frame in self._moving:
-            for pid in self._moving[self._pose_frame].keys():
-                if self._moving[self._pose_frame][pid]:
-                    val = self._moving[self._pose_frame][pid][-1]
+        if self.pose_frame in self._moving:
+            for pid in self._moving[self.pose_frame].keys():
+                if self._moving[self.pose_frame][pid]:
+                    val = self._moving[self.pose_frame][pid][-1]
                     # check if neighbor is in sight
                     if val and calc.get_gradient_distance(val.p,
                                                       self._own_pos[-1].p) \
@@ -875,10 +877,10 @@ class SoBuffer(object):
         repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
             -1].goal_radius
 
-        if self._pose_frame in self._moving.keys():
-                for pid in self._moving[self._pose_frame].keys():
-                    if self._moving[self._pose_frame][pid]:
-                        val = self._moving[self._pose_frame][pid][-1]
+        if self.pose_frame in self._moving.keys():
+                for pid in self._moving[self.pose_frame].keys():
+                    if self._moving[self.pose_frame][pid]:
+                        val = self._moving[self.pose_frame][pid][-1]
                         # distance between agents shortest distance agent
                         # center to neighbor
                         distance = calc.get_gradient_distance(val.p,
@@ -1121,10 +1123,10 @@ class SoBuffer(object):
         # should be applied: add moving repulsive gradients to gradient set
         if not self.result_moving and \
                         self.repulsion == REPULSION.REACH:
-            if self._pose_frame in self._moving.keys():
-                for pid in self._moving[self._pose_frame].keys():
-                    if self._moving[self._pose_frame][pid]:
-                        val = self._moving[self._pose_frame][pid][-1]
+            if self.pose_frame in self._moving.keys():
+                for pid in self._moving[self.pose_frame].keys():
+                    if self._moving[self.pose_frame][pid]:
+                        val = self._moving[self.pose_frame][pid][-1]
                         if calc.get_gradient_distance(val.p,
                                                       self._own_pos[-1].p) <= \
                                                 val.diffusion + \
@@ -1581,42 +1583,6 @@ class SoBuffer(object):
 
         return velocity
 
-    def result_flockingrey(self):
-        """
-        flocking approach based on Reynolds
-        :return: movement vector
-        """
-        view = []
-
-        # at least one position of agent is available
-        if len(self._own_pos) == 0:
-            return Vector3()
-
-        # neighbors of agent
-        if self._pose_frame in self._moving.keys():
-            for pid in self._moving[self._pose_frame].keys():
-                if self._moving[self._pose_frame][pid]:
-                    val = self._moving[self._pose_frame][pid][-1]
-                    # check if neighbor is in sight
-                    if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-                            <= val.diffusion + val.goal_radius \
-                                    + self._view_distance:
-                        view.append(val)
-
-        # calculate flocking vector
-        mov = flockingrey.separation(self._own_pos[-1], view)
-        mov = calc.add_vectors(mov,
-                               flockingrey.cohesion(self._own_pos[-1], view))
-        mov = calc.add_vectors(mov,
-                               flockingrey.alignment(self._own_pos[-1], view))
-
-        # set maximum velocity
-        if calc.vector_length(mov) > self.max_velocity:
-            mov = calc.adjust_length(mov, self.max_velocity)
-
-        return mov
-
-
     # TODO testing
     # Gossip & Morphogenesis & Quorum sensing
 
@@ -1642,6 +1608,9 @@ class SoBuffer(object):
         """
         view = []
         frame = frame
+
+        if not self._own_pos:
+            return view
 
         if frame in self._moving.keys():
             for pid in self._moving[frame]:
@@ -1743,10 +1712,10 @@ class SoBuffer(object):
         """
         count = 0
 
-        if self._pose_frame in self._moving.keys():
-            for pid in self._moving[self._pose_frame].keys():
-                if self._moving[self._pose_frame][pid]:
-                    val = self._moving[self._pose_frame][pid][-1]
+        if self.pose_frame in self._moving.keys():
+            for pid in self._moving[self.pose_frame].keys():
+                if self._moving[self.pose_frame][pid]:
+                    val = self._moving[self.pose_frame][pid][-1]
                     # check if neighbor is in sight
                     if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
                         <= val.diffusion + val.goal_radius + \

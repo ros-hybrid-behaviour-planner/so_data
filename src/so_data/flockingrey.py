@@ -104,3 +104,47 @@ def cohesion(agent, neighbors):
         coh = calc.delta_vector(coh, agent.p)
 
     return coh
+
+
+class FlockingRey(object):
+    """
+    class to enable flocking based on reynolds formulas
+    """
+
+    def __init__(self, buffer, maxvel=1.0, frame=None):
+        """
+
+        :param buffer:
+        :param maxvel:
+        """
+        self._buffer = buffer
+        self.max_velocity = maxvel
+        if not frame:
+            self.frame = self._buffer.pose_frame
+        else:
+            self.frame = frame
+        self._current_pos = None
+
+    def move(self):
+        """
+
+        :return:
+        """
+
+        self._current_pos = self._buffer.get_own_pose()
+        view = self._buffer.decision_list(self._buffer.pose_frame)
+
+        mov = Vector3()
+
+        if self._current_pos:
+            mov = separation(self._current_pos, view)
+            mov = calc.add_vectors(mov, cohesion(self._current_pos, view))
+            mov = calc.add_vectors(mov, alignment(self._current_pos, view))
+
+        if calc.vector_length(mov) > self.max_velocity:
+            mov = calc.adjust_length(mov, self.max_velocity)
+
+        return mov
+
+    def get_pos(self):
+        return self._current_pos
