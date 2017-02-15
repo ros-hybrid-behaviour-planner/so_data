@@ -18,6 +18,7 @@ src:
 
 * **calc.py**: provides helper functions which are used by several components of the package (+ unit test)
 * **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber (+ unit test) 
+* **flockingrey.py**: provides methods to calculate a flocking vector based on the formulas by Reynolds (+ unit test)
 * **gradientnode.py**: allows to create nodes which spread artificial gradients 
 * **sobroadcaster.py**: allows to publish data to the so_data topic which will be subscribed to in the soBuffer 
 * **sobuffer.py**: implements a layer which allows to store gradient data and to do calculations necessary for self-organizing behaviour (+ unit test)  
@@ -67,6 +68,7 @@ diagnostic_msgs/KeyValue[] payload
   * uint32 seq: consecutively increasing ID; set by system
   * time stamp: sec + nsec - has to be set using ros Time 
   * string frame_id: to associate data for a purpose 
+* **string parent_frame**: frame ID of the parent / sender (e.g. the sending robot)
 * main gradient attributes:
   * **p**: gradient center
   * **q**: quaternion indicating orientation (x,z,y,w as calculated by tf.transformations)
@@ -111,14 +113,17 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
   * **min** = keep gradient with minimum diffusion radius + goal radius (at a position / within aggregation_distance)
   * **max** = keep gradient with maximum diffusion radius + goal radius(at a position / within aggregation_distance)
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
-  * **newest** = keep newest / last received gradient (at a position / within aggregation_distance) 
+  * **new** = keep newest / last received gradient (at a position / within aggregation_distance) 
+  * **newparent** = stores the newest gradient per parent frame 
 * **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
 
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
 * **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): agent's id, gradients with this id are stored in self._own_pos 
 
-* **result** (''): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. Enumeration `RESULT` provides the following options:
+* **result** (None): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. 
+A list of result options has to be passed over.
+ Enumeration `RESULT` provides the following options:
   * **all** = movement vector considering all vectors of the potential field will be returned 
   * **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
   * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
@@ -126,13 +131,14 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
   * **avoid** = movement vector leading away from all sensed gradients will be returned 
   * **flocking** = movement vector for flocking motion based on Olfati-Saber
   * **flockingrey** = movement vector for flocking motion based on Reynolds 
+  * **collision** = movement vector avoiding all repulsive gradients 
 * **result_moving** (True): consider moving gradients (True) or not (False) in calculations 
 * **result_static** (True): consider static gradients (True) or not (False) in calculations (except for flocking and repulsion which are always based only on moving gradients)
   
-* **collision_avoidance** ('repulsion'): collision avoidance between neighbors / agents (moving gradients). 
-Consideres only repulsive moving gradients. 
+* **repulsion** (None): collision avoidance between neighbors / agents (moving gradients). 
+Considers only moving gradients with `self._pose_frame` frame ID. 
 Should only be used on its own or in combination mit result_moving = False. 
-Options can be specified via enumeration `COLLISION` and the following settings:
+Options can be specified via enumeration `REPULSION` and the following settings:
   * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
   * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
   * **reach** = moving vectors are considered in vector calculations based on Ge & Cui (result == reach is required)
@@ -145,22 +151,41 @@ Options can be specified via enumeration `COLLISION` and the following settings:
 * **max_velocity** (1.0): maximum velocity of robot (= length of returned vector)
 * **min_velocity** (0.1): minimum velocity of robot (= length of returned vector)
 
+* **pose_frame** ('robot'): frame ID indicating gradient data of agents / robots (poses)
+
+Chemotaxis parameters:
+
+* **chem_frames** ([]): specifies which frame IDs should be considered in calculating the movement vectors based on the gradient fields; empty list means all frames will be considered
+
 Flocking parameters:
+
+These parameters are only relevant for the flocking calculations based on Olfati-Saber (`RESULT.FLOCKING`). 
 
 * **a, b**: action function parameters with `0 < a <= b; c = |a-b|/np.sqrt(4ab)`
 * **h**: parameter (0,1) specifying boundaries of bump function
 * **epsilon**: sigma norm parameter (0,1)
 * **max_acceleration**: maximum acceleration of robot
 
+Decision patterns 
+
+* **decision** (None): `DECISION` enum value indicating which gradient data is returned
+
 Quorum Sensing parameters: 
 
 * **threshold** (2): quorum sensing threshold to be passed 
 
 Morpogenesis parameters: 
-* **state** (None): can be set to any kind of float; e.g. 'center' to mark the center 
-* **key** (None): specifies payload KeyValue key for morphogenetic data
-* **frameid** (None): specifies first part of frame ID for morphogenetic gradients, e.g. 'morphogenetic'; the second part has to be the robot id 
 
+Morphogenetic gradients have to be `moving = True` as they are tied to agents and the differentiation based on the parent_frame is important. 
+
+* **state** (STATE.None): should be set to one option of Enumeration `STATE`, e.g. 'Center' or 'None'
+* **key** (None): specifies payload KeyValue key for morphogenetic data
+* **morph_frame** ('morphogenesis'): specifies frame ID (header frame_id) for morphogenetic gradients. 
+
+Gossip parameters:
+
+* **gossip_frame** ('gossip'): frame ID indicating gradient data for gossip patterns
+* **gossip_key** (''): specifies payload KeyValue key for gossip data 
 
 
 ### Gradient Storage
@@ -172,20 +197,23 @@ One key part of the buffer is the storage of incoming gradients.
 def store_data(self, msg)
 ```
 
-All gradients are received via the `so_data` topic. Each buffer subscribes to this topic when initialized and defines `store_data` as the subscription callback. 
+All gradients are received via the `so_data` topic. 
+Each buffer subscribes to this topic when initialized and defines `store_data` as the subscription callback. 
 
 ```python
 rospy.Subscriber('so_data', SoMessage, self.store_data)
 ```
 
-`store_data` will then care about storing the data as specified with the soBuffer parameters `aggregation`, `min_diffusion`, `id`, `store_neighbors`, `neighbor_storage_size`, `framestorage` and `aggregation_distance`. 
+`store_data` will then care about storing the data as specified with the soBuffer parameters `aggregation`, `min_diffusion`, `pose_frame`, `id`, `moving_storage_size`, `framestorage` and `aggregation_distance`. 
 `aggregation` is a dictionary which allows to specify based on frameIDs how the data should be stored. 
 The key `DEFAULT` specifies the aggregation option for all frames for which no aggregation option is defined in `aggregation`. 
 Options are `min`, `max`, `avg` which store the gradient with maximum / minimum diffusion and goal radius and respectively the average diffusion and goal radius as well the averaged gradient center (soMessage.p) at a position (or rather within the aggregation distance). 
-The option`newest` stores the last received gradient. 
+The option`new` stores the last received gradient.
+All of these options stores data based on it's position (p). 
+Option `newparent` stores the last received gradient based on the parent frame.
 All options might be suitable for movement related gradients while `newest` is most appropriate for gradients including payload used for decision making. 
 The storing mechanisms allows to store only gradients with certain frameIDs. 
-In case that **only** moving gradients should be stored, `store_all` should be set to `False` and no frameId specified in `framestorage`. 
+In this case `store_all` has to be set to `false` and the frameIDs to be stored will be specified in `frameids`. 
 The `aggregation_distance` attribute ensures that gradients within a certain distance will be aggregated, e.g. gradients centered at (9|9|0) and (8|9|0) will be aggregated when the `aggregation_distance` is set to 1.0. 
 Setting this parameter to 0 means that only gradients at the exact same position will be aggregated. 
  
@@ -195,37 +223,76 @@ The calculations of the methods which return values for use in behaviours or sen
 
 The following methods can be used to calculate information necessary for behaviours and sensors. 
 
-##### Agent Density Function 
+##### Get movement vector
 
-returns True / False based on the quantity of agents within view distance is over / below threshold. 
-Allows to use either moving, static or both gradient types. 
-Can be used to implement Quorum Sensing.
+Invoking `get_current_gradient` will return a movement vector based on the parameters `result` and `repulsion`. 
+This vector can be used to let the agent move, e.g. to gradient source or away from all gradients within view distance.
+It is possible to specify a list of result options. 
+The movement vectors of each result option calculation will be summed up. 
+The result options should be chosen in a useful way, e.g. it makes sense to combine `RESULT.FLOCKING` with `RESULT.NEAR` while the combination of `RESULT.NEAR` and `RESULT.REACH` might not lead to a viable behaviour of the agent.
+Furthermore, the `repulsion` vector calculated based on the repulsion parameter is added to the result. 
+More information is specified in the respective subsections. 
 
 ```python
-def quorum(self)
+def get_current_gradient(self)
 ```
 
-The method `quorum_list` can be used for the Quorum Sensing pattern too. 
-It works similar to quorum, but returns a list of gradients within view instead of a boolean. 
-Therewith, the returned data can be used to make more complex decision, e.g. based on payload data. 
+##### Get attractive gradients within view
 
-```python    
-def quorum_list(self)
+In cases when an attractive gradient should be reached, attractive gradients have to be within view distance. 
+The method `get_attractive_gradients_view` determines whether at least one attractive gradient is within view distance of the agent and returns True (within view)/False (not within view). 
+
+```python
+def get_attractive_gradients_view(self)
 ```
 
+
+##### Get attractive gradient distance
+
+To enable activation based on the distance to the nearest attractive gradient, the method `get_attractive_distance` calculates the distance to the nearest attractive gradient. 
+
+```python
+def get_attractive_distance(self)
+```
+
+
+##### Determine if agent senses potential field
+
+`get_attraction_bool` determines whether the agent is currently under influence of a potential field. 
+Returns True if there is no potential sensed, False otherweise. 
+
+```python
+def get_attraction_bool(self)
+```
 
 ##### Flocking
 
-Invoking method `flocking` will return a movement vector which can be used for the flocking behaviour. 
+The flocking calculations are based on gradient data of agents. 
+This means only moving gradients with `header.frame_id == self._pose_frame` will be considered in the calculations.
+
+###### Flocking based on Olfati-Saber
+
+Note: This option is not working well within the RHBP setting so far! 
+
+Invoking method `result_flocking` will return a movement vector which can be used for the flocking behaviour. 
 It uses the methods implemented in flocking.py to calculate the acceleration vector.
 The acceleration vector will be truncated s.t. it has the maximum length of `max_acceleration`. 
 Accelaration and current velocity will be added up and truncated, s.t. the velocity is not larger than `max_velocity`. 
 The calculation is solely based on moving gradient data as flocking is the result of the interaction of several moving entities.  
 
 ```python
-def flocking(self) 
+def result_flocking(self) 
 ```
 
+###### Flocking based on Reynolds 
+
+`RESULT.FLOCKINGREY` invokes a method in the soBuffer which calculates the movement vector for flocking based on the formulas presented by Reynolds.
+It uses position and heading vector of the agents. 
+The methods needed can be found in flockingrey.py.
+
+```python
+def result_flockingrey(self)
+```
 
 ##### Goal Achievement
 
@@ -236,78 +303,30 @@ If no goal is available, the method will return False.
 Parameters: `frameids` specifying which gradients should be considered in the calculation (optional). 
 
 ```python
-def get_goal_reached(self, frameids=[])
+def get_goal_reached(self)
 ```
 
+##### Decision Patterns
 
-##### Get movement vector
-
-Invoking `get_current_gradient` will return a movement vector based on the parameters `result` and `collision_avoidance`. 
-This vector can be used to let the agent move, e.g. to gradient source or away from all gradients within view distance. 
-The result of the aggregation of the static gradients is summed with the repulsive vector for collision avoidance. 
-More information is specified in the respective subsections. 
+All decision patterns, namely Quorum Sensing, Morphogenesis and Gossip, make use of data provided by other agents.
+Therefore, lists with the relevant gradients will be returned invoking function `get_decision`.
 
 ```python
-def get_current_gradient(self, frameids=[])
+    def get_decision(self, option)
 ```
 
+`option` specifies one option of enumeration `DECISION`. 
+It could be either:
 
-##### Get attractive gradients within view
+* **morph**: returns a list of gradients within view distance and header frame ID `self.morph_frame`
+* **quorum**: returns a list of gradients within view distance and header frame ID `self._pose_frame` (agent positions)
+* **gossip**: returns a list of gradients within view distance and header frame ID `self.gossip_frame`
 
-In cases when an attractive gradient should be reached, attractive gradients have to be within view distance. 
-The method `get_attractive_gradients_view` determines whether at least one attractive gradient is within view distance of the agent and returns True (within view)/False (not within view). 
+All of these possibilities make use of method `decision_list(self,frame)` which determines the list to return.
 
-```python
-def get_attractive_gradients_view(self, frameids=[])
-```
+For options `morph` and `gossip`, the returned values will be stored in a list too which can be used in a sensor to determine whether the used data has changed. 
 
-
-##### Get attractive gradient distance
-
-To enable activation based on the distance to the nearest attractive gradient, the method `get_attractive_distance` calculates the distance to the nearest attractive gradient. 
-
-```python
-def get_attractive_distance(self, frameids=[])
-```
-
-
-##### Determine if agent senses potential field
-
-`get_attraction_bool` determines whether the agent is currently under influence of a potential field. 
-Returns True if there is no potential sensed, False otherweise. 
-
-```python
-def get_attraction_bool(self, frameids=[])
-```
-
-
-##### Morphogenesis 
-Morphogenesis is a very application specific behaviour. 
-One implementation was integrated which allows to determine the center of a group of agents.
-To differentiate morphogenetic gradients from other gradients, they are expected to have a key word as the first part of their frame_id. 
-It can be specified with the paramter `self.frame_id` and could be, e.g., 'morphogenesis'.
-The second part is ideally the ID of the robot, s.t. each agent knows which morphogenetic gradient is it's own. 
-Furthermore, the morphogene gradients are expected to have a payload attribute which has the key `self._key`. 
-It is possible to add more payload data, e.g. for use in different functions. 
-
-```python
-def morphogenesis(self)
-```
-This method calculates the sum of the distances to the received morphogenetic gradient messages. 
-The own morphogenetic gradient is not considered (it is expected to have the frame ID: self.frame_id + self._id). 
-
-```python
-def morph_dist_changed(self)
-```
-For use in sensors, the method `morph_dist_changed` returns a boolean value indicating whether the data used for the state calculation has changed. 
-In cases that the data has changed, it might be necessarry to recalculate the state. 
-
-
-```python
-def morph_center(self)
-```
-determines if the robot has the minimum summed distance of all robots. 
-If yes, it sets the state to STATE.CENTER and to STATE.NONE otherwise. 
+As the patterns are very application specific, the more detailed calculations are done in the behaviours implementations. 
 
 ### Gradient calculation 
 
@@ -384,9 +403,9 @@ In this case only avoiding the neighbors is possible.
 In the buffer are both options implemented. 
 The repulsion vector depends on the parameters `repulsion_radius` which is defined as the `goal_radius + diffusion <= view_distance` of the agent (`self._own_pos`) and `view_distance` which is set as a parameter of the buffer and should be `>= goal_radius` of the agent in most cases. 
 
-The type of repulsion is set with the soBuffer parameter `collision_avoidance`. 
-In `get_current_gradient` the repulsion vector is added to the movement vector based on the static gradients. 
-Solely the collision avoidance vector is returned when `result = ''`. 
+The type of repulsion is set with the soBuffer parameter `repulsion`. 
+In `get_current_gradient` the repulsion vector is added to the movement vector. 
+Solely the collision avoidance vector is returned when `result = []`. 
 
 ##### Gradient based
 
@@ -418,6 +437,8 @@ Every agent / soBuffer listens to the so_data topic and data can be published to
 To be able to control the spreading frequency, it is necessary to create separate nodes for each publisher. 
 Currently, only a single master setup is used, but real spreading decentralisation can be reached in a multi master setup (future work). 
 
+The data used / available for each agent in the calculations is currently restricted by the parameter `view_distance.`
+
 More information can be found in the section **sobroadcaster.py**. 
 
 #### Aggregation 
@@ -438,9 +459,8 @@ With parameters `result_moving` and `result_static` can be defined which gradien
 There are different options available which can be set using the `result` parameter. The gradients which will be aggregated can be restricted to a set of frameIDs. 
 
 ```python
-def get_current_gradient(self, frameids=[])
+def get_current_gradient(self)
 ```
-
 
 Options:
 
@@ -449,7 +469,7 @@ Options:
 Option `all` returns a vector which is the sum of all attractive and repulsive potentials within view distance. The calculation is based on the formulas by Balch and Hybinette. 
 
 ```python
-def _aggregate_all(self, frameids=[])
+def result_all(self)
 ```
 
 * **max** 
@@ -461,7 +481,7 @@ In case that no gradient is within view distance, a zero vector will be returned
 If the agent is within the goal radius of a repulsive gradient, a random vector leading away from the repulsive gradient is returned (length = goal radius + diffusion). 
 
 ```python
-def _aggregate_max(self, frameids=[])
+def result_max(self)
 ```
 
 * **near** 
@@ -473,9 +493,8 @@ If the agent is within the goal radius of a repulsive gradient, a random vector 
 The repulsive vector is added to the attractive vector and the sum is returned.  
  
 ```python
-def _aggregate_nearest_repulsion(self, frameids=[])
+def result_near(self)
 ```
-
 
 * **reach** 
 
@@ -484,7 +503,7 @@ In contrast to option `near`, it always leads to reaching the gradient source (`
 The calculation is based on the enhanced formulas by Ge and Cui (1999) (see **Gradient calculation**). 
 
 ```python
-def _aggregate_nearest_ge(self, frameids=[])
+def result_reach(self)
 ```
 
 * **avoid** 
@@ -493,9 +512,22 @@ Option `avoid` returns a movement vector leading away from all gradients within 
 Regardless of the specified `attraction` value in the soMessage, the repulsive gradient method based on Balch and Hybinette is used to calculate the movement vector and the repulsive vectors from all gradients are summed up.  
 
 ```python
-def _aggregate_avoid_all(self, frameids=[])
+def result_avoid(self)
 ```
 
+* **collision**
+
+Option `collision` returns a movement vector leading away from all repulsive gradients within view distance. 
+It uses the gradient calculation based on Balch and Hybinette.
+
+```python
+def result_collision(self)
+```
+
+* **flocking and flockingrey**
+
+Options `flocking` and `flockingrey` return a movement vector resulting in flocking behaviour. 
+For more information see subsection Flocking. 
 
 
 flocking(.py)
@@ -537,12 +569,14 @@ calc(.py)
 
 The file calc.py includes some basic vector (Vector3) calculations which are commonly required. These are:
 
-* `def unit_vector(vector)`: returns a unit vector based on the input vector
+* `def unit_vector(vector)` and `def unit_vector3(vector)`: returns a unit vector based on the input vector
 * `def angle_between(v1, v2)`: returns the directed vector between two vectors (max. 2D at the moment)   
 * `def get_gradient_distance(gradpos, pose)`: returns distance between agent and gradient center 
 * `def vector_length(vector)`: returns the length of a vector 
 * `def delta_vector(q1, q2)`: returns difference between vector q1 and q2 
 * `def add_vectors(q1, q2)`: returns sum of two vectors 
+* `def adjust_length(q, length)`: returns a vector in direction of `q` with length `length`
+* `def random_vector(length)`: returns a random vector with length `length`
 
 
 sobroadcaster(.py)

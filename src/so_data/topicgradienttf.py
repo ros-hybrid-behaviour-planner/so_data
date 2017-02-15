@@ -22,7 +22,7 @@ class TopicGradientTf(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, topic, id, message_type=None, p=Vector3(),
+    def __init__(self, topic, frame, id, message_type=None, p=Vector3(),
                  attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
                  ev_time=0, angle_x=0, angle_y=0, quaternion=Quaternion(),
                  moving=True, payload=[], direction=Vector3(1, 0, 0)):
@@ -52,6 +52,7 @@ class TopicGradientTf(object):
             rospy.logerr("Could not determine message type of: " + topic)
 
         self._id = id
+        self._frame = frame
         self.p = p
         self.q = quaternion
         self.attraction = attraction
@@ -104,7 +105,8 @@ class TopicGradientTf(object):
         # current time
         now = rospy.Time.now()
 
-        msg.header.frame_id = self._id
+        msg.header.frame_id = self._frame
+        msg.parent_frame = self._id
         msg.header.stamp = now
         msg.p = self.p
         msg.q = self.q

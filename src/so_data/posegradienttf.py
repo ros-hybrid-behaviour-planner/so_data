@@ -18,10 +18,10 @@ class PoseTopicGradientTf(TopicGradientTf):
     class to transform pose topic (geometry_msgs.msg.Pose) to a soMessage for
     use in a ROS node
     """
-    def __init__(self, topic, id, message_type=geometry_msgs.msg.Pose,
+    def __init__(self, topic, frame, id, message_type=geometry_msgs.msg.Pose,
                  **kwargs):
-        super(PoseTopicGradientTf, self).__init__(topic, id, message_type,
-                                                  **kwargs)
+        super(PoseTopicGradientTf, self).__init__(topic, frame, id,
+                                                  message_type, **kwargs)
 
     def callback(self, pose):
         """
@@ -47,8 +47,9 @@ class CallbackPoseTopicGradientTf(PoseTopicGradientTf):
     """
     class to transform pose topic to soMessage & send it within callback
     """
-    def __init__(self, topic, id, **kwargs):
-        super(CallbackPoseTopicGradientTf, self).__init__(topic, id, **kwargs)
+    def __init__(self, topic, frame, id, **kwargs):
+        super(CallbackPoseTopicGradientTf, self).__init__(topic,frame, id,
+                                                          **kwargs)
 
     def callback(self, pose):
         """
