@@ -132,7 +132,7 @@ class FlockingRey(object):
         """
 
         self._current_pos = self._buffer.get_own_pose()
-        view = self._buffer.decision_list(self._buffer.pose_frame)
+        view = self._buffer.decision_list(self.frame)
 
         mov = Vector3()
 
