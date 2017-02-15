@@ -1712,25 +1712,25 @@ class SoBuffer(object):
 
 #        return False
 
-        # check if last used data has changed
-        for pid in self._moving[frame].keys():
-            if pid != self._id:
-
-                if frame not in self.last_decision.keys():
-                    return True
-
-                if pid not in self.last_decision[frame].keys():
-                    return True
-
-                keys = [i.key for i in self._moving[frame][pid][-1].
-                         payload]
-                index = keys.index(key)
-
-                if index is not None and \
-                                 float(self._moving[frame][pid][-1].
-                                                payload[index].value) != \
-                          float(self.last_decision[frame][pid].payload[index].value):
-                    return True
+        # # check if last used data has changed
+        # for pid in self._moving[frame].keys():
+        #     if pid != self._id:
+        #
+        #         if frame not in self.last_decision.keys():
+        #             return True
+        #
+        #         if pid not in self.last_decision[frame].keys():
+        #             return True
+        #
+        #         keys = [i.key for i in self._moving[frame][pid][-1].
+        #                  payload]
+        #         index = keys.index(key)
+        #
+        #         if index is not None and \
+        #                          float(self._moving[frame][pid][-1].
+        #                                         payload[index].value) != \
+        #                   float(self.last_decision[frame][pid].payload[index].value):
+        #             return True
 
         # no data changed
         return False
