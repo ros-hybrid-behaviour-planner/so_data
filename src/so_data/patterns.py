@@ -6,6 +6,7 @@ Created on 15.02.2017
 Module including abstract class for patterns
 """
 from abc import ABCMeta, abstractmethod
+from so_data.sobroadcaster import SoBroadcaster
 
 
 class MovementPattern(object):
@@ -62,8 +63,10 @@ class DecisionPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, frame=None, key=None,
-                 moving=True, static=False):
+    def __init__(self, buffer, frame=None, key=None, moving=True,
+                 static=False):
+
+        self._broadcaster = SoBroadcaster()
 
         self._buffer = buffer
         # frames to consider in decision
@@ -73,7 +76,11 @@ class DecisionPattern(object):
         self.moving = moving
         self.static = static
 
+        # remember last calculated value
         self.last_value = -1
+
+        # set state
+        self.state = 'None'
 
     @abstractmethod
     def value(self):

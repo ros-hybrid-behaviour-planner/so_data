@@ -11,8 +11,8 @@ import so_data.calc
 import rospy
 import numpy as np
 from diagnostic_msgs.msg import KeyValue
-from so_data.sobroadcaster import SoBroadcaster
 from so_data.msg import SoMessage
+from so_data.gradientnode import create_gradient
 
 
 class Morphogenesis(DecisionPattern):
@@ -25,13 +25,9 @@ class Morphogenesis(DecisionPattern):
         super(Morphogenesis, self).__init__(buffer, frame, key, moving,
                                             static)
 
-        self._broadcaster = SoBroadcaster()
+        self.last_decision = 'None'
 
-        self._list = None
-
-        self.last_value = -1
-        self.last_decision = False
-
+        # TODO evtl blueprint fuer gradient einfuegen oder sowas
         self.goal_radius = goal_radius
         self.ev_factor = ev_factor
         self.ev_time = ev_time
@@ -40,55 +36,50 @@ class Morphogenesis(DecisionPattern):
     def value(self):
         """
         sums up distance to all morphogenetic gradients
-        :return: distance float
+        :return: distance (float)
         """
 
-        self._list = self._buffer.decision_list(self.frame, moving=self.moving,
+        list = self._buffer.decision_list(self.frame, moving=self.moving,
                                                 static=self.static)
         own_pos = self._buffer.get_own_pose()
 
-        if not self._list:
+        if not list:
             return -1
 
+        # determine summed up distances to neighbors
         dist = 0
-        # determine overall distance
-        for el in self._list:
+        for el in list:
             d = so_data.calc.get_gradient_distance(own_pos.p, el.p)
             dist += d
 
-        return dist
-
-    def decision(self):
-        """
-        determines whether own sum of distances is smallest
-        if yes: return True to indicate that agent is barycenter
-        :return: bool - Gradient barycenter (True) or not (False)
-        """
-
+        # determine whether own agent is gradient
+        # true if sum of distances is smallest compared to neighbors
         neighbors = 0
         count = 0
-
-        for el in self._list:
+        for el in list:
             neighbors += 1
 
+            # sum of distances of neighbor
             keys = [i.key for i in el.payload]
             index = keys.index(self.key)
-
-            dist = float(el.payload[index].value)
-
-            # use last calculated value
-            if dist > self.last_value:
+            ndist = float(el.payload[index].value)
+            # neighbor dist larger than own dist
+            if ndist > dist:
                 count += 1
 
+        # set state
         if neighbors != 0 and count == neighbors:
-            return True
+            self.state = 'Center'
+        else:
+            self.state = 'None'
 
-        return False
+        return dist
 
     def spread(self):
 
         # get current summed up distance & set values for use in sensor
         self.last_value = self.value()
+        self.last_decision = self.state
 
         # spread morphogenetic message
         msg = SoMessage()
@@ -116,6 +107,16 @@ class Morphogenesis(DecisionPattern):
 
         # spread morphogenetic gradient
         self._broadcaster.send_data(msg)
+
+        # if barycenter: spread gradient for chemotaxis
+        if self.state == 'Center':
+            rospy.loginfo("Agent state: Center")
+            center_gradient = create_gradient(current_pose.p, goal_radius=2.0,
+                                              attraction=1.0, diffusion=20,
+                                              moving=False,
+                                              frameid=self.frame)
+
+            self._broadcaster.send_data(center_gradient)
 
 
 class Gossip(DecisionPattern):
