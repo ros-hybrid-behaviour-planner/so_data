@@ -133,7 +133,6 @@ class FlockingRey(MovementPattern):
 
         self._current_pos = self._buffer.get_own_pose()
 
-        #view = self._buffer.decision_list(self.frames)
         view = self._buffer.gradients(self.frames)
 
         mov = Vector3()

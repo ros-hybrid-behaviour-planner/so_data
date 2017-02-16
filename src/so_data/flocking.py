@@ -214,6 +214,14 @@ def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius,
 
 # TODO: make class
 # FLOCKING
+# flocking
+self.a = a
+self.b = b
+self.h = h
+self.epsilon = epsilon
+self.max_acceleration = max_acceleration
+self.max_velocity = max_velocity
+
 def result_flocking(self):
     """
     flocking calculations based on Olfati-Saber

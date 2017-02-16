@@ -27,8 +27,6 @@ class MovementPattern(object):
         self._buffer = buffer
         self.max_velocity = maxvel
 
-        self._buffer = buffer
-
         self.frames = frames
         # store current position used for last calculation
         self._current_pos = None
@@ -56,3 +54,43 @@ class MovementPattern(object):
         :return: current position of robot
         """
         return self._current_pos
+
+
+class DecisionPattern(object):
+    """
+    class for decision patterns
+    """
+    __metaclass__ = ABCMeta
+
+    def __init__(self, buffer, frames=None, keys=None,
+                 moving=True, static=False):
+
+        self._buffer = buffer
+        # frames to consider in decision
+        self.frames = frames
+        # payload keys to consider
+        self.keys = keys
+        self.moving = moving
+        self.static = static
+
+        self.last_value = -1
+
+    @abstractmethod
+    def value(self):
+        """
+        method to determine current key-value value
+        :return:
+        """
+        pass
+
+    def get_pos(self):
+        """
+        :return: current position of robot
+        """
+        return self._buffer.get_own_pose()
+
+    def get_id(self):
+        return self._buffer.id
+
+
+
