@@ -3,6 +3,7 @@
 .. moduleauthor:: kaiser
 
 Module for receiving, storing and manipulating gradient data
+offers basic functionalities: receiving (spreading), evaporation, aggregation
 """
 
 from __future__ import \
@@ -11,7 +12,6 @@ import rospy
 from so_data.msg import SoMessage
 import numpy as np
 import calc
-from geometry_msgs.msg import Vector3
 import random
 import gradient
 
@@ -23,7 +23,8 @@ class AGGREGATION(object):
     * max = keep gradients with maximum diffusion radius + goal radius
     * avg = combine gradients / average
     * new = store newest received gradient
-    * newparent = store neweste received gradient per parent frame
+    * newparent = store newest received gradient per parent frame
+    * newframe = stores last received message per header frame
     """
     MIN = 0
     MAX = 1
@@ -48,8 +49,8 @@ class SoBuffer(object):
         applied per frameID at a gradient center / within aggregation_distance
         of gradient center. "DEFAULT" used for gradients without own
         aggregation option.
-        :type aggregation: dictionary - key:
-            frameID value: aggregation option (enum AGGREGATION)
+        :type aggregation: dictionary - key:frameID
+              value: aggregation option (enum AGGREGATION)
 
         :param aggregation_distance: radius in which gradient data is
         aggregated
@@ -73,6 +74,8 @@ class SoBuffer(object):
 
         :param store_all: defines whether all frameIDs will be stored or only
                     the frameIDs defined in framestorage
+        :type store_all: bool
+
         :param framestorage: list of frame IDs which should be stored,
                         applies both for moving and for static gradients
                 options: * [] = no gradients will be stored
@@ -81,12 +84,15 @@ class SoBuffer(object):
                          * 'None' has to be specified as the key for gradients
                          without frameID
         :type framestorage: list of strings
+
+        :param pose_frame: frame which indicates agent data (neighbors)
+        :type pose_frame: str.
         """
 
         # STORE DATA
         self._static = {}  # static gradient storage, dict
         self._own_pos = []  # own positions storage
-        self._moving = {}  # moving gradients storage, e.g. robots, dict
+        self._moving = {}  # moving gradients storage, dict of dicts
 
         self._store_all = store_all
 
@@ -385,7 +391,7 @@ class SoBuffer(object):
 
         # no own position available
         if not self._own_pos:
-            return [[],[]]
+            return gradients
 
         # determine frames to consider
         if not frameids:
@@ -410,13 +416,12 @@ class SoBuffer(object):
             if (moving or repulsion) and fid in self._moving.keys() \
                     and self._moving[fid]:
                 for pid in self._moving[fid].keys():
-                    if pid != self._id:
-                        if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
-                                                     self._own_pos[-1].p) \
-                                <= self._moving[fid][pid][-1].diffusion + \
-                                        self._moving[fid][pid][
-                                            -1].goal_radius + self._view_distance:
-                            gradients.append(self._moving[fid][pid][-1])
+                    if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
+                                                 self._own_pos[-1].p) \
+                            <= self._moving[fid][pid][-1].diffusion + \
+                                    self._moving[fid][pid][
+                                        -1].goal_radius + self._view_distance:
+                        gradients.append(self._moving[fid][pid][-1])
 
         return gradients
 
@@ -525,11 +530,12 @@ class SoBuffer(object):
 
     def get_attractive_gradient(self, frameids=None, static=True, moving=True):
         """
-        :param frameids:
-        :param static:
-        :param moving:
-        :param repulsion:
-        :return: relatively nearest attractive gradient
+        Method to return relatively nearest attractive gradient
+        based on attraction values of Balch & Hybinette
+        :param frameids: frames to consider
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :return: relatively nearest attractive gradient (Vector3)
         """
         self._evaporate_buffer()
 
@@ -552,6 +558,42 @@ class SoBuffer(object):
                     tmp_att = att
 
         return tmp_grad
+
+    # Aggregation of data for Decision patterns
+    def decision_list(self, frame, static=False, moving=True):
+        """
+        function determines all gradients within view distance with a certain
+        frame ID, excluding all gradients from agent itself
+        :param frame: frame ID to search for
+        :return: list of gradients
+        """
+        self._evaporate_buffer()
+
+        gradients = []
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        if static and frame in self._static.keys():
+            for element in self._static[frame]:
+                if element.parent_frame != self._id:
+                    if calc.get_gradient_distance(element.p, self._own_pos[
+                        -1].p) <= element.diffusion + \
+                            element.goal_radius + self._view_distance:
+                        gradients.append(element)
+
+        if moving and frame in self._moving.keys() and self._moving[frame]:
+            for pid in self._moving[frame].keys():
+                if pid != self._id:
+                    if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
+                                                  self._own_pos[-1].p) \
+                            <= self._moving[frame][pid][-1].diffusion + \
+                                    self._moving[frame][pid][
+                                        -1].goal_radius + self._view_distance:
+                        gradients.append(self._moving[frame][pid][-1])
+
+        return gradients
 
     # EVAPORATION
     def _evaporate_buffer(self):
@@ -636,56 +678,3 @@ class SoBuffer(object):
     @property
     def id(self):
         return self._id
-
-
-    # for decision patterns
-    def decision_list(self, frame):
-        """
-        returns list of gossip gradients within view, the one with own id is
-        excluded
-        :return: list of gradients
-        """
-        view = []
-
-        if not self._own_pos:
-            return view
-
-        if frame in self._moving.keys():
-            for pid in self._moving[frame].keys():
-                if pid != self._id and self._moving[frame][pid]:
-                    val = self._moving[frame][pid][-1]
-                    d = calc.get_gradient_distance(self._own_pos[-1].p, val.p)
-                    # gradient in sight
-                    if d <= val.diffusion + val.goal_radius + \
-                            self._view_distance:
-                        view.append(val)
-        return view
-
-
-
-
-
-    # QUORUM SENSING: DENSITY FUNCTION
-    # def quorum(self):
-    #     """
-    #     calculates agent density within view; only considers agent data
-    #     :return: True (threshold passed), False (threshold not passed)
-    #     """
-    #     count = 0
-    #
-    #     if self.pose_frame in self._moving.keys():
-    #         for pid in self._moving[self.pose_frame].keys():
-    #             if self._moving[self.pose_frame][pid]:
-    #                 val = self._moving[self.pose_frame][pid][-1]
-    #                 # check if neighbor is in sight
-    #                 if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-    #                     <= val.diffusion + val.goal_radius + \
-    #                     self._view_distance:
-    #                     count += 1
-    #
-    #     if count >= self.threshold:
-    #         return True
-    #     else:
-    #         return False
-
-

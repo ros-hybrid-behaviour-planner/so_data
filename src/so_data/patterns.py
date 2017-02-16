@@ -53,7 +53,7 @@ class MovementPattern(object):
         """
         :return: current position of robot
         """
-        return self._current_pos
+        return self._buffer.get_own_pose()
 
 
 class DecisionPattern(object):
@@ -62,14 +62,14 @@ class DecisionPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, frames=None, keys=None,
+    def __init__(self, buffer, frame=None, key=None,
                  moving=True, static=False):
 
         self._buffer = buffer
         # frames to consider in decision
-        self.frames = frames
+        self.frame = frame
         # payload keys to consider
-        self.keys = keys
+        self.key = key
         self.moving = moving
         self.static = static
 
@@ -79,6 +79,14 @@ class DecisionPattern(object):
     def value(self):
         """
         method to determine current key-value value
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def spread(self):
+        """
+        method to spread new values
         :return:
         """
         pass
