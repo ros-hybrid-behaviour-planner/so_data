@@ -5,7 +5,6 @@ Created on 15.02.2017
 
 Module including abstract class for patterns
 """
-from geometry_msgs.msg import Vector3
 from abc import ABCMeta, abstractmethod
 
 
@@ -16,7 +15,8 @@ class MovementPattern(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, maxvel=1.0, frame=None, moving=True, static=True):
+    def __init__(self,  buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1):
         """
         :param buffer: SoBuffer
         :param maxvel: maximum velocity / length of movement vector
@@ -27,15 +27,20 @@ class MovementPattern(object):
         self._buffer = buffer
         self.max_velocity = maxvel
 
-        # frames to request list of SoMessages
-        # TODO: make list instead of unique ID
-        if not frame:
-            self.frame = self._buffer.pose_frame
-        else:
-            self.frame = frame
+        self._buffer = buffer
 
+        self.frames = frames
         # store current position used for last calculation
         self._current_pos = None
+
+        # apply repulsion
+        self.repulsion = repulsion
+        # consider moving, static or both gradient types
+        self.moving = moving
+        self.static = static
+
+        self.maxvel = maxvel
+        self.minvel = minvel
 
     @abstractmethod
     def move(self):
@@ -44,14 +49,7 @@ class MovementPattern(object):
         by buffer
         :return: movement vector (Vector3)
         """
-
-        self._current_pos = self._buffer.get_own_pose()
-        view = self._buffer.decision_list(self.frame)
-        mov = Vector3()
-
-        # TODO implement movement vector calculation
-
-        return mov
+        pass
 
     def get_pos(self):
         """

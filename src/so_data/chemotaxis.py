@@ -10,32 +10,21 @@ from geometry_msgs.msg import Vector3
 import numpy as np
 import gradient
 import calc
+from patterns import MovementPattern
 
 
-class ChemotaxisGe(object):
+class ChemotaxisGe(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Ge & Cui
     """
-    def __init__(self, buffer, frame=None, repulsion=False, moving=True,
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
         :param buffer:
         :param frame:
         """
-        self._buffer = buffer
-
-        self.frames = frame
-        self._current_pos = None
-
-        # apply repulsion
-        self.repulsion = repulsion
-        # consider moving, static or both gradient types
-        self.moving = moving
-        self.static = static
-
-        self.maxvel=maxvel
-        self.minvel=minvel
-
+        super(ChemotaxisGe, self).__init__(buffer, frames, repulsion, moving,
+                                           static, maxvel, minvel)
 
     def move(self):
         """
@@ -44,33 +33,25 @@ class ChemotaxisGe(object):
         """
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
-        tmp_att = np.inf
-        attractive_gradient = None
 
         self._current_pos = self._buffer.get_own_pose()
 
-        # get all gradients within view distance
-        gradients = self._buffer.gradients(self.frames, self.static,
-                                           self.moving, self.repulsion)
-        gradients_attractive = gradients[0]
-        gradients_repulsive = gradients[1]
+        # repulsive gradients
+        gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
+                                                               self.static,
+                                                               self.moving,
+                                                               self.repulsion)
+
+        # attractive gradient
+        attractive_gradient = self._buffer.get_attractive_gradient(self.frames,
+                                                                   self.static,
+                                                                   self.moving)
 
         if self._current_pos:
-            if gradients_attractive:
-                for grdnt in gradients_attractive:
-                    # find nearest attractive gradient
-                    grad = gradient.calc_attractive_gradient(grdnt,
-                                                             self._current_pos)
-                    # returns value between 0 and 1
-                    att = np.linalg.norm([grad.x, grad.y, grad.z])
-                    # attraction smaller means distance closer, normalized
-                    # value taken regarding diffusion radius + goal_radius
-                    if att < tmp_att:
-                        grad = gradient.calc_attractive_gradient_ge(grdnt,
-                                                            self._current_pos)
-                        vector_attraction = grad
-                        tmp_att = att
-                        attractive_gradient = grdnt
+
+            if attractive_gradient:
+                vector_attraction = gradient.calc_attractive_gradient_ge(
+                    attractive_gradient, self._current_pos)
 
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
@@ -116,34 +97,36 @@ class ChemotaxisGe(object):
 
         return result
 
-    def get_pos(self):
-        return self._current_pos
+    def goal_gradient(self):
+        """
+
+        :return: vector to goal gradient
+        """
+        grad = None
+
+        attractive = self._buffer.get_attractive_gradient(self.frames,
+                                                          self.static,
+                                                          self.moving)
+
+        if attractive:
+            grad = gradient.calc_attractive_gradient_ge(attractive,
+                                                self._buffer.get_own_pose())
+
+        return grad
 
 
-class ChemotaxisBalch(object):
+class ChemotaxisBalch(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Balch & Hybinette
     """
-    def __init__(self, buffer, frame=None, repulsion=False, moving=True,
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
         :param buffer:
         :param frame:
         """
-        self._buffer = buffer
-
-        self.frames = frame
-        self._current_pos = None
-
-        # apply repulsion
-        self.repulsion = repulsion
-        # consider moving, static or both gradient types
-        self.moving = moving
-        self.static = static
-
-        self.maxvel=maxvel
-        self.minvel=minvel
-
+        super(ChemotaxisBalch, self).__init__(buffer, frames, repulsion,
+                                              moving, static, maxvel, minvel)
 
     def move(self):
         """
@@ -157,24 +140,21 @@ class ChemotaxisBalch(object):
         self._current_pos = self._buffer.get_own_pose()
 
         # get all gradients within view distance
-        gradients = self._buffer.gradients(self.frames, self.static,
-                                           self.moving, self.repulsion)
-        gradients_attractive = gradients[0]
-        gradients_repulsive = gradients[1]
+        # repulsive gradients
+        gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
+                                                               self.static,
+                                                               self.moving,
+                                                               self.repulsion)
+
+        # attractive gradient
+        attractive_gradient = self._buffer.get_attractive_gradient(self.frames,
+                                                                   self.static,
+                                                                   self.moving)
 
         if self._current_pos:
-            if gradients_attractive:
-                for grdnt in gradients_attractive:
-                    # find nearest attractive gradient
-                    grad = gradient.calc_attractive_gradient(grdnt,
-                                                             self._current_pos)
-                    # returns value between 0 and 1
-                    att = np.linalg.norm([grad.x, grad.y, grad.z])
-                    # attraction smaller means distance closer, normalized
-                    # value taken regarding diffusion radius + goal_radius
-                    if att < tmp_att:
-                        vector_attraction = grad
-                        tmp_att = att
+            if attractive_gradient:
+                vector_attraction = gradient.calc_attractive_gradient_ge(
+                    attractive_gradient, self._current_pos)
 
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
@@ -217,5 +197,19 @@ class ChemotaxisBalch(object):
 
         return result
 
-    def get_pos(self):
-        return self._current_pos
+    def goal_gradient(self):
+        """
+
+        :return: vector to goal gradient
+        """
+        grad = None
+
+        attractive = self._buffer.get_attractive_gradient(self.frames,
+                                                          self.static,
+                                                          self.moving)
+
+        if attractive:
+            grad = gradient.calc_attractive_gradient(attractive,
+                                                self._buffer.get_own_pose())
+
+        return grad

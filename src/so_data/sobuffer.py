@@ -196,8 +196,6 @@ class SoBuffer(object):
             self.result = [RESULT.NEAR]
         else:
             self.result = result
-        self.result_moving = result_moving
-        self.result_static = result_static
 
         # Collision Avoidance
         self.repulsion = repulsion
@@ -478,40 +476,6 @@ class SoBuffer(object):
         else:
             return
 
-    def repulsive_gradients(self, frameids):
-        """
-        function determines which repulsive gradients are currently within
-         view distance
-        :param frameids: frame IDs to be considered looking for repulsive
-        gradients
-        :return: list of repulsive gradients within view distance
-        """
-        # check if moving and / or static attractive gradients are
-        # within view distance
-        gradients_repulsive = []
-        for fid in frameids:
-            # static gradients
-            if fid in self._static and self.result_static:
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
-                        if element.attraction == -1:
-                            gradients_repulsive.append(element)
-
-            # moving gradients
-            if self.result_moving and fid in self._moving and self._moving[
-                fid]:
-                if calc.get_gradient_distance(self._moving[fid][-1].p,
-                                              self._own_pos[-1].p) \
-                        <= self._moving[fid][-1].diffusion + \
-                                self._moving[fid][
-                                    -1].goal_radius + self._view_distance:
-                    if self._moving[fid][-1].attraction == 1:
-                        gradients_repulsive.append(self._moving[fid][-1])
-
-        return gradients_repulsive
-
     def gradients(self, frameids=None, static=True, moving=True,
                   repulsion=False):
         """
@@ -519,8 +483,7 @@ class SoBuffer(object):
         :param frameids: frame IDs to be considered looking for gradients
         :return: list of gradients [attractive, repulsive, own position]
         """
-        gradients_repulsive = []
-        gradients_attractive = []
+        gradients = []
 
         # no own position available
         if not self._own_pos:
@@ -543,26 +506,73 @@ class SoBuffer(object):
                     if calc.get_gradient_distance(element.p, self._own_pos[
                         -1].p) <= element.diffusion + \
                             element.goal_radius + self._view_distance:
+                            gradients.append(element)
+
+            # moving gradients
+            if (moving or repulsion) and fid in self._moving.keys() \
+                    and self._moving[fid]:
+                for pid in self._moving[fid].keys():
+                    if pid != self._id:
+                        if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
+                                                     self._own_pos[-1].p) \
+                                <= self._moving[fid][pid][-1].diffusion + \
+                                        self._moving[fid][pid][
+                                            -1].goal_radius + self._view_distance:
+                            gradients.append(self._moving[fid][pid][-1])
+
+        return gradients
+
+    def repulsive_gradients(self, frameids=None, static=True, moving=True,
+                            repulsion=False):
+        """
+        function determines which repulsive gradients are currently within
+         view distance
+        :param frameids: frame IDs to be considered looking for repulsive
+        gradients
+        :return: list of repulsive gradients within view distance
+        """
+        # check if moving and / or static attractive gradients are
+        # within view distance
+
+        gradients_repulsive = []
+
+        # no own position available
+        if not self._own_pos:
+            return []
+
+        # determine frames to consider
+        if not frameids:
+            frameids = []
+            if static:
+                frameids += self._static.keys()
+            if moving:
+                frameids += self._moving.keys()
+            if repulsion:
+                frameids.append(self.pose_frame)
+
+        for fid in frameids:
+            # static gradients
+            if static and fid in self._static.keys():
+                for element in self._static[fid]:
+                    if calc.get_gradient_distance(element.p, self._own_pos[
+                        -1].p) <= element.diffusion + \
+                            element.goal_radius + self._view_distance:
                         if element.attraction == -1:
                             gradients_repulsive.append(element)
-                        else:
-                            gradients_attractive.append(element)
 
             # moving gradients
             if (moving or repulsion) and fid in self._moving.keys() \
                     and self._moving[fid]:
                 for pid in self._moving[fid].keys():
                     if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
-                                                 self._own_pos[-1].p) \
+                                                  self._own_pos[-1].p) \
                             <= self._moving[fid][pid][-1].diffusion + \
                                     self._moving[fid][pid][
                                         -1].goal_radius + self._view_distance:
                         if self._moving[fid][pid][-1].attraction == -1:
                             gradients_repulsive.append(self._moving[fid][pid][-1])
-                        else:
-                            gradients_attractive.append(self._moving[fid][pid][-1])
 
-        return [gradients_attractive, gradients_repulsive]
+        return gradients_repulsive
 
     def attractive_gradients(self, frameids=None, static=True, moving=True):
         """
@@ -611,13 +621,13 @@ class SoBuffer(object):
 
         return gradients_attractive
 
-    def get_attractive_pose(self, frameids=None, static=True, moving=True):
+    def get_attractive_gradient(self, frameids=None, static=True, moving=True):
         """
         :param frameids:
         :param static:
         :param moving:
         :param repulsion:
-        :return:
+        :return: relatively nearest attractive gradient
         """
 
         if not self._own_pos:
@@ -638,9 +648,7 @@ class SoBuffer(object):
                     tmp_grad = grad
                     tmp_att = att
 
-            return [tmp_grad, self._own_pos[-1]]
-
-        return []
+        return tmp_grad
 
 
 

@@ -12,6 +12,7 @@ from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
 import calc
 import tf.transformations
+from patterns import MovementPattern
 
 
 def separation(agent, neighbors, r=1.0):
@@ -106,24 +107,23 @@ def cohesion(agent, neighbors):
     return coh
 
 
-class FlockingRey(object):
+class FlockingRey(MovementPattern):
     """
     class to enable flocking based on reynolds formulas
     """
-
-    def __init__(self, buffer, maxvel=1.0, frame=None):
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=False, maxvel=1.0):
         """
 
         :param buffer:
         :param maxvel:
         """
-        self._buffer = buffer
-        self.max_velocity = maxvel
-        if not frame:
-            self.frame = self._buffer.pose_frame
-        else:
-            self.frame = frame
-        self._current_pos = None
+
+        if not frames:
+            frames = [buffer.pose_frame]
+
+        super(FlockingRey, self).__init__(buffer, frames, repulsion, moving,
+                                          static, maxvel)
 
     def move(self):
         """
@@ -132,7 +132,9 @@ class FlockingRey(object):
         """
 
         self._current_pos = self._buffer.get_own_pose()
-        view = self._buffer.decision_list(self.frame)
+
+        #view = self._buffer.decision_list(self.frames)
+        view = self._buffer.gradients(self.frames)
 
         mov = Vector3()
 
