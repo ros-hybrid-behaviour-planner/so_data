@@ -7,6 +7,9 @@ Module including abstract class for patterns
 """
 from abc import ABCMeta, abstractmethod
 from so_data.sobroadcaster import SoBroadcaster
+from diagnostic_msgs.msg import KeyValue
+from so_data.msg import SoMessage
+import rospy
 
 
 class MovementPattern(object):
@@ -63,8 +66,9 @@ class DecisionPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, frame=None, key=None, moving=True,
-                 static=False):
+    def __init__(self, buffer, frame=None, key=None, state=None, moving=True,
+                 static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
+                 attraction=-1, diffusion=20):
 
         self._broadcaster = SoBroadcaster()
 
@@ -80,7 +84,14 @@ class DecisionPattern(object):
         self.last_value = -1
 
         # set state
-        self.state = 'None'
+        self.state = state
+
+        # message
+        self.goal_radius = goal_radius
+        self.ev_factor = ev_factor
+        self.ev_time = ev_time
+        self.attraction = attraction
+        self.diffusion = diffusion
 
     @abstractmethod
     def value(self):
@@ -90,22 +101,43 @@ class DecisionPattern(object):
         """
         pass
 
-    @abstractmethod
     def spread(self):
         """
         method to spread new values
         :return:
         """
-        pass
+        # create gossip message
+        msg = SoMessage()
+        msg.header.frame_id = self.frame
+        msg.parent_frame = self._buffer.id
+
+        now = rospy.Time.now()
+        msg.header.stamp = now
+        msg.ev_stamp = now
+
+        # important to determine whether gradient is within view
+        current_pose = self._buffer.get_own_pose()
+        msg.p = current_pose.p
+        msg.q = current_pose.q
+        msg.attraction = self.attraction
+
+        msg.diffusion = self.diffusion
+
+        msg.goal_radius = self.goal_radius
+        msg.ev_factor = self.ev_factor
+        msg.ev_time = self.ev_time
+
+        msg.moving = True  # set to moving as gradient is tied to agent
+
+        # determine value
+        self.last_value = self.value()
+        msg.payload.append(KeyValue(self.key, "%.9f" % self.last_value))
+
+        # spread gradient
+        self._broadcaster.send_data(msg)
 
     def get_pos(self):
         """
         :return: current position of robot
         """
         return self._buffer.get_own_pose()
-
-    def get_id(self):
-        return self._buffer.id
-
-
-

@@ -10,8 +10,6 @@ from patterns import DecisionPattern
 import so_data.calc
 import rospy
 import numpy as np
-from diagnostic_msgs.msg import KeyValue
-from so_data.msg import SoMessage
 from so_data.gradientnode import create_gradient
 
 
@@ -20,22 +18,19 @@ class Morphogenesis(DecisionPattern):
     Find barycenter of robot group
     """
     def __init__(self, buffer, frame, key, moving=True, static=False,
-                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, attraction=-1):
+                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, attraction=-1,
+                 diffusion=np.inf, state='None'):
 
-        super(Morphogenesis, self).__init__(buffer, frame, key, moving,
-                                            static)
+        super(Morphogenesis, self).__init__(buffer, frame, key, state, moving,
+                                            static, goal_radius, ev_factor,
+                                            ev_time, attraction, diffusion)
 
         self.last_decision = 'None'
-
-        # TODO evtl blueprint fuer gradient einfuegen oder sowas
-        self.goal_radius = goal_radius
-        self.ev_factor = ev_factor
-        self.ev_time = ev_time
-        self.attraction = attraction
 
     def value(self):
         """
         sums up distance to all morphogenetic gradients
+        determines and sets state of robot
         :return: distance (float)
         """
 
@@ -76,42 +71,21 @@ class Morphogenesis(DecisionPattern):
         return dist
 
     def spread(self):
+        """
+        spreads morphogenetic gradient with sum of distances
+        + spreads center gradient if robot is barycenter
+        :return:
+        """
 
-        # get current summed up distance & set values for use in sensor
-        self.last_value = self.value()
+        super(Morphogenesis, self).spread()
         self.last_decision = self.state
-
-        # spread morphogenetic message
-        msg = SoMessage()
-        msg.header.frame_id = self.frame
-        msg.parent_frame = self.get_id()
-
-        now = rospy.Time.now()
-        msg.header.stamp = now
-        msg.ev_stamp = now
-
-        current_pose = self._buffer.get_own_pose()
-        msg.p = current_pose.p
-        msg.q = current_pose.q
-        msg.attraction = self.attraction
-
-        # set diffusion to inf s.t. all gradients sense morphogenetic gradient
-        msg.diffusion = np.inf
-
-        msg.goal_radius = self.goal_radius
-        msg.ev_factor = self.ev_factor
-        msg.ev_time = self.ev_time
-
-        msg.moving = True  # set to moving as morph gradient is tied to agent
-        msg.payload.append(KeyValue(self.key, "%.9f" % self.last_value))
-
-        # spread morphogenetic gradient
-        self._broadcaster.send_data(msg)
 
         # if barycenter: spread gradient for chemotaxis
         if self.state == 'Center':
             rospy.loginfo("Agent state: Center")
-            center_gradient = create_gradient(current_pose.p, goal_radius=2.0,
+            # TODO schoener machen
+            center_gradient = create_gradient(self.get_pos.p,
+                                              goal_radius=2.0,
                                               attraction=1.0, diffusion=20,
                                               moving=False,
                                               frameid=self.frame)
@@ -123,24 +97,19 @@ class Gossip(DecisionPattern):
     """
     find maximum value
     """
-    def __init__(self, buffer, frame, key, initial_value=1, moving=True,
-                 static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
-                 attraction=-1, diffusion=np.inf):
+    def __init__(self, buffer, frame, key, state=1, moving=True,
+                 static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
+                 attraction=0, diffusion=np.inf):
 
-        super(Gossip, self).__init__(buffer, frame, key, moving, static)
-
-        self._value = initial_value
-        self.last_value = -1
-
-        # TODO evtl blueprint fuer gradient einfuegen oder sowas
-        self.goal_radius = goal_radius
-        self.ev_factor = ev_factor
-        self.ev_time = ev_time
-        self.attraction = attraction
-        self.diffusion = diffusion
+        super(Gossip, self).__init__(buffer, frame, key, state, moving, static,
+                                     goal_radius, ev_factor, ev_time,
+                                     attraction, diffusion)
 
     def value(self):
-
+        """
+        determines maximum received value
+        :return:
+        """
         list = self._buffer.decision_list(self.frame, moving=self.moving,
                                                 static=self.static)
 
@@ -149,44 +118,21 @@ class Gossip(DecisionPattern):
             index = k.index(self.key)
 
             tmp = float(el.payload[index].value)
-            if self._value < tmp:
-               self._value = tmp
+            if self.state < tmp:
+                self.state = tmp
 
-        return self._value
+        return self.state
 
     def spread(self):
-        # create gossip message
-        msg = SoMessage()
-        msg.header.frame_id = self.frame
-        msg.parent_frame = self.get_id()
+        """
+        spreads message with maximum value
+        :return:
+        """
 
-        now = rospy.Time.now()
-        msg.header.stamp = now
-
-        # important to determine whether gradient is within view
-        current_pose = self._buffer.get_own_pose()
-        msg.p = current_pose.p
-        msg.q = current_pose.q
-
-        # set diffusion to inf s.t. all gradients sense gossip gradient
-        msg.diffusion = self.diffusion
-
-        msg.ev_factor = self.ev_factor
-        msg.ev_time = self.ev_time
-
-        msg.moving = True  # set to moving as gossip gradient is tied to agent
-
-        # determine max value
-        max = self.value()
-        self.last_value = max
-
-        msg.payload.append(KeyValue(self.key, "%.9f" % max))
-
-        # spread morphogenetic gradient
-        self._broadcaster.send_data(msg)
+        super(Gossip, self).spread()
 
         # Show info
-        rospy.loginfo("Current max: " + str(max))
+        rospy.loginfo("Current max: " + str(self.last_value))
 
 
 

@@ -400,7 +400,7 @@ class SoBuffer(object):
                 frameids += self._static.keys()
             if moving:
                 frameids += self._moving.keys()
-            if repulsion:
+            elif repulsion:
                 frameids.append(self.pose_frame)
 
         for fid in frameids:
@@ -452,7 +452,7 @@ class SoBuffer(object):
                 frameids += self._static.keys()
             if moving:
                 frameids += self._moving.keys()
-            if repulsion:
+            elif repulsion:
                 frameids.append(self.pose_frame)
 
         for fid in frameids:
@@ -537,7 +537,6 @@ class SoBuffer(object):
         :param moving: consider moving gradients
         :return: relatively nearest attractive gradient (Vector3)
         """
-        self._evaporate_buffer()
 
         if not self._own_pos:
             return []
@@ -550,10 +549,52 @@ class SoBuffer(object):
             for grad in gradients:
                 g = gradient.calc_attractive_gradient(grad,
                                                       self._own_pos[-1])
-                att = np.linalg.norm([g.x, g.y, g.z])
+                att = calc.vector_length(g)
                 # attraction decreases with being closer to gradient source
                 # / goal area
                 if att < tmp_att:
+                    tmp_grad = grad
+                    tmp_att = att
+
+        return tmp_grad
+
+    def strongest_gradient(self, frameids=None, static=True, moving=True):
+        """
+        return gradient with strongest potential on robot
+        :param frameids: frames to consider
+        :param static: bool, consider static gradients
+        :param moving: bool, consider moving gradients
+        :return: soMessage gradient
+        """
+        tmp_grad = None
+
+        if not self._own_pos:
+            return tmp_grad
+
+        # all gradients within view distance
+        gradients = self.gradients(frameids, static, moving)
+        tmp_att = -1
+
+        if gradients:
+            for grad in gradients:
+                if grad.attraction == 1:
+                    g = gradient.calc_attractive_gradient(grad,
+                                                             self._own_pos[-1])
+                else:
+                    g = gradient.calc_repulsive_gradient(grad,
+                                                            self._own_pos[-1])
+
+                if abs(g.x) == np.inf or abs(g.y) == np.inf or \
+                                abs(g.z) == np.inf:
+                    att = np.inf
+                else:
+                    att = calc.vector_length(g)
+                    # attractive potential is defined inverse to repulsive
+                    # potential --> adjust attractive value for comparison
+                    if grad.attraction == 1:
+                        att = 1 - att
+
+                if att > tmp_att:
                     tmp_grad = grad
                     tmp_att = att
 

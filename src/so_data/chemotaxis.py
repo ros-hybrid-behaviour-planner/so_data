@@ -13,6 +13,7 @@ import calc
 from patterns import MovementPattern
 
 
+# Mechanisms to reach one attractive Gradient & to avoid repulsive gradients
 class ChemotaxisGe(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Ge & Cui
@@ -135,7 +136,6 @@ class ChemotaxisBalch(MovementPattern):
         """
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
-        tmp_att = np.inf
 
         self._current_pos = self._buffer.get_own_pose()
 
@@ -215,214 +215,253 @@ class ChemotaxisBalch(MovementPattern):
         return grad
 
 
+# TODO: TEST
+# Mechanisms to consider specific sets of gradients
+class CollisionAvoidance(MovementPattern):
+    """
+    movement mechanism to avoid all repulsive gradients
+    """
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1):
+        """
+        :param buffer:
+        :param frame:
+        """
+        super(CollisionAvoidance, self).__init__(buffer, frames, repulsion,
+                                              moving, static, maxvel, minvel)
+
+    def move(self):
+
+        self._current_pos = self._buffer.get_own_pose()
+        vector_repulsion = Vector3()
+
+        # repulsive gradients
+        gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
+                                                               self.static,
+                                                               self.moving,
+                                                               self.repulsion)
+
+        if self._current_pos:
+            if gradients_repulsive:
+                for grdnt in gradients_repulsive:
+
+                    grad = gradient.calc_repulsive_gradient(grdnt,
+                                                            self._current_pos)
+
+                    # robot position is within obstacle goal radius,
+                    # inf can't be handled as direction
+                    # --> add vector which brings robot to the boarder of the
+                    # obstacle
+                    if grad.x == np.inf or grad.x == -1 * np.inf:
+                        # create random vector with length (goal_radius +
+                        # gradient.diffusion)
+                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+
+                        if calc.vector_length(dv) == 0:
+                            vector_repulsion = calc.add_vectors(
+                                vector_repulsion, calc.random_vector(
+                                    grdnt.goal_radius + grdnt.diffusion))
+                        else:
+                            vector_repulsion = calc.add_vectors(
+                                vector_repulsion, calc.adjust_length(dv,
+                                        grdnt.goal_radius + grdnt.diffusion))
+                    else:
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            grad)
+
+        # adjust length
+        d = calc.vector_length(vector_repulsion)
+        if d > self.maxvel:
+            vector_repulsion = calc.adjust_length(vector_repulsion, self.maxvel)
+        elif 0 < d < self.minvel:
+            vector_repulsion = calc.adjust_length(vector_repulsion, self.minvel)
+
+        return vector_repulsion
 
 
-# TODO
-#     # AGGREGATION - build potential field (merging of information)
-#     def result_max(self, frames=None):
-#         """
-#         follow higher gradient values (= gradient with shortest relative
-#         distance to gradient source)
-#         sets current gradient to direction vector (length <= 1)
-#         :return gradient vector
-#         """
-#
-#         gradients = []
-#         tmp_att = -1
-#         tmp_grad = Vector3()
-#
-#         # if no frameids are specified, use all data stored in buffer
-#         if not frames:
-#             frames = []
-#             if self.result_static:
-#                 frames += self._static.keys()
-#             if self.result_moving:
-#                 frames += self._moving.keys()
-#
-#         # find moving and / or static gradients within view distance
-#         gradients = self.gradients(frames)
-#         gradients = gradients[0] + gradients[1]
-#
-#         # find gradient with highest value ( = closest relative distance)
-#         if gradients:
-#             for gradient in gradients:
-#                 if gradient.attraction == 1:
-#                     grad = self._calc_attractive_gradient(gradient)
-#                 else:
-#                     grad = self._calc_repulsive_gradient(gradient)
-#
-#                 if grad.x == np.inf or grad.x == -1 * np.inf:
-#                     att = np.inf
-#                 else:
-#                     att = np.linalg.norm([grad.x, grad.y, grad.z])
-#                     # inverse attraction for attractive gradients as attraction
-#                     #  decreases with getting closer to the
-#                     # goal zone of the gradient
-#                     if gradient.attraction == 1:
-#                         att = 1 - att
-#
-#                 if att > tmp_att:
-#                     if grad.x == np.inf or grad.x == -1 * np.inf:
-#                         # create random vector with length (goal_radius +
-#                         # gradient.diffusion)
-#
-#                         dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
-#
-#                         if calc.vector_length(dv) == 0:
-#                             tmp_grad = calc.random_vector(gradient.goal_radius
-#                                                   + gradient.diffusion)
-#                         else:
-#                             tmp_grad = calc.adjust_length(dv,
-#                                                           gradient.goal_radius
-#                                                           + gradient.diffusion)
-#
-#                     else:
-#                         tmp_grad = grad
-#
-#                     tmp_att = att
-#
-#         return tmp_grad
-#
-#     def result_collision(self, frames=None):
-#         """
-#         aggregate gradients to avoid all repulsive gradients
-#         :return: repulsive gradient vector
-#         """
-#         vector_repulsion = Vector3()
-#
-#         # if no frameids are specified, use all data stored in buffer
-#         if not frames:
-#             frames = []
-#             if self.result_static:
-#                 frames += self._static.keys()
-#             if self.result_moving:
-#                 frames += self._moving.keys()
-#
-#         gradients = self.repulsive_gradients(frames)
-#
-#         # aggregate repulsive gradients
-#         if gradients:
-#             for gradient in gradients:
-#                 grad = self._calc_repulsive_gradient(gradient)
-#                 # robot position is within obstacle radius, inf can't be
-#                 # handled as direction
-#                 # --> add vector which brings robot to the boarder of the
-#                 # obstacle
-#                 if grad.x == np.inf or grad.x == -1 * np.inf:
-#                     # create random vector with length (goal_radius +
-#                     # gradient.diffusion)
-#                     dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
-#
-#                     if calc.vector_length(dv) == 0:
-#                         vector_repulsion = calc.add_vectors(vector_repulsion,
-#                                                 calc.random_vector(
-#                                                     gradient.goal_radius +
-#                                                     gradient.diffusion))
-#                     else:
-#                         vector_repulsion = calc.add_vectors(vector_repulsion,
-#                                                     calc.adjust_length(dv,
-#                                                         gradient.goal_radius +
-#                                                         gradient.diffusion))
-#                 else:
-#                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
-#
-#         return vector_repulsion
-#
-#
-#
-#     def result_all(self, frames=None):
-#         """
-#         aggregate all vectors within view distance
-#         :return: gradient vector
-#         """
-#
-#         vector_attraction = Vector3()
-#         vector_repulsion = Vector3()
-#
-#         # if no frameids are specified, use all data stored in buffer
-#         if not frames:
-#             frames = []
-#             if self.result_static:
-#                 frames += self._static.keys()
-#             if self.result_moving:
-#                 frames += self._moving.keys()
-#
-#         # find gradients within view distance
-#         gradients = self.gradients(frames)
-#         gradients_attractive = gradients[0]
-#         gradients_repulsive = gradients[1]
-#
-#         if gradients_attractive:
-#             for gradient in gradients_attractive:
-#                 # sum up all attractive gradients
-#                 grad = self._calc_attractive_gradient(gradient)
-#                 vector_attraction = calc.add_vectors(vector_attraction, grad)
-#
-#         # aggregate repulsive gradients
-#         if gradients_repulsive:
-#             for gradient in gradients_repulsive:
-#                 grad = self._calc_repulsive_gradient(gradient)
-#                 # robot position is within obstacle radius, inf can't be
-#                 # handled as direction
-#                 # --> add vector which brings robot to the boarder of the
-#                 # obstacle
-#                 if grad.x == np.inf or grad.x == -1 * np.inf:
-#                     # create random vector with length=goal radius + diffusion
-#                     dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
-#
-#                     if calc.vector_length(dv) == 0:
-#                         vector_repulsion = calc.add_vectors(vector_repulsion,
-#                                                             calc.random_vector(
-#                                                         gradient.goal_radius
-#                                                         + gradient.diffusion))
-#                     else:
-#                         vector_repulsion = calc.add_vectors(vector_repulsion,
-#                                                             calc.adjust_length(
-#                                                                 dv,
-#                                     gradient.goal_radius + gradient.diffusion))
-#                 else:
-#                     vector_repulsion = calc.add_vectors(vector_repulsion, grad)
-#
-#         return calc.add_vectors(vector_attraction, vector_repulsion)
-#
-#     def result_avoid(self, frames=None):
-#         """
-#         calculate vector which avoids all gradients within view distance
-#         :return gradient vector
-#         """
-#         gradients = []
-#         v = Vector3()
-#
-#         # if no frameids are specified, use all data stored in buffer
-#         if not frames:
-#             frames = []
-#             if self.result_static:
-#                 frames += self._static.keys()
-#             if self.result_moving:
-#                 frames += self._moving.keys()
-#
-#         # find moving and / or static gradients within view distance
-#         gradients = self.gradients(frames)
-#         gradients = gradients[0] + gradients[1]
-#
-#         if gradients:
-#             for gradient in gradients:
-#                 grad = self._calc_repulsive_gradient(gradient)
-#                 if grad.x == np.inf or grad.x == -1 * np.inf:
-#                     # create random vector with length (goal_radius +
-#                     # gradient.diffusion)
-#                     dv = calc.delta_vector(self._own_pos[-1].p, gradient.p)
-#
-#                     if calc.vector_length(dv) == 0:
-#                         v = calc.add_vectors(v, calc.random_vector(
-#                                             gradient.goal_radius
-#                                             + gradient.diffusion))
-#                     else:
-#                         v = calc.add_vectors(v, calc.adjust_length(dv,
-#                                     gradient.goal_radius + gradient.diffusion))
-#
-#                 else:
-#                     v = calc.add_vectors(v, grad)
-#
-#         return v
-#
+class FollowAll(MovementPattern):
+    """
+    movement mechanism to follow overall potential
+    """
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1):
+        """
+        :param buffer:
+        :param frame:
+        """
+        super(FollowAll, self).__init__(buffer, frames, repulsion, moving,
+                                        static, maxvel, minvel)
+
+    def move(self):
+
+        self._current_pos = self._buffer.get_own_pose()
+        result = Vector3()
+
+        # repulsive gradients
+        gradients = self._buffer.gradients(self.frames, self.static,
+                                           self.moving, self.repulsion)
+
+        if self._current_pos:
+            if gradients:
+                for grdnt in gradients:
+
+                    if grdnt.attraction == 1:
+                        result = calc.adjust_length(result, gradient.
+                                                    calc_attractive_gradient(
+                            grdnt, self._current_pos))
+                    elif grdnt.attraction == -1:
+                        grad = gradient.calc_repulsive_gradient(grdnt,
+                                                            self._current_pos)
+
+                        # robot position is within obstacle goal radius,
+                        # inf can't be handled as direction
+                        # --> add vector which brings robot to the boarder of
+                        # the obstacle
+                        if grad.x == np.inf or grad.x == -1 * np.inf:
+                            # create random vector with length (goal_radius +
+                            # gradient.diffusion)
+                            dv = calc.delta_vector(self._current_pos.p,
+                                                   grdnt.p)
+
+                            if calc.vector_length(dv) == 0:
+                                result = calc.add_vectors(result,
+                                                          calc.random_vector(
+                                                              grdnt.goal_radius
+                                                              + grdnt.diffusion
+                                                          ))
+                            else:
+                                result = calc.add_vectors(result,
+                                                          calc.adjust_length(
+                                                              dv,
+                                                              grdnt.goal_radius
+                                                              + grdnt.diffusion
+                                                          ))
+                        else:
+                            result = calc.add_vectors(result, grad)
+
+            # adjust length
+        d = calc.vector_length(result)
+        if d > self.maxvel:
+            result = calc.adjust_length(result, self.maxvel)
+        elif 0 < d < self.minvel:
+            result = calc.adjust_length(result, self.minvel)
+
+        return result
+
+
+class AvoidAll(MovementPattern):
+    """
+    movement mechanism to avoid all sensed gradients
+    """
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1):
+        """
+        :param buffer:
+        :param frame:
+        """
+        super(AvoidAll, self).__init__(buffer, frames, repulsion, moving,
+                                        static, maxvel, minvel)
+
+    def move(self):
+
+        self._current_pos = self._buffer.get_own_pose()
+        result = Vector3()
+
+        # repulsive gradients
+        gradients = self._buffer.gradients(self.frames, self.static,
+                                           self.moving, self.repulsion)
+
+        if self._current_pos:
+            if gradients:
+                for grdnt in gradients:
+                    grad = gradient.calc_repulsive_gradient(grdnt,
+                                                            self._current_pos)
+
+                    # robot position is within obstacle goal radius,
+                    # inf can't be handled as direction
+                    # --> add vector which brings robot to the boarder of
+                    # the obstacle
+                    if grad.x == np.inf or grad.x == -1 * np.inf:
+                        # create random vector with length (goal_radius +
+                        # gradient.diffusion)
+                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+
+                        if calc.vector_length(dv) == 0:
+                            result = calc.add_vectors(result,
+                                                      calc.random_vector(
+                                                          grdnt.goal_radius
+                                                          + grdnt.diffusion))
+                        else:
+                            result = calc.add_vectors(result,
+                                                      calc.adjust_length(dv,
+                                                            grdnt.goal_radius
+                                                            + grdnt.diffusion))
+                    else:
+                        result = calc.add_vectors(result, grad)
+
+            # adjust length
+        d = calc.vector_length(result)
+        if d > self.maxvel:
+            result = calc.adjust_length(result, self.maxvel)
+        elif 0 < d < self.minvel:
+            result = calc.adjust_length(result, self.minvel)
+
+        return result
+
+
+class FollowMax(MovementPattern):
+    """
+    movement mechanism to follow strongest gradient
+    """
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1):
+        """
+        :param buffer:
+        :param frame:
+        """
+        super(FollowMax, self).__init__(buffer, frames, repulsion, moving,
+                                        static, maxvel, minvel)
+
+    def move(self):
+
+        self._current_pos = self._buffer.get_own_pose()
+        g = Vector3()
+
+        # strongest gradient
+        grad = self._buffer.strongest_gradient(self.frames, self.static,
+                                                   self.moving)
+
+        if self._current_pos:
+            if grad:
+                if grad.attraction == 1:
+                    g = gradient.calc_attractive_gradient(grad,
+                                                          self._current_pos)
+                elif grad.attraction == -1:
+                    g = gradient.calc_repulsive_gradient(grad,
+                                                         self._current_pos)
+
+                    # robot position is within obstacle goal radius,
+                    # inf can't be handled as direction
+                    # --> add vector which brings robot to the boarder of
+                    # the obstacle
+                    if g.x == np.inf or g.x == -1 * np.inf:
+                        # create random vector with length (goal_radius +
+                        # gradient.diffusion)
+                        dv = calc.delta_vector(self._current_pos.p, grad.p)
+
+                        if calc.vector_length(dv) == 0:
+                            g = calc.random_vector(grad.goal_radius +
+                                                   grad.diffusion)
+                        else:
+                            g = calc.adjust_length(dv, grad.goal_radius
+                                                   + grad.diffusion)
+
+
+        # adjust length
+        d = calc.vector_length(g)
+        if d > self.maxvel:
+            g = calc.adjust_length(g, self.maxvel)
+        elif 0 < d < self.minvel:
+            g = calc.adjust_length(g, self.minvel)
+
+        return g
