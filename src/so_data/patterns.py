@@ -67,7 +67,7 @@ class DecisionPattern(object):
 
     def __init__(self, buffer, frame=None, key=None, state=None, moving=True,
                  static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
-                 attraction=-1, diffusion=20):
+                 diffusion=20, attraction=0):
 
         self._broadcaster = SoBroadcaster()
 

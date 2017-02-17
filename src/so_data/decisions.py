@@ -95,25 +95,25 @@ class Morphogenesis(DecisionPattern):
 
 class Gossip(DecisionPattern):
     """
-    find maximum value
+    Gossip mechanism to find maximum value
     """
     def __init__(self, buffer, frame, key, state=1, moving=True,
-                 static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
-                 attraction=0, diffusion=np.inf):
+                 static=False, diffusion=np.inf, goal_radius=0,
+                 ev_factor=1.0, ev_time=0.0):
 
         super(Gossip, self).__init__(buffer, frame, key, state, moving, static,
                                      goal_radius, ev_factor, ev_time,
-                                     attraction, diffusion)
+                                     diffusion)
 
     def value(self):
         """
-        determines maximum received value
-        :return:
+        determines maximum received value by all agent gradients
+        :return: maximum number
         """
-        list = self._buffer.decision_list(self.frame, moving=self.moving,
-                                                static=self.static)
+        values = self._buffer.agent_list(self.frame, moving=self.moving,
+                                         static=self.static)
 
-        for el in list:
+        for el in values:
             k = [i.key for i in el.payload]
             index = k.index(self.key)
 
@@ -128,7 +128,6 @@ class Gossip(DecisionPattern):
         spreads message with maximum value
         :return:
         """
-
         super(Gossip, self).spread()
 
         # Show info

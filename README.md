@@ -480,9 +480,11 @@ For more information see subsection Flocking.
 Mechanisms
 ----------
 
+### TODO PATTERNS.PY 
+
 ### repulsion(.py)
 
-Module repulsion includes two implementations  of the repulsion mechanism. 
+Module repulsion includes two implementations of the repulsion mechanism. 
 
 `RepulsionFernandez` implements the repulsion mechanism as presented in Fernandez-Marquez paper "Description and composition of bio-inspired design patterns".
  It requires, as all patterns, an soBuffer as input. 
@@ -507,6 +509,36 @@ class RepulsionGradient(MovementPattern):
 ```
 
 The parameters are similar to `RepulsionFernandez`. 
+
+
+### decisions(.py)
+
+Module decisions includes sample implementations of decision patterns. 
+The implementation of the decision mechanisms is very application specific as the algorithm has to be adjusted to the aim. 
+
+#### Sample Gossip Mechanism
+
+Module decision includes a sample gossip mechanism which determines the maximum value spread as a payload attribute. 
+
+```python
+class Gossip(DecisionPattern):
+    def __init__(self, buffer, frame, key, state=1, moving=True, static=False, 
+                 diffusion=np.inf, goal_radius=0, ev_factor=1.0, ev_time=0.0)
+```
+
+As always, a SoBuffer has to be handed over to the mechanism which will provide the necessary gradients data. 
+In this case the data will be provided by method `agent_list`. 
+Furthermore a frame and a key have to be specified to indicate which gradient frame id is used for the gossip mechanism and which key the payload data to be considered has. 
+Parameter state sets the initial value which will be compared and spread. 
+The other parameters allow to adjust the gradient message which will be spread to fit the application scenario. 
+
+
+#### Sample Morphogenesis Mechanism 
+
+TODO 
+
+
+
 
 
 
