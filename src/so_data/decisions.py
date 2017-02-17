@@ -123,21 +123,28 @@ class Gossip(DecisionPattern):
     """
     find maximum value
     """
-    def __init__(self, buffer, frame, key, initial_value=1,
-                 moving=True, static=False):
+    def __init__(self, buffer, frame, key, initial_value=1, moving=True,
+                 static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
+                 attraction=-1, diffusion=np.inf):
 
         super(Gossip, self).__init__(buffer, frame, key, moving, static)
 
         self._value = initial_value
         self.last_value = -1
-        self._list = None
+
+        # TODO evtl blueprint fuer gradient einfuegen oder sowas
+        self.goal_radius = goal_radius
+        self.ev_factor = ev_factor
+        self.ev_time = ev_time
+        self.attraction = attraction
+        self.diffusion = diffusion
 
     def value(self):
 
-        self._list = self._buffer.decision_list(self.frame, moving=self.moving,
+        list = self._buffer.decision_list(self.frame, moving=self.moving,
                                                 static=self.static)
 
-        for el in self._list:
+        for el in list:
             k = [i.key for i in el.payload]
             index = k.index(self.key)
 
@@ -146,6 +153,40 @@ class Gossip(DecisionPattern):
                self._value = tmp
 
         return self._value
+
+    def spread(self):
+        # create gossip message
+        msg = SoMessage()
+        msg.header.frame_id = self.frame
+        msg.parent_frame = self.get_id()
+
+        now = rospy.Time.now()
+        msg.header.stamp = now
+
+        # important to determine whether gradient is within view
+        current_pose = self._buffer.get_own_pose()
+        msg.p = current_pose.p
+        msg.q = current_pose.q
+
+        # set diffusion to inf s.t. all gradients sense gossip gradient
+        msg.diffusion = self.diffusion
+
+        msg.ev_factor = self.ev_factor
+        msg.ev_time = self.ev_time
+
+        msg.moving = True  # set to moving as gossip gradient is tied to agent
+
+        # determine max value
+        max = self.value()
+        self.last_value = max
+
+        msg.payload.append(KeyValue(self.key, "%.9f" % max))
+
+        # spread morphogenetic gradient
+        self._broadcaster.send_data(msg)
+
+        # Show info
+        rospy.loginfo("Current max: " + str(max))
 
 
 
