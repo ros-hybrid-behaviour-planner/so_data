@@ -23,7 +23,7 @@ class RepulsionFernandez(MovementPattern):
     def __init__(self, buffer, frame=None, static=False, moving=True):
         """
         :param buffer: soBuffer returning gradient data
-        :param frame: agent frame ID; if no
+        :param frame: agent frame ID
         :param static: consider static gradients
         :param moving: consider moving gradients
         """
@@ -33,8 +33,8 @@ class RepulsionFernandez(MovementPattern):
         else:
             self.frame = frame
 
-        super(RepulsionFernandez, self).__init__(buffer, self.frame, static,
-                                                 moving, False)
+        super(RepulsionFernandez, self).__init__(buffer, [self.frame],
+                                                 static=static, moving=moving)
 
     def move(self):
         """
@@ -97,8 +97,8 @@ class RepulsionGradient(MovementPattern):
         else:
             self.frame = frame
 
-        super(RepulsionGradient, self).__init__(buffer, self.frame, static,
-                                                moving, False)
+        super(RepulsionGradient, self).__init__(buffer, [self.frame],
+                                                static=static, moving=moving)
 
     def move(self):
         """

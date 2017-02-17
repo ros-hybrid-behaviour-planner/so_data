@@ -1,17 +1,17 @@
 """
 Created on 24.01.2017
+@author: kaiser
 
 Module contains flocking based on Reynolds Description
 www.red3d.com/cwr/steer/gdc99/
-
-@author: kaiser
+and flocking mechanism
 """
 
-from __future__ import division  # ensures floating point divisions
-from geometry_msgs.msg import Vector3, Quaternion
+from __future__ import division
 import numpy as np
 import calc
 import tf.transformations
+from geometry_msgs.msg import Vector3, Quaternion
 from patterns import MovementPattern
 
 
@@ -74,8 +74,6 @@ def alignment(agent, neighbors):
                 np.array([agent.direction.x, agent.direction.y,
                           agent.direction.z, 1]))
 
-
-        # resulting vector is
         result.x = steering[0]
         result.y = steering[1]
         result.z = steering[2]
@@ -91,7 +89,6 @@ def cohesion(agent, neighbors):
     :param neighbors: list of neighbor positions and orientations
     :return: norm vector steering towards average position of neighbors
     """
-
     coh = Vector3()
 
     for q in neighbors:
@@ -111,41 +108,41 @@ class FlockingRey(MovementPattern):
     """
     class to enable flocking based on reynolds formulas
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=False, maxvel=1.0):
+    def __init__(self, buffer, frame=None, moving=True, static=False,
+                 maxvel=1.0):
         """
-
-        :param buffer:
-        :param maxvel:
+        :param buffer: soBuffer returning gradient data
+        :param frame: agent frame ID
+        :param moving: consider moving gradients
+        :param static: consider static gradients
+        :param maxvel: maximum flocking velocity
         """
+        # set standard agent frame if no frame is specified
+        if not frame:
+            self.frame = buffer.pose_frame
+        else:
+            self.frame = frame
 
-        if not frames:
-            frames = [buffer.pose_frame]
-
-        super(FlockingRey, self).__init__(buffer, frames, repulsion, moving,
-                                          static, maxvel)
+        super(FlockingRey, self).__init__(buffer, [self.frame], static=static,
+                                          moving=moving, maxvel=maxvel)
 
     def move(self):
         """
-
-        :return:
+        calculates flocking vector based on Reynolds
+        :return: movement Vector (Vector3)
         """
 
-        self._current_pos = self._buffer.get_own_pose()
-
-        view = self._buffer.gradients(self.frames)
+        pose = self._buffer.get_own_pose()
+        view = self._buffer.agent_list(self.frame, self.static, self.moving)
 
         mov = Vector3()
 
-        if self._current_pos:
-            mov = separation(self._current_pos, view)
-            mov = calc.add_vectors(mov, cohesion(self._current_pos, view))
-            mov = calc.add_vectors(mov, alignment(self._current_pos, view))
+        if pose:
+            mov = separation(pose, view)
+            mov = calc.add_vectors(mov, cohesion(pose, view))
+            mov = calc.add_vectors(mov, alignment(pose, view))
 
         if calc.vector_length(mov) > self.max_velocity:
             mov = calc.adjust_length(mov, self.max_velocity)
 
         return mov
-
-    def get_pos(self):
-        return self._current_pos
