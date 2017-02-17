@@ -601,11 +601,11 @@ class SoBuffer(object):
         return tmp_grad
 
     # Aggregation of data for Decision patterns
-    def decision_list(self, frame, static=False, moving=True):
+    def agent_list(self, frame, static=False, moving=True):
         """
         function determines all gradients within view distance with a certain
         frame ID, excluding all gradients from agent itself
-        :param frame: frame ID to search for
+        :param frame: frame ID of agent data
         :return: list of gradients
         """
         self._evaporate_buffer()
@@ -719,3 +719,7 @@ class SoBuffer(object):
     @property
     def id(self):
         return self._id
+
+    @property
+    def view_distance(self):
+        return self._view_distance

@@ -5,6 +5,7 @@ Created on 15.02.2017
 
 Module including abstract class for patterns
 """
+
 from abc import ABCMeta, abstractmethod
 from so_data.sobroadcaster import SoBroadcaster
 from diagnostic_msgs.msg import KeyValue

@@ -16,18 +16,20 @@ The package consists of the following components:
 
 src: 
 
+* **sobuffer.py**: implements a layer which provides the basic functionality patterns for gradient data: evaporation, spreading (receives gradients), aggregation (+ unit test)  
 * **calc.py**: provides helper functions which are used by several components of the package (+ unit test)
+
+
 * **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber (+ unit test) 
 * **flockingrey.py**: provides methods to calculate a flocking vector based on the formulas by Reynolds (+ unit test)
 * **gradientnode.py**: allows to create nodes which spread artificial gradients 
 * **sobroadcaster.py**: allows to publish data to the so_data topic which will be subscribed to in the soBuffer 
-* **sobuffer.py**: implements a layer which allows to store gradient data and to do calculations necessary for self-organizing behaviour (+ unit test)  
 * **topicgradienttf.py**: abstract class which can be used as a blueprint to transform topics in soMessages and publish them to the `so_data` topic 
 * **posegradienttf.py**: implementation of `topicGradientTf` for the pose topic 
 
 msg:
 
-* **SoMessage.msg**: message file describing gradients 
+* **SoMessage.msg**: message file describing gradient data 
 
 The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.ros.org/kinetic/api/geometry_msgs/html/msg/Pose.html) Message. 
 
@@ -43,6 +45,7 @@ The specification of frameIDs can help to assign gradients to specific tasks / b
 
 ```
 Header header 
+string  parent_frame
 
 geometry_msgs/Vector3 p
 geometry_msgs/Quaternion q
@@ -98,14 +101,15 @@ sobuffer(.py)
 -------------
 
 The central component of the so_data package is the soBuffer. 
-It subscribes to the so_data topic and stores all received gradients in an aggregated manner. 
-Furthermore, it includes several calculation options which are based on gradients. 
-The soBuffer provides calculations necessary to implement self-organizing behaviours. 
-Various parameters allow to adjust the soBuffer to the needs of a self-organization pattern. 
+It provides the basic functionalities to gradient messages: evaporation, aggregation and spreading (receiving). 
+These are necessary for decision as well as movement patterns.
+Gradient data is received via the `so_data` topic and will be evaporated and aggregated by the soBuffer. 
+The individual mechanisms can request gradient data needed for the calculations from the soBuffer. 
 
-### soBuffer Parameters 
 
-The soBuffer provides several parameters which can be set to adjust the data storage and calculation behaviour. 
+### TODO soBuffer Parameters 
+
+The soBuffer provides several parameters which can be set to adjust the data storage behaviour. 
 The following parameters can be set (default values specified in brackets):
 
 * **aggregation** ({'DEFAULT': 'max'}): dictionary (key: frameID, value: aggregation option) of aggregation type per frameID. 'DEFAULT' is used for all frameIDs which have no option specified in 
@@ -120,72 +124,13 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
 * **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): agent's id, gradients with this id are stored in self._own_pos 
-
-* **result** (None): specifies how soBuffer data (within agent's view) is aggregated s.t. one value is returned. 
-A list of result options has to be passed over.
- Enumeration `RESULT` provides the following options:
-  * **all** = movement vector considering all vectors of the potential field will be returned 
-  * **max** = movement vector based on maximum repulsion / attraction (goal+diffusion) will be returned 
-  * **near** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; robot might not reach gradient source  
-  * **reach** = movement vector following nearest attractive gradient by avoiding repulsive gradients will be returned; allows to reach gradient source in comparison to 'near' 
-  * **avoid** = movement vector leading away from all sensed gradients will be returned 
-  * **flocking** = movement vector for flocking motion based on Olfati-Saber
-  * **flockingrey** = movement vector for flocking motion based on Reynolds 
-  * **collision** = movement vector avoiding all repulsive gradients 
-* **result_moving** (True): consider moving gradients (True) or not (False) in calculations 
-* **result_static** (True): consider static gradients (True) or not (False) in calculations (except for flocking and repulsion which are always based only on moving gradients)
-  
-* **repulsion** (None): collision avoidance between neighbors / agents (moving gradients). 
-Considers only moving gradients with `self._pose_frame` frame ID. 
-Should only be used on its own or in combination mit result_moving = False. 
-Options can be specified via enumeration `REPULSION` and the following settings:
-  * **gradient** = gradient/potential field approach is used to calculate repulsion vector (formulas of 'reach' option of result)
-  * **repulsion** = repulsion vector is calculated based on formula presented in Fernandez-Marquez et al.
-  * **reach** = moving vectors are considered in vector calculations based on Ge & Cui (result == reach is required)
-  
+    
 * **moving_storage_size** (2): int; defines number of gradients which will be stored for moving gradients. Set 0 to avoid storing moving gradients. 
 
 * **store_all** (True): defines whether all frameIDs will be stored or only frameIDs indicated in framestorage 
 * **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to not storing any gradients. 
 
-* **max_velocity** (1.0): maximum velocity of robot (= length of returned vector)
-* **min_velocity** (0.1): minimum velocity of robot (= length of returned vector)
-
 * **pose_frame** ('robot'): frame ID indicating gradient data of agents / robots (poses)
-
-Chemotaxis parameters:
-
-* **chem_frames** ([]): specifies which frame IDs should be considered in calculating the movement vectors based on the gradient fields; empty list means all frames will be considered
-
-Flocking parameters:
-
-These parameters are only relevant for the flocking calculations based on Olfati-Saber (`RESULT.FLOCKING`). 
-
-* **a, b**: action function parameters with `0 < a <= b; c = |a-b|/np.sqrt(4ab)`
-* **h**: parameter (0,1) specifying boundaries of bump function
-* **epsilon**: sigma norm parameter (0,1)
-* **max_acceleration**: maximum acceleration of robot
-
-Decision patterns 
-
-* **decision** (None): `DECISION` enum value indicating which gradient data is returned
-
-Quorum Sensing parameters: 
-
-* **threshold** (2): quorum sensing threshold to be passed 
-
-Morpogenesis parameters: 
-
-Morphogenetic gradients have to be `moving = True` as they are tied to agents and the differentiation based on the parent_frame is important. 
-
-* **state** (STATE.None): should be set to one option of Enumeration `STATE`, e.g. 'Center' or 'None'
-* **key** (None): specifies payload KeyValue key for morphogenetic data
-* **morph_frame** ('morphogenesis'): specifies frame ID (header frame_id) for morphogenetic gradients. 
-
-Gossip parameters:
-
-* **gossip_frame** ('gossip'): frame ID indicating gradient data for gossip patterns
-* **gossip_key** (''): specifies payload KeyValue key for gossip data 
 
 
 ### Gradient Storage
@@ -528,6 +473,41 @@ def result_collision(self)
 
 Options `flocking` and `flockingrey` return a movement vector resulting in flocking behaviour. 
 For more information see subsection Flocking. 
+
+
+
+
+Mechanisms
+----------
+
+### repulsion(.py)
+
+Module repulsion includes two implementations  of the repulsion mechanism. 
+
+`RepulsionFernandez` implements the repulsion mechanism as presented in Fernandez-Marquez paper "Description and composition of bio-inspired design patterns".
+ It requires, as all patterns, an soBuffer as input. 
+
+```python
+class RepulsionFernandez(MovementPattern):
+    def __init__(self, buffer, frame=None, static=False, moving=True)
+```
+
+Frame allows to specify the header frame id which is used for agent data. 
+If no frame is specified, the pose frame of the buffer will be used. 
+
+The calculation is based on a list of agent gradients returned by buffer method `agent_list`. 
+
+Fernandez-Marquez formula incorporates that the agents will try to stay as close as possible (outside repulsion radius) when the view distance is larger than the repulsion radius. 
+
+`RepulsionGradient` implements the repulsion mechanism using the formulas to calculate repulsive gradients by Balch and Hybinette. 
+
+```python 
+class RepulsionGradient(MovementPattern):
+    def __init__(self, buffer, frame=None, static=False, moving=True)
+```
+
+The parameters are similar to `RepulsionFernandez`. 
+
 
 
 flocking(.py)
