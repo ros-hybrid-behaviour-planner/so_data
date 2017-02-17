@@ -35,7 +35,7 @@ class ChemotaxisGe(MovementPattern):
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
 
         # repulsive gradients
         gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
@@ -48,21 +48,21 @@ class ChemotaxisGe(MovementPattern):
                                                                    self.static,
                                                                    self.moving)
 
-        if self._current_pos:
+        if pose:
 
             if attractive_gradient:
                 vector_attraction = gradient.calc_attractive_gradient_ge(
-                    attractive_gradient, self._current_pos)
+                    attractive_gradient, pose)
 
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
                     if attractive_gradient:
                         grad = gradient.calc_repulsive_gradient_ge(grdnt,
                                                         attractive_gradient,
-                                                        self._current_pos)
+                                                        pose)
                     else:  # no attractive gradient nearby, apply repulsion only
                         grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            self._current_pos)
+                                                            pose)
 
                     # robot position is within obstacle goal radius, inf can't be
                     # handled as direction
@@ -71,7 +71,7 @@ class ChemotaxisGe(MovementPattern):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+                        dv = calc.delta_vector(pose.p, grdnt.p)
 
                         if calc.vector_length(dv) == 0:
                             vector_repulsion = calc.add_vectors(
@@ -137,7 +137,7 @@ class ChemotaxisBalch(MovementPattern):
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
 
         # get all gradients within view distance
         # repulsive gradients
@@ -151,16 +151,15 @@ class ChemotaxisBalch(MovementPattern):
                                                                    self.static,
                                                                    self.moving)
 
-        if self._current_pos:
+        if pose:
             if attractive_gradient:
                 vector_attraction = gradient.calc_attractive_gradient_ge(
-                    attractive_gradient, self._current_pos)
+                    attractive_gradient, pose)
 
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
 
-                    grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            self._current_pos)
+                    grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
                     # robot position is within obstacle goal radius, inf can't be
                     # handled as direction
@@ -169,7 +168,7 @@ class ChemotaxisBalch(MovementPattern):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+                        dv = calc.delta_vector(pose.p, grdnt.p)
 
                         if calc.vector_length(dv) == 0:
                             vector_repulsion = calc.add_vectors(
@@ -232,7 +231,7 @@ class CollisionAvoidance(MovementPattern):
 
     def move(self):
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
         vector_repulsion = Vector3()
 
         # repulsive gradients
@@ -241,12 +240,11 @@ class CollisionAvoidance(MovementPattern):
                                                                self.moving,
                                                                self.repulsion)
 
-        if self._current_pos:
+        if pose:
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
 
-                    grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            self._current_pos)
+                    grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
                     # robot position is within obstacle goal radius,
                     # inf can't be handled as direction
@@ -255,7 +253,7 @@ class CollisionAvoidance(MovementPattern):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+                        dv = calc.delta_vector(pose.p, grdnt.p)
 
                         if calc.vector_length(dv) == 0:
                             vector_repulsion = calc.add_vectors(
@@ -294,24 +292,23 @@ class FollowAll(MovementPattern):
 
     def move(self):
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
         result = Vector3()
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
                                            self.moving, self.repulsion)
 
-        if self._current_pos:
+        if pose:
             if gradients:
                 for grdnt in gradients:
 
                     if grdnt.attraction == 1:
-                        result = calc.adjust_length(result, gradient.
-                                                    calc_attractive_gradient(
-                            grdnt, self._current_pos))
+                        result = calc.add_vectors(result, gradient.
+                                                  calc_attractive_gradient(
+                            grdnt, pose))
                     elif grdnt.attraction == -1:
-                        grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            self._current_pos)
+                        grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
                         # robot position is within obstacle goal radius,
                         # inf can't be handled as direction
@@ -320,8 +317,7 @@ class FollowAll(MovementPattern):
                         if grad.x == np.inf or grad.x == -1 * np.inf:
                             # create random vector with length (goal_radius +
                             # gradient.diffusion)
-                            dv = calc.delta_vector(self._current_pos.p,
-                                                   grdnt.p)
+                            dv = calc.delta_vector(pose.p, grdnt.p)
 
                             if calc.vector_length(dv) == 0:
                                 result = calc.add_vectors(result,
@@ -364,18 +360,17 @@ class AvoidAll(MovementPattern):
 
     def move(self):
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
         result = Vector3()
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
                                            self.moving, self.repulsion)
 
-        if self._current_pos:
+        if pose:
             if gradients:
                 for grdnt in gradients:
-                    grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            self._current_pos)
+                    grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
                     # robot position is within obstacle goal radius,
                     # inf can't be handled as direction
@@ -384,7 +379,7 @@ class AvoidAll(MovementPattern):
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        dv = calc.delta_vector(self._current_pos.p, grdnt.p)
+                        dv = calc.delta_vector(pose.p, grdnt.p)
 
                         if calc.vector_length(dv) == 0:
                             result = calc.add_vectors(result,
@@ -424,21 +419,19 @@ class FollowMax(MovementPattern):
 
     def move(self):
 
-        self._current_pos = self._buffer.get_own_pose()
+        pose = self._buffer.get_own_pose()
         g = Vector3()
 
         # strongest gradient
         grad = self._buffer.strongest_gradient(self.frames, self.static,
                                                    self.moving)
 
-        if self._current_pos:
+        if pose:
             if grad:
                 if grad.attraction == 1:
-                    g = gradient.calc_attractive_gradient(grad,
-                                                          self._current_pos)
+                    g = gradient.calc_attractive_gradient(grad, pose)
                 elif grad.attraction == -1:
-                    g = gradient.calc_repulsive_gradient(grad,
-                                                         self._current_pos)
+                    g = gradient.calc_repulsive_gradient(grad, pose)
 
                     # robot position is within obstacle goal radius,
                     # inf can't be handled as direction
@@ -447,7 +440,7 @@ class FollowMax(MovementPattern):
                     if g.x == np.inf or g.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
-                        dv = calc.delta_vector(self._current_pos.p, grad.p)
+                        dv = calc.delta_vector(pose.p, grad.p)
 
                         if calc.vector_length(dv) == 0:
                             g = calc.random_vector(grad.goal_radius +

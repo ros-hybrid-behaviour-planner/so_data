@@ -32,8 +32,6 @@ class MovementPattern(object):
         self.max_velocity = maxvel
 
         self.frames = frames
-        # store current position used for last calculation
-        self._current_pos = None
 
         # apply repulsion
         self.repulsion = repulsion
