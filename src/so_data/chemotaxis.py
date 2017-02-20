@@ -12,27 +12,31 @@ import calc
 from geometry_msgs.msg import Vector3
 from patterns import MovementPattern
 
-import rospy
-
 
 # Mechanisms to reach one attractive Gradient & to avoid repulsive gradients
 class ChemotaxisGe(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Ge & Cui
+    Tries to reach a goal (attractive gradient) while avoiding obstacles
+    (repulsive gradients)
     """
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(ChemotaxisGe, self).__init__(buffer, frames, repulsion, moving,
                                            static, maxvel, minvel)
 
     def move(self):
         """
-
-        :return:
+        :return: movement vector
         """
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
@@ -51,7 +55,6 @@ class ChemotaxisGe(MovementPattern):
                                                                    self.moving)
 
         if pose:
-
             if attractive_gradient:
                 vector_attraction = gradient.calc_attractive_gradient_ge(
                     attractive_gradient, pose)
@@ -62,31 +65,25 @@ class ChemotaxisGe(MovementPattern):
                         grad = gradient.calc_repulsive_gradient_ge(grdnt,
                                                         attractive_gradient,
                                                         pose)
-                    else:  # no attractive gradient nearby, apply repulsion only
-                        grad = gradient.calc_repulsive_gradient(grdnt,
-                                                            pose)
+                    else:  # no attractive gradient, apply repulsion only
+                        grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
-                    # robot position is within obstacle goal radius, inf can't be
-                    # handled as direction
-                    # --> add vector which brings robot to the boarder of the
-                    # obstacle
-                    if grad.x == np.inf or grad.x == -1 * np.inf:
+                    # robot position is within obstacle goal radius
+                    # handle infinite repulsion
+                    if abs(grad.x) == np.inf or abs(grad.y) == np.inf or \
+                                    abs(grad.z) == np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
                         dv = calc.delta_vector(pose.p, grdnt.p)
 
                         if calc.vector_length(dv) == 0:
                             vector_repulsion = calc.add_vectors(
-                                vector_repulsion,
-                                calc.random_vector(
-                                    grdnt.goal_radius +
-                                    grdnt.diffusion))
+                                vector_repulsion, calc.random_vector(
+                                    grdnt.goal_radius + grdnt.diffusion))
                         else:
                             vector_repulsion = calc.add_vectors(
-                                vector_repulsion,
-                                calc.adjust_length(
-                                    dv,
-                                    grdnt.goal_radius + grdnt.diffusion))
+                                vector_repulsion, calc.adjust_length(dv,
+                                        grdnt.goal_radius + grdnt.diffusion))
                     else:
                         vector_repulsion = calc.add_vectors(vector_repulsion,
                                                             grad)
@@ -102,7 +99,6 @@ class ChemotaxisGe(MovementPattern):
 
     def goal_gradient(self):
         """
-
         :return: vector to goal gradient
         """
         grad = None

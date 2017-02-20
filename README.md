@@ -313,8 +313,8 @@ Module chemotaxis includes several implementations of chemotaxis behaviour and m
 
 ##### ChemotaxisBalch 
 
-ChemotaxisBalch implements flocking behaviour following one goal while avoiding repulsive gradients. 
-It is based on the formulas by Balch and Hybinette. 
+ChemotaxisBalch implements chemotaxis behaviour following one goal while avoiding repulsive gradients. 
+It is based on the formulas by Balch and Hybinette (see gradient.py). 
 
 ```python 
 class ChemotaxisBalch(MovementPattern):
@@ -333,6 +333,26 @@ The mechanism request the relatively closest attractive gradient from the buffer
 Furthermore, it requests a list of repulsive vectors within view. 
 The movement vector for the attractive gradient is calculated and added to the sum of the repulsive movement vectors to determine the overall movement vector. 
 
+##### ChemotaxisGe 
+
+ChemotaxisGe implements chemotaxis behaviour following one goal while avoiding repulsive gradients. 
+It is based on the formulas by Ge and Cui (see gradient.py). 
+
+```python
+class ChemotaxisGe(MovementPattern):
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1)
+```
+A buffer has to be handed over to the mechanism.
+Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+Moving and static define whether moving or static gradient will be considered. 
+Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
+Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
+Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+
+The mechanism request the relatively closest attractive gradient from the buffer (minimum attraction value; `get_attractive_gradient()` in SoBuffer) and aims to reach this goal. 
+Furthermore, it requests a list of repulsive vectors within view. 
+The movement vector for the attractive gradient is calculated and added to the sum of the repulsive movement vectors to determine the overall movement vector. 
 
 
 ### decisions(.py)
