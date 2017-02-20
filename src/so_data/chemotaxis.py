@@ -215,7 +215,7 @@ class ChemotaxisBalch(MovementPattern):
         return grad
 
 
-# TODO: TEST
+# TODO: comments
 # Mechanisms to consider specific sets of gradients
 class CollisionAvoidance(MovementPattern):
     """

@@ -1,7 +1,7 @@
 """
 Created on 01.12.2016
 
-@author: kaiser
+@author: hrabia, kaiser
 
 Module offers various methods for vector calculations
 

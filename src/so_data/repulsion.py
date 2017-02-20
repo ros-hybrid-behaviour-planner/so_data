@@ -39,7 +39,7 @@ class RepulsionFernandez(MovementPattern):
     def move(self):
         """
         calculates repulsion vector based on Fernandez-Marquez
-        :return: repulsion vector
+        :return: repulsion movement vector
         """
 
         pose = self._buffer.get_own_pose()

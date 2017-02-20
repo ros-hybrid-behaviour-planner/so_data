@@ -626,7 +626,7 @@ class SoBuffer(object):
 
         if moving and frame in self._moving.keys() and self._moving[frame]:
             for pid in self._moving[frame].keys():
-                if pid != self._id:
+                if pid != self._id and self._moving[frame][pid]:
                     if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
                                                   self._own_pos[-1].p) \
                             <= self._moving[frame][pid][-1].diffusion + \
