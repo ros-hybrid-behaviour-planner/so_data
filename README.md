@@ -496,12 +496,13 @@ class RepulsionFernandez(MovementPattern):
 
 Frame allows to specify the header frame id which is used for agent data. 
 If no frame is specified, the pose frame of the buffer will be used. 
+static and moving indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
 
 The calculation is based on a list of agent gradients returned by buffer method `agent_list`. 
 
 Fernandez-Marquez formula incorporates that the agents will try to stay as close as possible (outside repulsion radius) when the view distance is larger than the repulsion radius. 
 
-`RepulsionGradient` implements the repulsion mechanism using the formulas to calculate repulsive gradients by Balch and Hybinette. 
+`RepulsionGradient` implements the repulsion mechanism using the formulas to calculate repulsive gradients by Balch and Hybinette (see gradient.py). 
 
 ```python 
 class RepulsionGradient(MovementPattern):
@@ -509,6 +510,28 @@ class RepulsionGradient(MovementPattern):
 ```
 
 The parameters are similar to `RepulsionFernandez`. 
+
+
+### flockingrey(.py)
+
+Module flockingrey includes the implementation of flocking based on Reynolds (see flockingrey.py). 
+
+`FlockingRey` is an implementation of `MovementPattern`.
+It calculates the overall movement vector based on the formulas by Reynolds. 
+The calculations of cohesion, separation and alignment require a list of SoMessages as the input. 
+Class `FlockingRey` request a list from the buffer using method `agent_list`. 
+
+```python 
+class FlockingRey(MovementPattern):
+    def __init__(self, buffer, frame=None, moving=True, static=False, maxvel=1.0)
+```
+A buffer has to be handed offer to the pattern implementation.
+Frame allows to specify the header farme ID which is used for agent data in this setting. 
+If no frame is specified, the pose frame parameter of the buffer will be used. 
+
+static and moving indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
+maxvel sets the maximum length of the movement vector. 
+
 
 
 ### decisions(.py)
@@ -567,14 +590,17 @@ flockingrey(.py)
 
 Approach based on formulas / description by Reynold in his paper [Steering Behaviors For Autonomous Characters](www.red3d.com/cwr/steer/gdc99/).
 
-Alignment calculation is based on heading vectors (not on velocity).
-
-The calculation is done either on the robot position or its heading vector.
-The input of the flocking methods are the agents current gradient and a list of neighbor gradients (moving and repulsive).
-The current heading vector in method `alignment` is calculated using the values `q` (orientation) and `direction` of `soMessage`.
-The quaternion is transformed to a transformation matrix using method `tf.transformations.quaternion_matrix(quaternion)`.
+The calculations require either robot positions or heading vectors (not velocity!). 
+The flocking methods need a current gradient of the agent and a list of neighbor gradients. 
+The current heading vector of the robot is calculated using the SoMessage values `q` (orientation) and `direction`.
+The quaternion q is then transformed to a transformation matrix using method `tf.transformations.quaternion_matrix(quaternion)`.
 Multiplying the transformation matrix with the direction vector results in the current heading vector.
 
+
+The module contains the three methods 'cohesion', 'separation' and 'alignment' described by Reynolds. 
+The three movement vectors calculated by these methods can be summed up to determine the overall movement vector. 
+
+Furthermore, the implementation of the flocking mechanism as a subclass of `MovementPattern` (see patterns.py) is provided by this module. 
 
 calc(.py)
 ---------
