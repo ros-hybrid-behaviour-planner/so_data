@@ -23,6 +23,24 @@ class MorphogenesisBarycenter(DecisionPattern):
                  attraction=-1, state='None', goal_center=2.0,
                  moving_center=False, attraction_center=1,
                  diffusion_center=20):
+        """
+        initialize behaviour
+        :param buffer: SoBuffer
+        :param frame: morphogenesis frame id (header frame)
+        :param key: payload key
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradient in list returned by buffer
+        :param goal_radius: morphogenetic gradient goal radius
+        :param ev_factor: morphogenetic gradient evaporation factor
+        :param ev_time: morphogenetic gradient evaporation time
+        :param diffusion: morphogenetic gradient diffusion
+        :param attraction: morphogenetic gradient attraction
+        :param state: robot state
+        :param goal_center: goal radius barycenter gradient
+        :param moving_center: moving attribute barycenter gradient
+        :param attraction_center: attraction barycenter gradient
+        :param diffusion_center: diffusion barycenter gradient
+        """
 
         super(MorphogenesisBarycenter, self).__init__(buffer, frame, key,
                                                       state, moving, static,
@@ -108,6 +126,19 @@ class GossipMax(DecisionPattern):
     def __init__(self, buffer, frame, key, state=1, moving=True,
                  static=False, diffusion=np.inf, goal_radius=0,
                  ev_factor=1.0, ev_time=0.0):
+        """
+        initialize behaviour
+        :param buffer: SoBuffer
+        :param frame: gossip frame id (header frame)
+        :param key: payload key
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradient in list returned by buffer
+        :param goal_radius: gossip gradient goal radius
+        :param ev_factor: gossip gradient evaporation factor
+        :param ev_time: gossip gradient evaporation time
+        :param diffusion: gossip gradient diffusion
+        :param state: robot state
+        """
 
         super(GossipMax, self).__init__(buffer, frame, key, state, moving,
                                         static, goal_radius, ev_factor,

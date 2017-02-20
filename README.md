@@ -239,7 +239,13 @@ Decision and Movement Patterns
 
 ### TODO PATTERNS.PY 
 
-### repulsion(.py)
+### Movement Patterns / Mechanisms 
+
+1. Repulsion
+2. Flocking
+3. Chemotaxis
+
+####  repulsion(.py)
 
 Module repulsion includes two implementations of the repulsion mechanism. 
 
@@ -269,7 +275,7 @@ class RepulsionGradient(MovementPattern):
 The parameters are similar to `RepulsionFernandez`. 
 
 
-### flockingrey(.py)
+#### flockingrey(.py)
 
 Module flockingrey includes the implementation of flocking based on the formulas presented by Reynolds in his paper [Steering Behaviors For Autonomous Characters](www.red3d.com/cwr/steer/gdc99/).
 
@@ -294,11 +300,38 @@ class FlockingRey(MovementPattern):
     def __init__(self, buffer, frame=None, moving=True, static=False, maxvel=1.0)
 ```
 A buffer has to be handed offer to the pattern implementation.
-Frame allows to specify the header farme ID which is used for agent data in this setting. 
+Frame allows to specify the header frame ID which is used for agent data in this setting. 
 If no frame is specified, the pose frame parameter of the buffer will be used. 
 
 Static and moving indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
 maxvel sets the maximum length of the movement vector. 
+
+
+#### chemotaxis(.py)
+ 
+Module chemotaxis includes several implementations of chemotaxis behaviour and makes use of the gradient formulas implemented in module gradient. 
+
+##### ChemotaxisBalch 
+
+ChemotaxisBalch implements flocking behaviour following one goal while avoiding repulsive gradients. 
+It is based on the formulas by Balch and Hybinette. 
+
+```python 
+class ChemotaxisBalch(MovementPattern):
+    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+                 static=True, maxvel=1.0, minvel=0.1)
+```
+
+A buffer has to be handed over to the mechanism.
+Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+Moving and static define whether moving or static gradient will be considered. 
+Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
+Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
+Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+
+The mechanism request the relatively closest attractive gradient from the buffer (minimum attraction value; `get_attractive_gradient()` in SoBuffer) and aims to reach this goal. 
+Furthermore, it requests a list of repulsive vectors within view. 
+The movement vector for the attractive gradient is calculated and added to the sum of the repulsive movement vectors to determine the overall movement vector. 
 
 
 
@@ -338,7 +371,7 @@ class MorphogenesisBarycenter(DecisionPattern):
                  diffusion_center=20)
 ```
 
-In this mechanism a buffer is requered too. 
+In this mechanism a buffer is required too. 
 The data used in the calculation will be provided by method `agent_list` of the buffer.
 A frame and a key have to be specified to indicate which gradient frame id is used for the morphogenesis mechanism and which key the payload data under consideration has.
 Moving and static defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 

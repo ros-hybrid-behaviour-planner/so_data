@@ -6,11 +6,13 @@ Created on 15.02.2017
 Module including chemotaxis implementations
 """
 
-from geometry_msgs.msg import Vector3
 import numpy as np
 import gradient
 import calc
+from geometry_msgs.msg import Vector3
 from patterns import MovementPattern
+
+import rospy
 
 
 # Mechanisms to reach one attractive Gradient & to avoid repulsive gradients
@@ -119,20 +121,26 @@ class ChemotaxisGe(MovementPattern):
 class ChemotaxisBalch(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Balch & Hybinette
+    Tries to reach a goal (attractive gradient) while avoiding obstacles
+    (repulsive gradients)
     """
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(ChemotaxisBalch, self).__init__(buffer, frames, repulsion,
                                               moving, static, maxvel, minvel)
 
     def move(self):
         """
-
-        :return:
+        :return: movement vector
         """
         vector_attraction = Vector3()
         vector_repulsion = Vector3()
@@ -153,7 +161,7 @@ class ChemotaxisBalch(MovementPattern):
 
         if pose:
             if attractive_gradient:
-                vector_attraction = gradient.calc_attractive_gradient_ge(
+                vector_attraction = gradient.calc_attractive_gradient(
                     attractive_gradient, pose)
 
             if gradients_repulsive:
@@ -161,10 +169,8 @@ class ChemotaxisBalch(MovementPattern):
 
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
-                    # robot position is within obstacle goal radius, inf can't be
-                    # handled as direction
-                    # --> add vector which brings robot to the boarder of the
-                    # obstacle
+                    # robot position is within obstacle goal radius
+                    # handle infinite repulsion
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
@@ -198,7 +204,6 @@ class ChemotaxisBalch(MovementPattern):
 
     def goal_gradient(self):
         """
-
         :return: vector to goal gradient
         """
         grad = None
@@ -209,7 +214,7 @@ class ChemotaxisBalch(MovementPattern):
 
         if attractive:
             grad = gradient.calc_attractive_gradient(attractive,
-                                                self._buffer.get_own_pose())
+                                                     self._buffer.get_own_pose())
 
         return grad
 
