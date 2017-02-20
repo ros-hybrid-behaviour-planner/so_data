@@ -3,7 +3,8 @@ Created on 16.02.2017
 
 @author: kaiser
 
-Module including sample implementations of decision patterns
+Module including sample implementations of decision patterns: morphogenesis,
+gossip
 """
 
 from patterns import DecisionPattern
@@ -13,45 +14,54 @@ import numpy as np
 from so_data.gradientnode import create_gradient
 
 
-class Morphogenesis(DecisionPattern):
+class MorphogenesisBarycenter(DecisionPattern):
     """
     Find barycenter of robot group
     """
     def __init__(self, buffer, frame, key, moving=True, static=False,
-                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, attraction=-1,
-                 diffusion=np.inf, state='None'):
+                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, diffusion=np.inf,
+                 attraction=-1, state='None', goal_center=2.0,
+                 moving_center=False, attraction_center=1,
+                 diffusion_center=20):
 
-        super(Morphogenesis, self).__init__(buffer, frame, key, state, moving,
-                                            static, goal_radius, ev_factor,
-                                            ev_time, attraction, diffusion)
+        super(MorphogenesisBarycenter, self).__init__(buffer, frame, key,
+                                                      state, moving, static,
+                                                      goal_radius, ev_factor,
+                                                      ev_time, diffusion,
+                                                      attraction)
 
-        self.last_decision = 'None'
+        self.last_state = 'None'
+
+        # Center gradient
+        self.goal_center = goal_center
+        self.moving_center = moving_center
+        self.attraction_center = attraction_center
+        self.diffusion_center = diffusion_center
 
     def value(self):
         """
-        sums up distance to all morphogenetic gradients
-        determines and sets state of robot
+        sums up distance to all morphogenetic gradients determines and
+        sets state of robot
         :return: distance (float)
         """
 
-        list = self._buffer.decision_list(self.frame, moving=self.moving,
-                                                static=self.static)
+        values = self._buffer.agent_list(self.frame, moving=self.moving,
+                                         static=self.static)
         own_pos = self._buffer.get_own_pose()
 
-        if not list:
+        if not values or not own_pos:
             return -1
 
         # determine summed up distances to neighbors
         dist = 0
-        for el in list:
-            d = so_data.calc.get_gradient_distance(own_pos.p, el.p)
-            dist += d
+        for el in values:
+            dist += so_data.calc.get_gradient_distance(own_pos.p, el.p)
 
         # determine whether own agent is gradient
         # true if sum of distances is smallest compared to neighbors
         neighbors = 0
         count = 0
-        for el in list:
+        for el in values:
             neighbors += 1
 
             # sum of distances of neighbor
@@ -74,26 +84,24 @@ class Morphogenesis(DecisionPattern):
         """
         spreads morphogenetic gradient with sum of distances
         + spreads center gradient if robot is barycenter
-        :return:
         """
-
-        super(Morphogenesis, self).spread()
-        self.last_decision = self.state
+        super(MorphogenesisBarycenter, self).spread()
+        self.last_state = self.state
 
         # if barycenter: spread gradient for chemotaxis
         if self.state == 'Center':
             rospy.loginfo("Agent state: Center")
-            # TODO schoener machen
-            center_gradient = create_gradient(self.get_pos.p,
-                                              goal_radius=2.0,
-                                              attraction=1.0, diffusion=20,
-                                              moving=False,
+            center_gradient = create_gradient(self.get_pos().p,
+                                              goal_radius=self.goal_center,
+                                              attraction=self.attraction_center,
+                                              diffusion=self.diffusion_center,
+                                              moving=self.moving_center,
                                               frameid=self.frame)
 
             self._broadcaster.send_data(center_gradient)
 
 
-class Gossip(DecisionPattern):
+class GossipMax(DecisionPattern):
     """
     Gossip mechanism to find maximum value
     """
@@ -101,9 +109,9 @@ class Gossip(DecisionPattern):
                  static=False, diffusion=np.inf, goal_radius=0,
                  ev_factor=1.0, ev_time=0.0):
 
-        super(Gossip, self).__init__(buffer, frame, key, state, moving, static,
-                                     goal_radius, ev_factor, ev_time,
-                                     diffusion)
+        super(GossipMax, self).__init__(buffer, frame, key, state, moving,
+                                        static, goal_radius, ev_factor,
+                                        ev_time, diffusion)
 
     def value(self):
         """
@@ -128,7 +136,7 @@ class Gossip(DecisionPattern):
         spreads message with maximum value
         :return:
         """
-        super(Gossip, self).spread()
+        super(GossipMax, self).spread()
 
         # Show info
         rospy.loginfo("Current max: " + str(self.last_value))
