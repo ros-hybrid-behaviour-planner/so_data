@@ -50,7 +50,7 @@ class ChemotaxisGe(MovementPattern):
                                                                self.repulsion)
 
         # attractive gradient
-        attractive_gradient = self._buffer.get_attractive_gradient(self.frames,
+        attractive_gradient = self._buffer.max_attractive_gradient(self.frames,
                                                                    self.static,
                                                                    self.moving)
 
@@ -99,17 +99,17 @@ class ChemotaxisGe(MovementPattern):
 
     def goal_gradient(self):
         """
-        :return: vector to goal gradient
+        :return: normalized vector to goal gradient
         """
         grad = None
 
-        attractive = self._buffer.get_attractive_gradient(self.frames,
+        attractive = self._buffer.max_attractive_gradient(self.frames,
                                                           self.static,
                                                           self.moving)
+        pose = self._buffer.get_own_pose()
 
-        if attractive:
-            grad = gradient.calc_attractive_gradient_ge(attractive,
-                                                self._buffer.get_own_pose())
+        if attractive and pose:
+            grad = gradient.calc_attractive_gradient(attractive, pose)
 
         return grad
 
@@ -151,15 +151,12 @@ class ChemotaxisBalch(MovementPattern):
                                                                self.repulsion)
 
         # attractive gradient
-        attractive_gradient = self._buffer.get_attractive_gradient(self.frames,
-                                                                   self.static,
-                                                                   self.moving)
+        vector_attraction = self.goal_gradient()
+
+        if not vector_attraction:
+            vector_attraction = Vector3()
 
         if pose:
-            if attractive_gradient:
-                vector_attraction = gradient.calc_attractive_gradient(
-                    attractive_gradient, pose)
-
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
 
@@ -204,18 +201,17 @@ class ChemotaxisBalch(MovementPattern):
         """
         grad = None
 
-        attractive = self._buffer.get_attractive_gradient(self.frames,
+        attractive = self._buffer.max_attractive_gradient(self.frames,
                                                           self.static,
                                                           self.moving)
+        pose = self._buffer.get_own_pose()
 
-        if attractive:
-            grad = gradient.calc_attractive_gradient(attractive,
-                                                     self._buffer.get_own_pose())
+        if attractive and pose:
+            grad = gradient.calc_attractive_gradient(attractive, pose)
 
         return grad
 
 
-# TODO: comments
 # Mechanisms to consider specific sets of gradients
 class CollisionAvoidance(MovementPattern):
     """
@@ -224,13 +220,22 @@ class CollisionAvoidance(MovementPattern):
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(CollisionAvoidance, self).__init__(buffer, frames, repulsion,
                                               moving, static, maxvel, minvel)
 
     def move(self):
+        """
+        calculates movement vector to avoid all repulsive gradients
+        :return: movement vector
+        """
 
         pose = self._buffer.get_own_pose()
         vector_repulsion = Vector3()
@@ -247,10 +252,8 @@ class CollisionAvoidance(MovementPattern):
 
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
-                    # robot position is within obstacle goal radius,
-                    # inf can't be handled as direction
-                    # --> add vector which brings robot to the boarder of the
-                    # obstacle
+                    # robot position is within obstacle goal radius
+                    # handle infinite repulsion
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
@@ -285,13 +288,22 @@ class FollowAll(MovementPattern):
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(FollowAll, self).__init__(buffer, frames, repulsion, moving,
                                         static, maxvel, minvel)
 
     def move(self):
+        """
+        calculates movement vector considering all gradients
+        :return: movement vector
+        """
 
         pose = self._buffer.get_own_pose()
         result = Vector3()
@@ -311,10 +323,8 @@ class FollowAll(MovementPattern):
                     elif grdnt.attraction == -1:
                         grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
-                        # robot position is within obstacle goal radius,
-                        # inf can't be handled as direction
-                        # --> add vector which brings robot to the boarder of
-                        # the obstacle
+                        # robot position is within obstacle goal radius
+                        # handle infinite repulsion
                         if grad.x == np.inf or grad.x == -1 * np.inf:
                             # create random vector with length (goal_radius +
                             # gradient.diffusion)
@@ -336,7 +346,7 @@ class FollowAll(MovementPattern):
                         else:
                             result = calc.add_vectors(result, grad)
 
-            # adjust length
+        # adjust length
         d = calc.vector_length(result)
         if d > self.maxvel:
             result = calc.adjust_length(result, self.maxvel)
@@ -353,13 +363,22 @@ class AvoidAll(MovementPattern):
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(AvoidAll, self).__init__(buffer, frames, repulsion, moving,
                                         static, maxvel, minvel)
 
     def move(self):
+        """
+        calculates movement vector handling all gradients as repulsive
+        :return: movement vector
+        """
 
         pose = self._buffer.get_own_pose()
         result = Vector3()
@@ -373,10 +392,8 @@ class AvoidAll(MovementPattern):
                 for grdnt in gradients:
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
-                    # robot position is within obstacle goal radius,
-                    # inf can't be handled as direction
-                    # --> add vector which brings robot to the boarder of
-                    # the obstacle
+                    # robot position is within obstacle goal radius
+                    # handle infinite repulsion
                     if grad.x == np.inf or grad.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
@@ -395,7 +412,7 @@ class AvoidAll(MovementPattern):
                     else:
                         result = calc.add_vectors(result, grad)
 
-            # adjust length
+        # adjust length
         d = calc.vector_length(result)
         if d > self.maxvel:
             result = calc.adjust_length(result, self.maxvel)
@@ -412,20 +429,28 @@ class FollowMax(MovementPattern):
     def __init__(self, buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
-        :param buffer:
-        :param frame:
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
         """
         super(FollowMax, self).__init__(buffer, frames, repulsion, moving,
                                         static, maxvel, minvel)
 
     def move(self):
-
+        """
+        calculates movement vector based on gradient with strongest potential
+        :return: movement vector
+        """
         pose = self._buffer.get_own_pose()
         g = Vector3()
 
         # strongest gradient
         grad = self._buffer.strongest_gradient(self.frames, self.static,
-                                                   self.moving)
+                                               self.moving)
 
         if pose:
             if grad:
@@ -434,10 +459,8 @@ class FollowMax(MovementPattern):
                 elif grad.attraction == -1:
                     g = gradient.calc_repulsive_gradient(grad, pose)
 
-                    # robot position is within obstacle goal radius,
-                    # inf can't be handled as direction
-                    # --> add vector which brings robot to the boarder of
-                    # the obstacle
+                    # robot position is within obstacle goal radius
+                    # handle infinite repulsion
                     if g.x == np.inf or g.x == -1 * np.inf:
                         # create random vector with length (goal_radius +
                         # gradient.diffusion)
@@ -449,7 +472,6 @@ class FollowMax(MovementPattern):
                         else:
                             g = calc.adjust_length(dv, grad.goal_radius
                                                    + grad.diffusion)
-
 
         # adjust length
         d = calc.vector_length(g)

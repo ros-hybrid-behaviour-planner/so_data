@@ -416,7 +416,8 @@ class SoBuffer(object):
             if (moving or repulsion) and fid in self._moving.keys() \
                     and self._moving[fid]:
                 for pid in self._moving[fid].keys():
-                    if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
+                    if self._moving[fid][pid] and calc.get_gradient_distance(
+                            self._moving[fid][pid][-1].p,
                                                  self._own_pos[-1].p) \
                             <= self._moving[fid][pid][-1].diffusion + \
                                     self._moving[fid][pid][
@@ -469,7 +470,9 @@ class SoBuffer(object):
             if (moving or repulsion) and fid in self._moving.keys() \
                     and self._moving[fid]:
                 for pid in self._moving[fid].keys():
-                    if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
+                    if self._moving[fid][pid] and \
+                                    calc.get_gradient_distance(
+                                        self._moving[fid][pid][-1].p,
                                                   self._own_pos[-1].p) \
                             <= self._moving[fid][pid][-1].diffusion + \
                                     self._moving[fid][pid][
@@ -517,7 +520,9 @@ class SoBuffer(object):
             # moving gradients
             if moving and fid in self._moving.keys():
                 for pid in self._moving[fid].keys():
-                    if calc.get_gradient_distance(self._moving[fid][pid][-1].p,
+                    if self._moving[fid][pid] and \
+                                    calc.get_gradient_distance(
+                                        self._moving[fid][pid][-1].p,
                                                   self._own_pos[-1].p) \
                             <= self._moving[fid][pid][-1].diffusion + \
                                     self._moving[fid][pid][
@@ -528,7 +533,7 @@ class SoBuffer(object):
 
         return gradients_attractive
 
-    def get_attractive_gradient(self, frameids=None, static=True, moving=True):
+    def max_attractive_gradient(self, frameids=None, static=True, moving=True):
         """
         Method to return relatively nearest attractive gradient
         based on attraction values of Balch & Hybinette
@@ -579,10 +584,10 @@ class SoBuffer(object):
             for grad in gradients:
                 if grad.attraction == 1:
                     g = gradient.calc_attractive_gradient(grad,
-                                                             self._own_pos[-1])
+                                                          self._own_pos[-1])
                 else:
                     g = gradient.calc_repulsive_gradient(grad,
-                                                            self._own_pos[-1])
+                                                         self._own_pos[-1])
 
                 if abs(g.x) == np.inf or abs(g.y) == np.inf or \
                                 abs(g.z) == np.inf:
