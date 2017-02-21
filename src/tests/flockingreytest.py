@@ -10,7 +10,7 @@ import unittest
 from geometry_msgs.msg import Vector3, Quaternion
 from so_data.flockingrey import *
 import rospy
-from so_data.so_data_examples.gradientnode import create_gradient
+from so_data.gradientnode import create_gradient
 
 
 class FlockingAITest(unittest.TestCase):

@@ -6,15 +6,13 @@ Created on 14.11.2016
 Unit test for sobuffer.py
 """
 
-from so_data.sobuffer import SoBuffer, AGGREGATION, REPULSION, RESULT
+from so_data.sobuffer import SoBuffer, AGGREGATION
 import unittest
-import so_data.calc
 from so_data.msg import SoMessage
 import rospy
 from geometry_msgs.msg import Vector3, Quaternion
 from copy import deepcopy
 from std_msgs.msg import Header
-import numpy as np
 
 
 class SoBufferTest(unittest.TestCase):
@@ -23,85 +21,31 @@ class SoBufferTest(unittest.TestCase):
     """
     maxDiff = None
 
-    def test_quorum(self):
+    def test_agent_list(self):
         """
-        test quorum / density function
+        test agent list function
         :return:
         """
-        bffr = SoBuffer()
+        bffr = SoBuffer(view_distance=2.0)
+
+        self.assertEqual(bffr.agent_list(bffr.pose_frame), [])
 
         # 2 neighbors within view, one outside view
         bffr._moving = {
             'robot': {
                 'robot1': [SoMessage(),
-                       SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1,
-                                 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, True,
-                                 [])],
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
                 'robot2': [SoMessage(),
-                       SoMessage(None, None, Vector3(5, 6, 0), Quaternion(), 1,
-                                 2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                 True, [])],
-                'robot3': [SoMessage(), SoMessage(), SoMessage(None, None,
-                                                           Vector3(1, 2, 0),
-                                                           Quaternion(),
-                                                           1, 4.0, 1.0, 1.0, 0,
-                                                           None, Vector3(),
-                                                           0, 0,
-                                                           True, [])],
-                'robot4': []
-            }
-        }
-
-        bffr._static = {
-            'None': [SoMessage(None, None, Vector3(5, 6, 5), Quaternion(), 1,
-                               1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                               [])]
-        }
-
-        bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
-                                   1, 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                   False, [])]
-
-        # no. of robots in view distance < threshold
-        bffr.threshold = 5
-        self.assertEqual(bffr.quorum(), False)
-        bffr.threshold = 3
-        self.assertEqual(bffr.quorum(), False)
-
-        # no. of robots in view distance > threshold
-        bffr.threshold = 2
-        self.assertEqual(bffr.quorum(), True)
-        bffr.threshold = 1
-        self.assertEqual(bffr.quorum(), True)
-
-    def test_quorum_list(self):
-        """
-        test quorum / density function
-        :return:
-        """
-        bffr = SoBuffer(view_distance=2.0, result_static=False,
-                        result_moving=True)
-
-        self.assertEqual(bffr.quorum_list(), [])
-
-        # 2 neighbors within view, one outside view
-        bffr._moving = {
-            'robot': {
-                'robot1': [SoMessage(),
-                       SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1,
-                                 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, True,
-                                 [])],
-                'robot2': [SoMessage(),
-                       SoMessage(None, None, Vector3(5, 6, 0), Quaternion(), 1,
-                                 2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                 True, [])],
-                'robot3': [SoMessage(), SoMessage(), SoMessage(None, None,
-                                                           Vector3(1, 2, 0),
-                                                           Quaternion(),
-                                                           1, 4.0, 1.0, 1.0, 0,
-                                                           None, Vector3(),
-                                                           0, 0,
-                                                           True, [])],
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
                 'robot4': []
             }
         }
@@ -122,363 +66,8 @@ class SoBufferTest(unittest.TestCase):
             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
                       1.0, 0, None, Vector3(), 0, 0, True, [])]
 
-        self.assertEqual(bffr.quorum_list(), result)
-        bffr.result_static = True
-        self.assertEqual(bffr.quorum_list(), result)
-
-    # GOAL REACHED
-    def test_get_goal_reached(self):
-        """
-        test get_goal_reached method
-        :return:
-        """
-        bffr = SoBuffer()
-
-        # no gradients available --> True
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_goal_reached(), False)
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(7, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'test': [
-                SoMessage(None, None, Vector3(5, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(7, 2, 3), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 2, 6), Quaternion(), 1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]}
-
-        # goal reached
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_goal_reached(), True)
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 1), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_goal_reached(), True)
-        # goal not reached
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(6, 7, 2), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_goal_reached(), False)
-        # only consider some frameIDs
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        bffr.chem_frames = ['gradient']
-        self.assertEqual(bffr.get_goal_reached(), True)
-        bffr.chem_frames = ['None', 'test']
-        self.assertEqual(bffr.get_goal_reached(), False)
-
-    # no potential
-    def test_get_attraction_bool(self):
-        """
-        test get_no_potential method
-        :return:
-        """
-        bffr = SoBuffer()
-
-        # no gradients available --> True
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_attraction_bool(), False)
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(7, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'test': [
-                SoMessage(None, None, Vector3(5, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(7, 2, 3), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 2, 6), Quaternion(), 1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]}
-
-        # potential
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_attraction_bool(), True)
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 1), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_attraction_bool(), True)
-        # no potential
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(0, 9, 9), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_attraction_bool(), False)
-
-        # only consider some frameIDs
-        # no potential
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        bffr.chem_frames = ['gradient']
-        self.assertEqual(bffr.get_attraction_bool(), False)
-        # potential
-        bffr.chem_frames = ['None', 'test']
-        self.assertEqual(bffr.get_attraction_bool(), True)
-
-    def test_get_neighbors_bool(self):
-        """
-        test get_neighbors_bool method
-        :return:
-        """
-
-        bffr = SoBuffer(view_distance=2.0,
-                        repulsion=REPULSION.REPULSION)
-
-        # no gradients available --> True
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_neighbors_bool(), True)
-
-        bffr._moving = {
-            'robot': {'robot1': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 1, 2), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }}
-
-        self.assertEqual(bffr.get_neighbors_bool(), False)
-
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(9, 9, 9), Quaternion(), -1, 3.0, 1.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr.get_neighbors_bool(), True)
-
-    # GRADIENT CALCULATIONS
-    def test_calc_attractive_gradient(self):
-        """
-        test _calc_attractive_gradient method for 2D and 3D
-        """
-        bffr = SoBuffer()
-
-        # 2D - D < r <= C
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), 1,
-                             5.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_attractive_gradient(gradient),
-                         Vector3(0.6 * 0.8, 0.8 * 0.8, 0))
-
-        # 2D - r > C
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), 1,
-                             2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_attractive_gradient(gradient),
-                         Vector3(0.6, 0.8, 0))
-
-        # 2D - r <= D
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), 1,
-                             2.0, 5.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_attractive_gradient(gradient),
-                         Vector3(0, 0, 0))
-
-        # 2D - r > C - non zero robot pose
-        gradient = SoMessage(None, None, Vector3(4, 5, 0), Quaternion(), 1,
-                             2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 1, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_attractive_gradient(gradient),
-                         Vector3(0.6, 0.8, 0))
-
-        # 3D - D < r <= C
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), 1,
-                             6.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 4), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        result = Vector3((2.0 / 7.0) * (5.0 / 6.0), (3.0 / 7.0) * (5.0 / 6.0),
-                         (6.0 / 7.0) * (5.0 / 6.0))
-        self.assertEqual(bffr._calc_attractive_gradient(gradient), result)
-
-        # 3D - r > C
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), 1,
-                             5.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        result = Vector3((2.0 / 7.0), (3.0 / 7.0), (6.0 / 7.0))
-        self.assertEqual(bffr._calc_attractive_gradient(gradient), result)
-
-        # 3D - r <= D
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), 1,
-                             5.0, 7.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_attractive_gradient(gradient),
-                         Vector3(0, 0, 0))
-
-    def test_calc_repulsive_gradient(self):
-        """
-        test _calc_repulsive_gradient method
-        """
-        bffr = SoBuffer()
-
-        # 2D - D < r <= C
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), -1,
-                             5.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(-0.6 * 0.2, -0.8 * 0.2, 0))
-
-        # 2D - r > C
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), -1,
-                             2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(0, 0, 0))
-
-        # 2D - r <= D
-        gradient = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), -1,
-                             2.0, 5.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(-1.0 * np.inf, -1.0 * np.inf, np.inf))
-
-        # 2D - r > C - non zero robot pose
-        gradient = SoMessage(None, None, Vector3(4, 5, 0), Quaternion(), -1,
-                             2.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 1, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(0, 0, 0))
-
-        # 3D - D < r <= C
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), -1,
-                             6.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 4), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        result = Vector3((-2.0 / 7.0) * (1.0 / 6.0), (-3.0 / 7.0) *
-                         (1.0 / 6.0), (-6.0 / 7.0) * (1.0 / 6.0))
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient), result)
-
-        # 3D - r > C
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), -1,
-                             5.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(0, 0, 0))
-
-        # 3D - r <= D
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), -1,
-                             5.0, 7.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        self.assertEqual(bffr._calc_repulsive_gradient(gradient),
-                         Vector3(-1 * np.inf, -1 * np.inf, -1 * np.inf))
-
-    def test_calc_attractive_gradient_ge(self):
-        """
-        test calc attractive gradient method based on Ge & Cui paper
-        :return:
-        """
-        bffr = SoBuffer()
-        # robot within diffusion radius + goal radius of gradient
-        gradient = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(), -1,
-                             10.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient),
-                         Vector3(3, 5, 10))
-
-        # robot within goal radius of gradient
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(3, 7, 10), Quaternion(), -1, 3.0,
-                      0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient),
-                         Vector3(0, 0, 0))
-
-        # robot without radius + goal radius of gradient, but gradient is
-        # within view_distance
-        gradient = SoMessage(None, None, Vector3(2, 3, 6), Quaternion(), -1,
-                             4.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_attractive_gradient_ge(gradient),
-                         Vector3((2.0 / 7.0) * 6.0, (3.0 / 7.0) * 6.0,
-                                 (6.0 / 7.0) * 6.0))
-
-    def test_repulsive_gradient_ge(self):
-        """
-        test repulsion vector calculation based on Ge
-        :return:
-        """
-        bffr = SoBuffer()
-        gradient = SoMessage(None, None, Vector3(4, 2, 0), Quaternion(), -1,
-                             4.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False,
-                             [])
-        goal = SoMessage(None, None, Vector3(1, 0, 0), Quaternion(), 1, 3.0,
-                         1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
-
-        # diffusion and goal_radius of gradient shorter than distance
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(8, 8, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal),
-                         Vector3())
-
-        # agent within goal area of repulsive gradient
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(3, 2, 0), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-        self.assertEqual(bffr._calc_repulsive_gradient_ge(gradient, goal),
-                         Vector3(-np.inf, np.inf, np.inf))
-
-        # robot within reach of gradient
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), -1, 3.0,
-                      0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        v = bffr._calc_repulsive_gradient_ge(gradient, goal)
-        v.x = round(v.x, 4)
-        v.y = round(v.y, 4)
-        v.z = round(v.z, 4)
-        self.assertEqual(v,
-                         Vector3(round((1.0 - 4.0) / 5.0 * (1.0 / 3.0 -
-                                                            1.0 / 4.0) *
-                                       (2.0 / 3.0), 4),
-                                 round(0.5 * ((1.0 / 3.0 - 1.0 / 4.0) ** 2) +
-                                       -0.8 * (1.0 / 3.0 - 1.0 / 4.0) * (
-                                           2.0 / 3.0), 4),
-                                 0.0))
+        self.assertEqual(bffr.agent_list(bffr.pose_frame), result)
+        self.assertEqual(bffr.agent_list(bffr.pose_frame, static=True), result)
 
     # EVAPORATION
     def test_evaporation_buffer(self):
@@ -686,7 +275,8 @@ class SoBufferTest(unittest.TestCase):
 
     def test_store_data_max_aggregation_distance(self):
         """
-        test store_data method aggregation option = max, aggregation distance = 0.0
+        test store_data method aggregation option = max,
+        aggregation distance = 0.0
         """
         bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX},
                         aggregation_distance=0.0)
@@ -1103,446 +693,6 @@ class SoBufferTest(unittest.TestCase):
 
         self.assertEqual(bffr._static, testlist)
 
-    # Collision Avoidance / Repulsion
-    def test_gradient_repulsion(self):
-        """
-        test gradient repulsion method based on gradients
-        :return:
-        """
-
-        bffr = SoBuffer(id='robot1')
-
-        # no own position specified
-        self.assertEqual(bffr.repulsion_gradient(), Vector3())
-
-        bffr._own_pos = [
-            SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 4, 0), Quaternion(),
-                      1, 4.0, 0.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-            SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 2, 0), Quaternion(), 1, 2.0, 0.0, 1.0, 0,
-                      None, Vector3(), 0, 0, False, [])
-        ]
-
-        # no neighbors specified
-        self.assertEqual(bffr.repulsion_gradient(), Vector3())
-
-        bffr._moving = {
-            'robot': {'robot2': [
-                SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot2',
-                          Vector3(1, 3, 0), Quaternion(), -1, 1.0, 1.0, 1.0, 0,
-                          None, Vector3(), 0, 0, False, [])
-            ],
-            'robot3': [
-                SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot3',
-                          Vector3(2, 2, 0), Quaternion(), -1, 4.0, 1.0, 1.0, 0,
-                          None, Vector3(), 0, 0, False, []),
-                SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot3',
-                          Vector3(3, 2, 0), Quaternion(), -1, 1.0, 0.8, 1.0, 0,
-                          None, Vector3(), 0, 0, False, [])
-            ]}
-        }
-        # calculate resulting vector
-        result = bffr.repulsion_gradient()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        # calculate vector
-        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
-
-        # neighbor within goal_radius - returns vector with
-        # ||vector|| = repulsion_radius
-        bffr._moving = {
-            'robot': {'robot2': [
-                SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot2',
-                          Vector3(2, 1.5, 0), Quaternion(), -1, 2.0, 1.0, 1.0,
-                          0, None, Vector3(), 0, 0,
-                          False, [])
-            ]}
-        }
-
-        d = round(so_data.calc.vector_length(bffr.repulsion_gradient()), 0)
-
-        # calculate vector
-        self.assertEqual(d, 2.0)
-
-    def test_repulsion_vector(self):
-        """
-        test gradient repulsion method based on Fernandez-Marquez et al.
-        :return:
-        """
-        bffr = SoBuffer(id='robot1', view_distance=2.0)
-
-        # no own position specified
-        self.assertEqual(bffr.repulsion_repulsion(), Vector3())
-
-        bffr._own_pos = [
-            SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 4, 0), Quaternion(), -1, 4.0, 1.0, 1.0, 0,
-                      rospy.Time.now(), Vector3(), 0, 0, False, []),
-            SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 2, 0), Quaternion(),
-                      -1, 1.0, 0.0, 1.0, 0, rospy.Time.now(), Vector3(), 0, 0,
-                      False, [])
-        ]
-
-        # no neighbors specified
-        self.assertEqual(bffr.repulsion_repulsion(), Vector3())
-
-        bffr._moving = {
-            'robot':
-                {'robot2': [SoMessage(Header(None, rospy.Time.now(), 'None'), 'None',
-                          Vector3(1, 3, 0), Quaternion(), -1, 1.0, 1.0, 1.0, 0,
-                          rospy.Time.now(), Vector3(), 0, 0, False, [])],
-                'robot3':
-                    [SoMessage(Header(None, rospy.Time.now(), 'None'), 'None',
-                          Vector3(2, 2, 0), Quaternion(), -1, 4.0, 1.0, 1.0, 0,
-                          rospy.Time.now(), Vector3(), 0, 0, False, []),
-                SoMessage(Header(None, rospy.Time.now(), 'None'), 'None',
-                          Vector3(3, 2, 0), Quaternion(), -1, 1.0, 0.8, 1.0, 0,
-                          rospy.Time.now(), Vector3(), 0, 0, False, [])],
-                'robot4': []
-        }
-        }
-
-        # calculate resulting vector
-        result = bffr.repulsion_repulsion()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        # calculate vector
-        self.assertEqual(result, Vector3(-0.88, -0.48, 0))
-
-        # neighbor within goal_radius - returns vector with
-        # ||vector|| = repulsion_radius
-        bffr._moving = {
-            'robot': {'robot2': [
-                SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                          Vector3(2, 2, 0), Quaternion(), -1, 2.0, 1.0, 1.0, 0,
-                          rospy.Time.now(), Vector3(), 0, 0, False, [])
-            ]}
-        }
-
-        d = round(so_data.calc.vector_length(bffr.repulsion_repulsion()), 0)
-
-        # calculate vector
-        self.assertEqual(d, 1.0)
-
-    def test_get_collision_avoidance(self):
-        """
-        test get collision avoidance method
-        :return:
-        """
-
-        bffr = SoBuffer(id='robot1', repulsion=REPULSION.GRADIENT,
-                        result=[], max_velocity=2.0, result_static=False,
-                        view_distance=1.5)
-
-        bffr._own_pos = [
-            SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 4, 0), Quaternion(), -1, 5.0, 0.0, 1.0, 0,
-                      None, Vector3(), 0, 0, False, []),
-            SoMessage(Header(None, rospy.Time.now(), 'None'), 'None',
-                      Vector3(2, 2, 0), Quaternion(), -1, 1.0, 0.0, 1.0, 0,
-                      None, Vector3(), 0, 0, False, [])
-        ]
-
-        bffr._moving = {
-            'robot':
-                {'robot2':
-                [SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot2',
-                          Vector3(1, 3, 0), Quaternion(), -1, 1.0, 1.0, 1.0, 0,
-                          None, Vector3(), 0, 0, False, [])],
-                 'robot3':
-                     [SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot3',
-                          Vector3(2, 2, 0), Quaternion(), -1, 4.0, 1.0, 1.0, 0,
-                          None, Vector3(), 0, 0, False, []),
-                SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot3',
-                          Vector3(3, 2, 0), Quaternion(), -1, 1.0, 0.8, 1.0, 0,
-                          None, Vector3(), 0, 0, False, []) ]}
-        }
-
-        # calculate resulting vector
-        result = bffr.get_current_gradient()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        # calculate vector
-        self.assertEqual(result, Vector3(-0.39, -0.41, 0.0))
-
-        bffr.repulsion = REPULSION.REPULSION
-
-        # calculate resulting vector
-        result = bffr.get_current_gradient()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        # calculate vector
-        self.assertEqual(result, Vector3(-0.88, -0.48, 0.0))
-
-    # Aggregation return vectors
-    def test_result_max(self):
-        """
-        test result max method
-        :return:
-        """
-        bffr = SoBuffer(result=[RESULT.MAX], result_moving=False)
-
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        bffr._moving = {
-            'robot1': {'None': [
-                SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0,
-                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]},
-            'robot2': {}
-        }
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(7, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'test': [
-                SoMessage(None, None, Vector3(5, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(7, 2, 3), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 2, 6), Quaternion(), 1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        # with all frameIDs
-        result = bffr.result_max()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
-
-        # only one frameID considered - no gradient within view
-        bffr.chem_frames = ['None']
-        result = bffr.result_max()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3())
-
-        # two frameIDs
-        bffr.chem_frames = ['None', 'gradient']
-        result = bffr.result_max()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
-
-    def test_result_near(self):
-        """
-        test aggregate nearest repulsion method
-        :return:
-        """
-        bffr = SoBuffer(result=[RESULT.NEAR])
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        # only one frameID + repulsive gradient is not considered
-        bffr.chem_frames = ['gradient']
-        result = bffr.result_near()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
-
-        # all frameIDs
-        bffr.chem_frames = []
-        result = bffr.result_near()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
-
-    def test_result_reach(self):
-        """
-        test aggregate nearest Ge method, do not consider moving gradients
-        :return:
-        """
-
-        bffr = SoBuffer(result=[RESULT.REACH], repulsion=None,
-                        result_moving=False)
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), -1, 3.0,
-                      0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 0, 0), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(4, 2, 0), Quaternion(), -1, 4.0,
-                          2.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None,  Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        bffr._moving = {
-            'robot1': {'None': [
-                SoMessage(None, None, Vector3(1, -2, 1), Quaternion(), -1, 4.0,
-                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]},
-            'robot2': {}
-        }
-
-        # only one frameID + repulsive gradient is not considered
-        pose = Vector3(1, -2, 0)
-        bffr.chem_frames = ['gradient']
-        result = bffr.result_reach()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(0.0, 2.0, 0.0))
-
-        # all frameIDs
-        bffr.chem_frames = []
-        result = bffr.result_reach()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(-0.03, 1.96, 0.0))
-
-    def test_result_all(self):
-        """
-        test aggregate all method
-        :return:
-        """
-        bffr = SoBuffer(result=[RESULT.ALL])
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        # only one frameID + repulsive gradient is not considered as outside
-        # view distance
-        bffr.chem_frames = ['gradient']
-        result = bffr.result_all()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
-
-        # all frameIDs - everything within view is aggregated
-        bffr.chem_frames = []
-        result = bffr.result_all()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
-
-    def test_result_avoid(self):
-        """
-        test aggregate avoid all method
-        :return:
-        """
-
-        bffr = SoBuffer(result=[RESULT.ALL])
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        # only one frameID + repulsive gradient is not considered as outside
-        # view distance
-        bffr.chem_frames = ['gradient']
-        result = bffr.result_avoid()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(-0.41, 0.0, 0.41))
-
-        # all frameIDs - everything within view is aggregated
-        bffr.chem_frames = []
-        result = bffr.result_avoid()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3(0.02, -0.44, 0.85))
-
-    def test_get_attractive_distance(self):
-        """
-        test get_attractive_distance method
-        :return:
-        """
-        bffr = SoBuffer(result=[RESULT.NEAR])
-
-        bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
-
-        bffr._static = {
-            'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
-            'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 10, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
-        }
-
-        self.assertEqual(bffr.get_attractive_distance(), np.sqrt(2) - 1)
-
     def test_aggregation_newparent(self):
         """
         test aggregation_newparent method
@@ -1579,6 +729,233 @@ class SoBufferTest(unittest.TestCase):
         bffr.store_data(msg)
 
         self.assertEqual(bffr._static, testlist)
+
+    def test_aggregation_newframe(self):
+        """
+        test aggregation_newframe method
+        :return:
+        """
+        bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.NEWFRAME})
+
+        now = rospy.Time.now()
+
+        testlist = {'robot': []}
+
+        # replaced by fourth robot1 message
+        msg = SoMessage(Header(None, now - rospy.Duration(10), 'robot'),
+                        'robot1', Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0,
+                        1.0, 0.8, 5, None, Vector3(), 0, 0, False, [])
+        bffr.store_data(msg)
+
+        msg = SoMessage(Header(None, now - rospy.Duration(5), 'robot'),
+                        'robot5', Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0,
+                        1.0, 0.8, 5, None, Vector3(), 0, 0, False, [])
+        bffr.store_data(msg)
+
+        msg = SoMessage(Header(None, now, 'robot'), 'robot3',
+                        Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0, 1.0, 0.8,
+                        5, None, Vector3(), 0, 0, False, [])
+        bffr.store_data(msg)
+
+        msg = SoMessage(Header(None, now, 'robot'), 'robot1',
+                        Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0, 1.0, 0.8,
+                        5, None, Vector3(), 0, 0, False, [])
+        testlist['robot'].append(msg)
+        bffr.store_data(msg)
+
+        self.assertEqual(bffr._static, testlist)
+
+    def test_repulsive_gradients(self):
+        """
+        test repulsive gradients method
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot': {
+                'robot1': [SoMessage(),
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), -1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot2': [SoMessage(),
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot4': []
+            }
+        }
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), -1,
+                               1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []), SoMessage()],
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        result = [
+            SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), -1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, True, [])]
+
+        self.assertEqual(bffr.repulsive_gradients(static=False), result)
+
+        result = [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), -1,
+                            1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
+                  SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), -1, 1.0,
+                            1.0, 1.0, 0, None, Vector3(), 0, 0, True, [])]
+
+        self.assertEqual(bffr.repulsive_gradients(), result)
+
+    def test_attractive_gradients(self):
+        """
+        test attractive gradients method
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot': {
+                'robot1': [SoMessage(),
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot2': [SoMessage(),
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), -1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot4': []
+            }
+        }
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), 1,
+                               1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []), SoMessage()],
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        result = [
+            SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, True, [])]
+
+        self.assertEqual(bffr.attractive_gradients(static=False), result)
+
+        result = [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), 1,
+                            1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
+                  SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0,
+                            1.0, 1.0, 0, None, Vector3(), 0, 0, True, [])]
+
+        self.assertEqual(bffr.attractive_gradients(), result)
+
+    def test_gradients(self):
+        """
+        test gradients method
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot': {
+                'robot1': [SoMessage(),
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot2': [SoMessage(),
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), -1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot4': []
+            }
+        }
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), 1,
+                               1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []), SoMessage()],
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        result = [
+            SoMessage(None, None, Vector3(1, 2, 0), Quaternion(), -1, 4.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, True, []),
+            SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, True, [])
+        ]
+
+        self.assertEqual(bffr.gradients(static=False), result)
+
+        result = [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(), 1,
+                            1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
+                  SoMessage(None, None, Vector3(1, 2, 0), Quaternion(), -1,
+                            4.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, True, []),
+                  SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0,
+                            1.0, 1.0, 0, None, Vector3(), 0, 0, True, [])]
+
+        self.assertEqual(bffr.gradients(), result)
+
+    def test_max_attractive_gradient(self):
+        """
+        test max attractive and strongest gradient methods
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 3), Quaternion(), 1,
+                               1.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(3, 3, 0), Quaternion(), -1,
+                               0.2, 0.5, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1,
+                               5.0, 0.2, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     ],
+            'Center': [SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
+                                 -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, []),
+                       SoMessage(None, None, Vector3(3, 1, 2), Quaternion(),
+                                 -1, 3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, [])]
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        self.assertEqual(bffr.max_attractive_gradient(),
+                         SoMessage(None, None, Vector3(2, 2, 0), Quaternion(),
+                                   1, 5.0, 0.2, 1.0, 0, None, Vector3(), 0, 0,
+                                   False, []))
+
+        self.assertEqual(bffr.strongest_gradient(),
+                         SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
+                                   -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                                   False, []))
+
 
 # run tests - start roscore before running tests
 if __name__ == "__main__":

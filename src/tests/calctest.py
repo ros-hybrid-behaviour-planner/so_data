@@ -37,11 +37,19 @@ class CalcTest(unittest.TestCase):
 
     def test_add_vector(self):
         """
-        test calculation of add vectors
+        test calculation of add vectors method
         """
         self.assertEqual(
             so_data.calc.add_vectors(Vector3(0, 2, 3), Vector3(1, 3, -2)),
             Vector3(1, 5, 1))
+
+    def test_adjust_length(self):
+        """
+        test calculation
+        """
+
+        self.assertEqual(so_data.calc.adjust_length(Vector3(1, 0, 0), 5.0),
+                         Vector3(5, 0, 0))
 
 
 # run tests - start roscore before running tests

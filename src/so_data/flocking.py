@@ -209,3 +209,81 @@ def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius,
     vel = velocity_consensus(neighbors, agent, epsilon, view_distance, h)
 
     return calc.add_vectors(grad, vel)
+
+
+
+# TODO: make class
+# FLOCKING
+# flocking
+self.a = a
+self.b = b
+self.h = h
+self.epsilon = epsilon
+self.max_acceleration = max_acceleration
+self.max_velocity = max_velocity
+
+def result_flocking(self):
+    """
+    flocking calculations based on Olfati-Saber
+    :return: movement vector
+    """
+    view = []
+
+    # own position - we need minimum two values to calculate velocities
+    if len(self._own_pos) >= 2:
+        pose = self._own_pos[-1].p
+    else:
+        return
+
+    # neighbors of agent
+    if self._moving:
+        for val in self._moving.keys():
+            # check if neighbor is in sight
+            if calc.get_gradient_distance(self._moving[val][-1].p,
+                                          pose) <= self._moving[val][
+                -1].diffusion + self._moving[val][-1].goal_radius \
+                    + self._view_distance:
+                view.append(self._moving[val])
+
+    # create array of tuples with neighbor position - neighbor velocity &
+    # own pos & velocity (p, v)
+    Boid = collections.namedtuple('Boid', ['p', 'v'])
+
+    agent = Boid(self._own_pos[-1].p,
+                 flocking.agent_velocity(self._own_pos[-1],
+                                         self._own_pos[-2]))
+
+    neighbors = []
+    for neighbor in view:
+        if len(neighbor) >= 2:  # at least 2 datapoints are available
+            neighbors.append(Boid(neighbor[-1].p,
+                                  flocking.agent_velocity(neighbor[-1],
+                                                          neighbor[-2])))
+
+    if self._own_pos:
+        repulsion_radius = self._own_pos[-1].diffusion + self._own_pos[
+           -1].goal_radius
+    else:
+        repulsion_radius = self._view_distance
+
+    # calculate new velocity based on steering force
+    # find out how to, probably like this:
+    # velocity to be set = current vel + flocking steering force
+
+    acceleration = flocking.flocking_vector(neighbors, agent,
+                                            self.epsilon,
+                                            self.a, self.b,
+                                            repulsion_radius,
+                                            self._view_distance,
+                                            self.h)
+
+    if calc.vector_length(acceleration) > self.max_acceleration:
+        acceleration = calc.adjust_length(acceleration,
+                                          self.max_acceleration)
+
+    velocity = calc.add_vectors(agent.v, acceleration)
+
+    if calc.vector_length(velocity) > self.max_velocity:
+       velocity = calc.adjust_length(velocity, self.max_velocity)
+
+    return velocity
