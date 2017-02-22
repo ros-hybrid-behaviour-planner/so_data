@@ -65,7 +65,7 @@ class DecisionPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, frame=None, key=None, state=None, moving=True,
+    def __init__(self, buffer, frame=None, key=None, value=None, state=None, moving=True,
                  static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
                  diffusion=20, attraction=0):
 
@@ -79,10 +79,12 @@ class DecisionPattern(object):
         self.moving = moving
         self.static = static
 
-        # remember last calculated value
+        # current & last in behaviour used value
         self.last_value = -1
+        self.value = value
 
-        # set state
+        # current & last in behaviour used state
+        self.last_state = 'None'
         self.state = state
 
         # message
@@ -93,7 +95,7 @@ class DecisionPattern(object):
         self.diffusion = diffusion
 
     @abstractmethod
-    def value(self):
+    def calc_value(self):
         """
         method to determine current key-value value
         :return:
@@ -129,7 +131,7 @@ class DecisionPattern(object):
         msg.moving = True  # set to moving as gradient is tied to agent
 
         # determine value
-        self.last_value = self.value()
+        self.last_value = self.calc_value()
         msg.payload.append(KeyValue(self.key, "%.9f" % self.last_value))
 
         # spread gradient

@@ -20,7 +20,7 @@ class MorphogenesisBarycenter(DecisionPattern):
     """
     def __init__(self, buffer, frame, key, center_frame='Center', moving=True,
                  static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
-                 diffusion=np.inf, attraction=-1, state='None',
+                 diffusion=np.inf, attraction=-1, value=0, state='None',
                  goal_center=2.0, moving_center=False, attraction_center=1,
                  diffusion_center=20):
         """
@@ -43,12 +43,10 @@ class MorphogenesisBarycenter(DecisionPattern):
         """
 
         super(MorphogenesisBarycenter, self).__init__(buffer, frame, key,
-                                                      state, moving, static,
-                                                      goal_radius, ev_factor,
-                                                      ev_time, diffusion,
-                                                      attraction)
-
-        self.last_state = 'None'
+                                                      value, state, moving,
+                                                      static, goal_radius,
+                                                      ev_factor, ev_time,
+                                                      diffusion, attraction)
 
         # Center gradient
         self.goal_center = goal_center
@@ -57,7 +55,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         self.diffusion_center = diffusion_center
         self.center_frame = center_frame
 
-    def value(self):
+    def calc_value(self):
         """
         sums up distance to all morphogenetic gradients determines and
         sets state of robot
@@ -69,12 +67,15 @@ class MorphogenesisBarycenter(DecisionPattern):
         own_pos = self._buffer.get_own_pose()
 
         if not values or not own_pos:
-            return -1
+            return 0
 
         # determine summed up distances to neighbors
         dist = 0
         for el in values:
             dist += so_data.calc.get_gradient_distance(own_pos.p, el.p)
+
+        # store current dist
+        self.value = dist
 
         # determine whether own agent is gradient
         # true if sum of distances is smallest compared to neighbors
@@ -97,7 +98,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         else:
             self.state = 'None'
 
-        return dist
+        return self.value
 
     def spread(self):
         """
@@ -124,7 +125,7 @@ class GossipMax(DecisionPattern):
     """
     Gossip mechanism to find maximum value
     """
-    def __init__(self, buffer, frame, key, state=1, moving=True,
+    def __init__(self, buffer, frame, key, value=1, state=None, moving=True,
                  static=False, diffusion=np.inf, goal_radius=0,
                  ev_factor=1.0, ev_time=0.0):
         """
@@ -141,11 +142,11 @@ class GossipMax(DecisionPattern):
         :param state: robot state
         """
 
-        super(GossipMax, self).__init__(buffer, frame, key, state, moving,
+        super(GossipMax, self).__init__(buffer, frame, key, value, state, moving,
                                         static, goal_radius, ev_factor,
                                         ev_time, diffusion)
 
-    def value(self):
+    def calc_value(self):
         """
         determines maximum received value by all agent gradients
         :return: maximum number
@@ -158,10 +159,10 @@ class GossipMax(DecisionPattern):
             index = k.index(self.key)
 
             tmp = float(el.payload[index].value)
-            if self.state < tmp:
-                self.state = tmp
+            if self.value < tmp:
+                self.value = tmp
 
-        return self.state
+        return self.value
 
     def spread(self):
         """
