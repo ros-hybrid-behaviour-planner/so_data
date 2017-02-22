@@ -18,10 +18,10 @@ class MorphogenesisBarycenter(DecisionPattern):
     """
     Find barycenter of robot group
     """
-    def __init__(self, buffer, frame, key, moving=True, static=False,
-                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, diffusion=np.inf,
-                 attraction=-1, state='None', goal_center=2.0,
-                 moving_center=False, attraction_center=1,
+    def __init__(self, buffer, frame, key, center_frame='Center', moving=True,
+                 static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
+                 diffusion=np.inf, attraction=-1, state='None',
+                 goal_center=2.0, moving_center=False, attraction_center=1,
                  diffusion_center=20):
         """
         initialize behaviour
@@ -55,6 +55,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         self.moving_center = moving_center
         self.attraction_center = attraction_center
         self.diffusion_center = diffusion_center
+        self.center_frame = center_frame
 
     def value(self):
         """
@@ -114,7 +115,7 @@ class MorphogenesisBarycenter(DecisionPattern):
                                               attraction=self.attraction_center,
                                               diffusion=self.diffusion_center,
                                               moving=self.moving_center,
-                                              frameid=self.frame)
+                                              frameid=self.center_frame)
 
             self._broadcaster.send_data(center_gradient)
 
@@ -178,11 +179,9 @@ class Quorum(DecisionPattern):
     """
     Quorum Sensing
     """
-
-    def __init__(self, buffer, threshold, frame=None, state=False,
-                 moving=True,
-                 static=False, diffusion=np.inf, goal_radius=0,
-                 ev_factor=1.0, ev_time=0.0):
+    def __init__(self, buffer, threshold, frame=None, state=False, moving=True,
+                 static=False, diffusion=np.inf, goal_radius=0, ev_factor=1.0,
+                 ev_time=0.0):
         """
         initialize behaviour
         :param buffer: SoBuffer
@@ -196,15 +195,13 @@ class Quorum(DecisionPattern):
         :param diffusion: gossip gradient diffusion
         :param state: robot state
         """
-
         super(Quorum, self).__init__(buffer, frame, None, state, moving,
-                                     static, goal_radius, ev_factor,
-                                     ev_time,
+                                     static, goal_radius, ev_factor, ev_time,
                                      diffusion)
 
         # set standard agent frame if no frame is specified
         if not frame:
-           self.frames = buffer.pose_frame
+            self.frames = buffer.pose_frame
 
         self.threshold = threshold
 
@@ -220,6 +217,6 @@ class Quorum(DecisionPattern):
         if len(values) >= self.threshold:
             self.state = True
         else:
-           self.state = False
+            self.state = False
 
         return self.state
