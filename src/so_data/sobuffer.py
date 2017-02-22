@@ -649,7 +649,7 @@ class SoBuffer(object):
         :return:
         """
         # interate through keys
-        for fid in self._static:
+        for fid in self._static.keys():
             if self._static[fid]:  # array not empty
                 # go in reverse order
                 for i in xrange(len(self._static[fid]) - 1, -1, -1):
@@ -675,7 +675,7 @@ class SoBuffer(object):
                                         i].diffusion < self._min_diffusion:
                         del self._static[fid][i]  # remove element
 
-        for fid in self._moving:
+        for fid in self._moving.keys():
             if self._moving[fid]:
                 for pid in self._moving[fid].keys():
                     for i in xrange(len(self._moving[fid][pid]) - 1, -1, -1):
