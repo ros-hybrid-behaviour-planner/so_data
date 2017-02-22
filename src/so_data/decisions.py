@@ -173,26 +173,53 @@ class GossipMax(DecisionPattern):
         rospy.loginfo("Current max: " + str(self.last_value))
 
 
+# QUORUM
+class Quorum(DecisionPattern):
+    """
+    Quorum Sensing
+    """
 
-    # QUORUM SENSING: DENSITY FUNCTION
-    # def quorum(self):
-    #     """
-    #     calculates agent density within view; only considers agent data
-    #     :return: True (threshold passed), False (threshold not passed)
-    #     """
-    #     count = 0
-    #
-    #     if self.pose_frame in self._moving.keys():
-    #         for pid in self._moving[self.pose_frame].keys():
-    #             if self._moving[self.pose_frame][pid]:
-    #                 val = self._moving[self.pose_frame][pid][-1]
-    #                 # check if neighbor is in sight
-    #                 if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-    #                     <= val.diffusion + val.goal_radius + \
-    #                     self._view_distance:
-    #                     count += 1
-    #
-    #     if count >= self.threshold:
-    #         return True
-    #     else:
-    #         return False
+    def __init__(self, buffer, threshold, frame=None, state=False,
+                 moving=True,
+                 static=False, diffusion=np.inf, goal_radius=0,
+                 ev_factor=1.0, ev_time=0.0):
+        """
+        initialize behaviour
+        :param buffer: SoBuffer
+        :param threshold: number of agents which has to be reached
+        :param frame: frame id (header frame) agent data
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradient in list returned by buffer
+        :param goal_radius: gossip gradient goal radius
+        :param ev_factor: gossip gradient evaporation factor
+        :param ev_time: gossip gradient evaporation time
+        :param diffusion: gossip gradient diffusion
+        :param state: robot state
+        """
+
+        super(Quorum, self).__init__(buffer, frame, None, state, moving,
+                                     static, goal_radius, ev_factor,
+                                     ev_time,
+                                     diffusion)
+
+        # set standard agent frame if no frame is specified
+        if not frame:
+           self.frames = buffer.pose_frame
+
+        self.threshold = threshold
+
+    def value(self):
+        """
+        determines number of agents within view
+        :return: maximum number
+        """
+        values = self._buffer.agent_list(self.frames, moving=self.moving,
+                                         static=self.static)
+
+        # set state
+        if len(values) >= self.threshold:
+            self.state = True
+        else:
+           self.state = False
+
+        return self.state
