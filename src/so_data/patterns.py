@@ -131,7 +131,8 @@ class DecisionPattern(object):
         msg.moving = True  # set to moving as gradient is tied to agent
 
         # determine value
-        self.last_value = self.calc_value()
+        self.value = self.calc_value()
+        self.last_value = self.value
         msg.payload.append(KeyValue(self.key, "%.9f" % self.last_value))
 
         # spread gradient

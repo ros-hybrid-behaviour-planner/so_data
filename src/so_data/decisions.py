@@ -72,9 +72,6 @@ class MorphogenesisBarycenter(DecisionPattern):
         for el in values:
             dist += so_data.calc.get_gradient_distance(own_pos.p, el.p)
 
-        # store current dist
-        self.value = dist
-
         # determine whether own agent is gradient
         # true if sum of distances is smallest compared to neighbors
         neighbors = 0
@@ -96,7 +93,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         else:
             self.state = 'None'
 
-        return self.value
+        return dist
 
     def spread(self):
         """
@@ -153,15 +150,17 @@ class GossipMax(DecisionPattern):
         values = self._buffer.agent_list(self.frame, moving=self.moving,
                                          static=self.static)
 
+        tmpMax = self.value
+
         for el in values:
             k = [i.key for i in el.payload]
             index = k.index(self.key)
 
             tmp = float(el.payload[index].value)
-            if self.value < tmp:
-                self.value = tmp
+            if tmpMax < tmp:
+                tmpMax = tmp
 
-        return self.value
+        return tmpMax
 
     def spread(self):
         """
@@ -171,7 +170,7 @@ class GossipMax(DecisionPattern):
         super(GossipMax, self).spread()
 
         # Show info
-        rospy.loginfo("Current max: " + str(self.last_value))
+        rospy.loginfo("Current max: " + str(self.value))
 
 
 # QUORUM
@@ -179,9 +178,9 @@ class Quorum(DecisionPattern):
     """
     Quorum Sensing
     """
-    def __init__(self, buffer, threshold, frame=None, state=False, moving=True,
-                 static=False, diffusion=np.inf, goal_radius=0, ev_factor=1.0,
-                 ev_time=0.0):
+    def __init__(self, buffer, threshold, frame=None, value=0, state=False,
+                 moving=True, static=False, diffusion=np.inf, goal_radius=0,
+                 ev_factor=1.0, ev_time=0.0):
         """
         initialize behaviour
         :param buffer: SoBuffer
@@ -195,8 +194,9 @@ class Quorum(DecisionPattern):
         :param diffusion: gossip gradient diffusion
         :param state: robot state
         """
-        super(Quorum, self).__init__(buffer, frame, state=state, moving=moving,
-                                     static=static, goal_radius=goal_radius,
+        super(Quorum, self).__init__(buffer, frame, value=value, state=state,
+                                     moving=moving, static=static,
+                                     goal_radius=goal_radius,
                                      ev_factor=ev_factor, ev_time=ev_time,
                                      diffusion=diffusion)
 
@@ -214,12 +214,12 @@ class Quorum(DecisionPattern):
         values = self._buffer.agent_list(self.frames, moving=self.moving,
                                          static=self.static)
 
-        self.value = len(values)
+        count = len(values)
 
         # set state
-        if self.value >= self.threshold:
+        if count >= self.threshold:
             self.state = True
         else:
             self.state = False
 
-        return self.state
+        return count
