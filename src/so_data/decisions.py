@@ -195,13 +195,14 @@ class Quorum(DecisionPattern):
         :param diffusion: gossip gradient diffusion
         :param state: robot state
         """
-        super(Quorum, self).__init__(buffer, frame, None, state, moving,
-                                     static, goal_radius, ev_factor, ev_time,
-                                     diffusion)
+        super(Quorum, self).__init__(buffer, frame, state=state, moving=moving,
+                                     static=static, goal_radius=goal_radius,
+                                     ev_factor=ev_factor, ev_time=ev_time,
+                                     diffusion=diffusion)
 
         # set standard agent frame if no frame is specified
         if not frame:
-            self.frames = buffer.pose_frame
+            self.frames = self._buffer.pose_frame
 
         self.threshold = threshold
 

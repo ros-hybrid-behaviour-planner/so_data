@@ -47,7 +47,7 @@ class DecisionsTest(unittest.TestCase):
                                    False, [KeyValue('dist', '5.0')])]
 
         self.assertEqual(morph.state, 'None')
-        self.assertEqual(morph.value(), np.sqrt(2) + 1)
+        self.assertEqual(morph.calc_value(), np.sqrt(2) + 1)
         self.assertEqual(morph.state, 'Center')
 
     def test_gossip(self):
@@ -79,7 +79,7 @@ class DecisionsTest(unittest.TestCase):
                                    1, 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
                                    False, [KeyValue('max', '3.0')])]
 
-        self.assertEqual(gossip.value(), 4.0)
+        self.assertEqual(gossip.calc_value(), 4.0)
 
     # def test_quorum(self):
     #     """
