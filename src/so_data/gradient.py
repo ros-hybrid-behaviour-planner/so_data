@@ -102,7 +102,8 @@ def calc_attractive_gradient_ge(gradient, pose):
     if d <= gradient.goal_radius:
         v = Vector3()
     elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
-        v = tmp
+        v = calc.adjust_length(calc.unit_vector3(tmp),
+                               (d - gradient.goal_radius))
     elif d > gradient.goal_radius + gradient.diffusion:
         v = calc.adjust_length(tmp, (gradient.goal_radius+gradient.diffusion))
 
@@ -140,13 +141,12 @@ def calc_repulsive_gradient_ge(gradient, goal, pose):
     elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
         # unit vector obstacle - agent
         tmp = calc.unit_vector3(tmp)
-        # distance repulsive gradient - goal
-        d_goal = calc.get_gradient_distance(pose.p, goal.p)
+        # distance agent - goal
+        d_goal = calc.get_gradient_distance(pose.p, goal.p) - \
+                 pose.goal_radius - goal.goal_radius
         # unit vector agent - goal
-        ag = Vector3()
-        ag.x = (goal.p.x - pose.p.x) / d_goal
-        ag.y = (goal.p.y - pose.p.y) / d_goal
-        ag.z = (goal.p.z - pose.p.z) / d_goal
+        ag = calc.delta_vector(goal.p, pose.p)
+        ag = calc.unit_vector3(ag)
         # closest distance to obstacle  - diffusion
         d_obs_diff = (1.0 / (d - gradient.goal_radius)) - \
                      (1.0 / gradient.diffusion)
