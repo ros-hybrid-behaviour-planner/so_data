@@ -21,8 +21,7 @@ class MorphogenesisBarycenter(DecisionPattern):
     def __init__(self, buffer, frame, key, center_frame='Center', moving=True,
                  static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
                  diffusion=np.inf, attraction=-1, value=0, state='None',
-                 goal_center=2.0, moving_center=False, attraction_center=1,
-                 diffusion_center=20):
+                 goal_center=2.0, moving_center=False, attraction_center=1):
         """
         initialize behaviour
         :param buffer: SoBuffer
@@ -52,13 +51,12 @@ class MorphogenesisBarycenter(DecisionPattern):
         self.goal_center = goal_center
         self.moving_center = moving_center
         self.attraction_center = attraction_center
-        self.diffusion_center = diffusion_center
         self.center_frame = center_frame
 
     def calc_value(self):
         """
         sums up distance to all morphogenetic gradients determines and
-        sets state of robot
+        sets state of robot based on it
         :return: distance (float)
         """
 
@@ -89,7 +87,7 @@ class MorphogenesisBarycenter(DecisionPattern):
             index = keys.index(self.key)
             ndist = float(el.payload[index].value)
             # neighbor dist larger than own dist
-            if ndist > dist:
+            if ndist > self.value:
                 count += 1
 
         # set state
@@ -111,10 +109,11 @@ class MorphogenesisBarycenter(DecisionPattern):
         # if barycenter: spread gradient for chemotaxis
         if self.state == 'Center':
             rospy.loginfo("Agent state: Center")
+            # send Center gradient: diffusion = sum of distance of agent
             center_gradient = create_gradient(self.get_pos().p,
                                               goal_radius=self.goal_center,
                                               attraction=self.attraction_center,
-                                              diffusion=self.diffusion_center,
+                                              diffusion=self.value,
                                               moving=self.moving_center,
                                               frameid=self.center_frame)
 
@@ -206,16 +205,18 @@ class Quorum(DecisionPattern):
 
         self.threshold = threshold
 
-    def value(self):
+    def calc_value(self):
         """
         determines number of agents within view
-        :return: maximum number
+        :return: state
         """
         values = self._buffer.agent_list(self.frames, moving=self.moving,
                                          static=self.static)
 
+        self.value = len(values)
+
         # set state
-        if len(values) >= self.threshold:
+        if self.value >= self.threshold:
             self.state = True
         else:
             self.state = False
