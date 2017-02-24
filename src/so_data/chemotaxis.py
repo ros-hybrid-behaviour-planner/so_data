@@ -97,21 +97,21 @@ class ChemotaxisGe(MovementPattern):
 
         return result
 
-    def goal_gradient(self):
-        """
-        :return: normalized vector to goal gradient
-        """
-        grad = None
-
-        attractive = self._buffer.max_attractive_gradient(self.frames,
-                                                          self.static,
-                                                          self.moving)
-        pose = self._buffer.get_own_pose()
-
-        if attractive and pose:
-            grad = gradient.calc_attractive_gradient(attractive, pose)
-
-        return grad
+    # def goal_gradient(self):
+    #     """
+    #     :return: normalized vector to goal gradient
+    #     """
+    #     grad = None
+    #
+    #     attractive = self._buffer.max_attractive_gradient(self.frames,
+    #                                                       self.static,
+    #                                                       self.moving)
+    #     pose = self._buffer.get_own_pose()
+    #
+    #     if attractive and pose:
+    #         grad = gradient.calc_attractive_gradient(attractive, pose)
+    #
+    #     return grad
 
 
 class ChemotaxisBalch(MovementPattern):
@@ -151,12 +151,15 @@ class ChemotaxisBalch(MovementPattern):
                                                                self.repulsion)
 
         # attractive gradient
-        vector_attraction = self.goal_gradient()
-
-        if not vector_attraction:
-            vector_attraction = Vector3()
+        gradient_attractive = self._buffer.max_attractive_gradient(self.frames,
+                                                                   self.static,
+                                                                   self.moving)
 
         if pose:
+            if gradient_attractive:
+                vector_attraction = gradient.calc_attractive_gradient(
+                    gradient_attractive, pose)
+
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
 
@@ -195,21 +198,22 @@ class ChemotaxisBalch(MovementPattern):
 
         return result
 
-    def goal_gradient(self):
-        """
-        :return: vector to goal gradient
-        """
-        grad = None
-
-        attractive = self._buffer.max_attractive_gradient(self.frames,
-                                                          self.static,
-                                                          self.moving)
-        pose = self._buffer.get_own_pose()
-
-        if attractive and pose:
-            grad = gradient.calc_attractive_gradient(attractive, pose)
-
-        return grad
+    # def goal_gradient(self):
+    #     """
+    #     :return: vector to goal gradient
+    #     """
+    #     grad = None
+    #
+    #     attractive = self._buffer.max_attractive_gradient(self.frames,
+    #                                                       self.static,
+    #                                                       self.moving)
+    #
+    #     pose = self._buffer.get_own_pose()
+    #
+    #     if attractive and pose:
+    #         grad = gradient.calc_attractive_gradient(attractive, pose)
+    #
+    #     return grad
 
 
 # Mechanisms to consider specific sets of gradients
