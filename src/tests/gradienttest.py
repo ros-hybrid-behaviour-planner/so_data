@@ -136,8 +136,11 @@ class GradientTest(unittest.TestCase):
                          10.0, 2.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
         pose = SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0,
                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
-        self.assertEqual(gradient.calc_attractive_gradient_ge(grad, pose),
-                         Vector3(3, 5, 10))
+        result = gradient.calc_attractive_gradient_ge(grad, pose)
+        result.x = round(result.x, 2)
+        result.y = round(result.y, 2)
+        result.z = round(result.z, 2)
+        self.assertEqual(result, Vector3(2.48, 4.14, 8.27))
 
         # robot within goal radius of gradient
         pose = SoMessage(None, None, Vector3(3, 7, 10), Quaternion(), -1, 3.0,
@@ -152,8 +155,8 @@ class GradientTest(unittest.TestCase):
         pose = SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1, 3.0,
                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
         self.assertEqual(gradient.calc_attractive_gradient_ge(grad, pose),
-                         Vector3((2.0 / 7.0) * 6.0, (3.0 / 7.0) * 6.0,
-                                 (6.0 / 7.0) * 6.0))
+                         Vector3((2.0 / 7.0) * 4.0, (3.0 / 7.0) * 4.0,
+                                 (6.0 / 7.0) * 4.0))
 
     def test_repulsive_gradient_ge(self):
         """
@@ -181,14 +184,10 @@ class GradientTest(unittest.TestCase):
         pose = SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), -1, 3.0,
                           0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
         v = gradient.calc_repulsive_gradient_ge(grad, goal, pose)
-        v.x = round(v.x, 4)
-        v.y = round(v.y, 4)
-        v.z = round(v.z, 4)
-        self.assertEqual(v, Vector3(round((1.0 - 4.0) / 5.0 * (1.0 / 3.0 -
-                                                               1.0 / 4.0) *
-                                          (2.0 / 3.0), 4), round(0.5 * (
-            (1.0 / 3.0 - 1.0 / 4.0) ** 2) + -0.8 * (1.0 / 3.0 - 1.0 / 4.0) * (
-            2.0 / 3.0), 4), 0.0))
+        v.x = round(v.x, 2)
+        v.y = round(v.y, 2)
+        v.z = round(v.z, 2)
+        self.assertEqual(v, Vector3(-0.02, -0.02, 0.0))
 
 
 # run tests - start roscore before running tests
