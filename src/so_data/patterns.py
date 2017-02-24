@@ -79,12 +79,10 @@ class DecisionPattern(object):
         self.moving = moving
         self.static = static
 
-        # current & last in behaviour used value
-        self.last_value = -1
+        # current used value
         self.value = value
 
         # current & last in behaviour used state
-        self.last_state = 'None'
         self.state = state
 
         # message
@@ -132,8 +130,7 @@ class DecisionPattern(object):
 
         # determine value
         self.value = self.calc_value()
-        self.last_value = self.value
-        msg.payload.append(KeyValue(self.key, "%.9f" % self.last_value))
+        msg.payload.append(KeyValue(self.key, "%.9f" % self.value))
 
         # spread gradient
         self._broadcaster.send_data(msg)
