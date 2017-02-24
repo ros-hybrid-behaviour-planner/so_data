@@ -641,6 +641,34 @@ class SoBuffer(object):
 
         return gradients
 
+    # Aggregation of data for Decision patterns
+    def agent_set(self, frame):
+        """
+        function determines all gradients within view distance with a certain
+        frame ID, excluding all gradients from agent itself
+        :param frame: frame ID of agent data
+        :return: list of gradients
+        """
+        self._evaporate_buffer()
+
+        gradients = []
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        if frame in self._moving.keys() and self._moving[frame]:
+            for pid in self._moving[frame].keys():
+                if pid != self._id and self._moving[frame][pid]:
+                    if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
+                                                  self._own_pos[-1].p) \
+                            <= self._moving[frame][pid][-1].diffusion + \
+                                    self._moving[frame][pid][
+                                        -1].goal_radius + self._view_distance:
+                        gradients.append(self._moving[frame][pid])
+
+        return gradients
+
     # EVAPORATION
     def _evaporate_buffer(self):
         """
@@ -728,3 +756,7 @@ class SoBuffer(object):
     @property
     def view_distance(self):
         return self._view_distance
+
+    @property
+    def own_pos(self):
+        return self._own_pos
