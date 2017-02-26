@@ -84,7 +84,7 @@ class MorphogenesisBarycenter(DecisionPattern):
             index = keys.index(self.key)
             ndist = float(el.payload[index].value)
             # neighbor dist larger than own dist
-            if ndist > self.value:
+            if ndist > dist:
                 count += 1
 
         # set state
