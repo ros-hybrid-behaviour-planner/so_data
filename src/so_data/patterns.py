@@ -7,26 +7,28 @@ Module including abstract class for patterns
 """
 
 from abc import ABCMeta, abstractmethod
-from so_data.sobroadcaster import SoBroadcaster
+import rospy
 from diagnostic_msgs.msg import KeyValue
 from so_data.msg import SoMessage
-import rospy
+from so_data.sobroadcaster import SoBroadcaster
 
 
 class MovementPattern(object):
     """
     abstract class for movement patterns / mechanisms
     """
-
     __metaclass__ = ABCMeta
 
     def __init__(self,  buffer, frames=None, repulsion=False, moving=True,
                  static=True, maxvel=1.0, minvel=0.1):
         """
         :param buffer: SoBuffer
-        :param maxvel: maximum velocity / length of movement vector
+        :param frames: gradient frames to be considered
+        :param repulsion: include agent gradients (pose frame) in calculations
         :param moving: include moving gradients in calculations
         :param static: include static gradients in calculations
+        :param maxvel: maximum velocity / length of movement vector
+        :param minvel: minimum velocity / length of movement vector
         """
 
         self._buffer = buffer
@@ -65,9 +67,24 @@ class DecisionPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, buffer, frame=None, key=None, value=None, state=None, moving=True,
-                 static=False, goal_radius=0, ev_factor=1.0, ev_time=0.0,
-                 diffusion=20, attraction=0):
+    def __init__(self, buffer, frame=None, key=None, value=None, state=None,
+                 moving=True, static=False, goal_radius=0, ev_factor=1.0,
+                 ev_time=0.0, diffusion=20, attraction=0):
+        """
+        initialization of decision patterns
+        :param buffer: SoBuffer
+        :param frame: gradient frame to be used in decision pattern
+        :param key: payload key with values required in decision pattern
+        :param value: initial value for decision pattern
+        :param state: initial state for decision pattern
+        :param moving: consider moving gradients
+        :param static: consider static gradients
+        :param goal_radius: goal radius of gradient to be spread (spread())
+        :param ev_factor: evaporation factor of gradient to be spread
+        :param ev_time: evaporation time of gradient to be spread
+        :param diffusion: diffusion radius of gradient to be spread
+        :param attraction: attraction value of gradient to be spread
+        """
 
         self._broadcaster = SoBroadcaster()
 
@@ -95,7 +112,7 @@ class DecisionPattern(object):
     @abstractmethod
     def calc_value(self):
         """
-        method to determine current key-value value
+        method to determine current key-value value and to set state
         :return:
         """
         pass
