@@ -4,6 +4,7 @@ SO_DATA MANUAL
 The package so_data provides components which are required to implement self-organization. 
 It provides functionality to send data to the `so_data` topic as well as to aggregate, store and use it for calculations. 
 Therewith, it provides the basic mechanisms and the gradient patterns specified by in "Description and composition of bio-inspired design patterns: a complete overview" by Fernandez-Marquez et al. (2013). 
+Furthermore, it includes the implementation of the decision and movement patterns. 
 Unit tests were done for the core components to ensure correctness of mathematical computations. 
 All methods work for up to three dimensions; the code can be adapted for use in more dimensions with minor enhancements. 
 The package can be used in combination with the RHBP, but as well on its own. 
@@ -16,20 +17,28 @@ The package consists of the following components:
 
 src: 
 
-* **sobuffer.py**: implements a layer which provides the basic functionality patterns for gradient data: evaporation, spreading (receives gradients), aggregation (+ unit test)  
 * **calc.py**: provides helper functions which are used by several components of the package (+ unit test)
-
-
-* **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber (+ unit test) 
+* **chemotaxis.py**: module containing chemotaxis pattern implementations (+ unit test)
+* **decisions.py**: module containing sample implementations of decision patterns (morphogenesis, gossip, quorum sensing) (+ unit test)
+* **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber + mechanism implementation (+ unit test) 
 * **flockingrey.py**: provides methods to calculate a flocking vector based on the formulas by Reynolds (+ unit test)
+* **foraging.py**: TODO 
+* **gradient.py**: module including gradient calculations based on Balch and Hybinette as well as Ge and Cui (+ unit test)
 * **gradientnode.py**: allows to create nodes which spread artificial gradients 
+* **patterns.py**: provides abstract classes for movement and decision pattern implementations
+* **posegradienttf.py**: implementation of `topicGradientTf` for the pose topic (geometry msgs pose)
+* **posestampedgradienttf.py**: implementation of `topicGradientTf` for the pose topic (geometry msgs stamped pose)
+* **repulsion.py**: module including repulsion based on gradients and formula by Fernandez-Marquez (+ unit test)
 * **sobroadcaster.py**: allows to publish data to the so_data topic which will be subscribed to in the soBuffer 
+* **sobuffer.py**: implements a layer which provides the basic functionality patterns for gradient data: evaporation, spreading (receives gradients), aggregation (+ unit test)  
 * **topicgradienttf.py**: abstract class which can be used as a blueprint to transform topics in soMessages and publish them to the `so_data` topic 
-* **posegradienttf.py**: implementation of `topicGradientTf` for the pose topic 
 
 msg:
 
 * **SoMessage.msg**: message file describing gradient data 
+
+srv:
+* **EnvGradient.srv**: Service to hand over a list of gradients to be spread by gradientnode
 
 The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.ros.org/kinetic/api/geometry_msgs/html/msg/Pose.html) Message. 
 
@@ -37,9 +46,9 @@ The robot pose is considered to be in the form of a [`geometry_msgs/Pose`](docs.
 SoMessage
 ---------
 
-soMessages are used to specify gradients: either in environment or as robot data. 
-The specification of the soMessage data can lead to varying behaviour. 
-The specification of frameIDs can help to assign gradients to specific tasks / behaviours, but some frameIDs are reserved for special purposes. 
+SoMessages are used to specify gradients: either in environment or as robot data. 
+The specification of the SoMessage data can lead to varying behaviour. 
+The specification of IDs can help to assign gradients to specific tasks / behaviours, but some frameIDs are reserved for special purposes. 
 
 ###### Message file
 
@@ -107,7 +116,7 @@ Gradient data is received via the `so_data` topic and will be evaporated and agg
 The individual mechanisms can request gradient data needed for the calculations from the soBuffer. 
 
 
-### TODO soBuffer Parameters 
+### soBuffer Parameters 
 
 The soBuffer provides several parameters which can be set to adjust the data storage behaviour. 
 The following parameters can be set (default values specified in brackets):
@@ -119,17 +128,14 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
   * **avg** = keep average gradient (at a position / within aggregation_distance) 
   * **new** = keep newest / last received gradient (at a position / within aggregation_distance) 
   * **newparent** = stores the newest gradient per parent frame 
+  * **newframe** = stores the newest gradient per frame 
 * **aggregation_distance** (1.0): radius in which gradient data is aggregated (see aggregation) 
-
 * **min_diffusion** (0.1): float; threshold value specifying minimum diffusion radius gradient has to have when goal_radius == 0.0 to be stored in soBuffer
 * **view_distance** (2.0): float; radius in which agent can sense gradients (starting from agent position / agent gradient center). Should be >= goal_radius specified in agent's own gradient.  
 * **id** (''): agent's id, gradients with this id are stored in self._own_pos 
-    
 * **moving_storage_size** (2): int; defines number of gradients which will be stored for moving gradients. Set 0 to avoid storing moving gradients. 
-
 * **store_all** (True): defines whether all frameIDs will be stored or only frameIDs indicated in framestorage 
 * **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to not storing any gradients. 
-
 * **pose_frame** ('robot'): frame ID indicating gradient data of agents / robots (poses)
 
 
@@ -155,7 +161,7 @@ The key `DEFAULT` specifies the aggregation option for all frames for which no a
 Options are `min`, `max`, `avg` which store the gradient with maximum / minimum diffusion and goal radius and respectively the average diffusion and goal radius as well the averaged gradient center (soMessage.p) at a position (or rather within the aggregation distance). 
 The option`new` stores the last received gradient.
 All of these options stores data based on it's position (p). 
-Option `newparent` stores the last received gradient based on the parent frame.
+Option `newparent` stores the last received gradient based on the parent frame while `newframe` stores the newest gradient based on the header frame.
 All options might be suitable for movement related gradients while `newest` is most appropriate for gradients including payload used for decision making. 
 The storing mechanisms allows to store only gradients with certain frameIDs. 
 In this case `store_all` has to be set to `false` and the frameIDs to be stored will be specified in `frameids`. 
@@ -167,7 +173,7 @@ The calculations of the methods which return values for use in behaviours or sen
 ### Evaporation 
 
 Evaporation is one of the basic mechanisms presented in the paper by Fernandez-Marquez et al. 
-It is applied both before storing received data as well as when requesting the current movement gradient (get_current_gradient). 
+It is applied both before storing received data as well as when requesting a list of gradients from the buffer (options see Aggregation). 
 To ensure that all data is up-to-date, each received message is evaporated before it is stored using `_evaporate_msg(msg)`. Parameters: `msg` is a soMessage. 
 It returns the evaporated message or `None` in cases where the diffusion radius is smaller than the specified minimum diffusion and the goal radius of the gradient is zero. 
 
@@ -190,10 +196,74 @@ In case that `ev_time == 0` and `ev_factor < 1` the gradient will instantly evap
 
 Gradients without goal radius (soMessage `goal_radius = 0`) and a diffusion smaller than the minimum diffusion radius (`min_diffusion`, see soBuffer Parameters) will be deleted immediately. 
  
+
+### Aggregation 
+
+Aggregation is realized in a two step process within the SoBuffer. 
+The first level of aggregation is applied when data is stored (see Gradient Storage).
+The second level is done when a list of gradients is requested by the buffer. 
+SoBuffer will only return gradients which match the specified criteria and are within view distance. 
+The criteria are/might be:
+
+* frameids: frameids of gradient data to be returned (None == all frames will be considered) 
+* static: static gradient data will be returned
+* moving: moving gradient data will be returned 
+* repulsion: moving gradient data with frame = pose frame will be returned 
+* frame: frame which will be considered in returning agent sets; if no frame is specified 'pose_frame' will be used
+
+The following options are available:
+
+1. Get all gradients within view distance 
+
+```python
+    def gradients(self, frameids=None, static=True, moving=True,
+                  repulsion=False)
+```
+
+2. Get all repulsive gradients within view 
+
+```python
+    def repulsive_gradients(self, frameids=None, static=True, moving=True,
+                            repulsion=False)
+```
+
+3. Get all attractive gradients within view 
+
+```python
+    def attractive_gradients(self, frameids=None, static=True, moving=True)
+```
+
+4. Get the relatively nearest attractive gradient (= attractive gradient with minimum attraction)
+
+```python
+    def max_attractive_gradient(self, frameids=None, static=True, moving=True)
+```
  
- TODO
------- 
-### Gradient calculation 
+5. Get the gradient with the strongest potential robot; to compare attractive and repulsive gradients, the attraction value was adjusted calculating (1-attraction) 
+
+```python
+    def strongest_gradient(self, frameids=None, static=True, moving=True)
+```
+
+6. Get list of agents within view (last received value)
+
+```python
+    def agent_list(self, frame, static=False, moving=True)
+```
+
+7. Get list of agent data (all received values)
+
+```python
+def agent_set(self, frame)
+```
+ 
+ 
+
+ #TODO ab hier weiter korrigieren 
+ 
+ 
+ gradient(.py)
+--------------
 
 The soBuffer includes two different approaches of calculating the attraction/repulsion of gradients. 
 The first approach follows the approach presented in "Social potentials for scalable multi-robot formations" by Balch and Hybinette (2000). 
