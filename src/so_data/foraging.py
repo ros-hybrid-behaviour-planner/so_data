@@ -23,20 +23,21 @@ class STATE(object):
     EXPLOITATION = 3
 
 
-class Foraging(MovementPattern):
+class ForagingPheromones(MovementPattern):
     """
-    Foraging
+    Foraging: set state and move to nest while depositing pheromones
     """
     def __init__(self, probability,  buffer, frames=None, repulsion=False,
                  moving=False, static=True, maxvel=1.0, minvel=0.5,
-                 state=0, frame='Pheromone', attraction=1, ev_factor=0.8,
+                 state=0, frame='Pheromone', attraction=1, ev_factor=1.0,
                  ev_time=5):
         """
         initialize behaviour
         :param value: exploration probability
         """
-        super(Foraging, self).__init__(buffer, frames, repulsion, moving,
-                                       static, maxvel, minvel)
+        super(ForagingPheromones, self).__init__(buffer, frames, repulsion,
+                                                 moving, static, maxvel,
+                                                 minvel)
 
         self.state = state
         self.probability = probability
@@ -174,3 +175,48 @@ class Foraging(MovementPattern):
 
         # spread gradient
         self._broadcaster.send_data(msg)
+
+
+class FollowTrail(MovementPattern):
+    """
+    Foraging - Follow pheromone trail behaviour
+    """
+    def __init__(self, buffer, frame, angle=1.3, repulsion=False,
+                 moving=False, static=True, maxvel=1.0, minvel=0.5):
+        """
+        initialize behaviour
+        :param value: exploration probability
+        """
+        super(FollowTrail, self).__init__(buffer, frame, repulsion, moving,
+                                          static, maxvel, minvel)
+
+        self.angle = angle
+
+    def move(self):
+        """
+        :return: movement vector
+        """
+
+        pose = self._buffer.get_own_pose()
+
+        # get all gradients within view distance
+
+        view = self._buffer.pheromone_list_angle(self.frames, self.angle,
+                                             self.static)
+
+        # attractive gradient
+        result = Vector3()
+
+        if pose:
+            if view:
+                for grdnt in view:
+                    grad = gradient.calc_attractive_gradient(grdnt, pose)
+                    result = calc.add_vectors(result, grad)
+
+        d = calc.vector_length(result)
+        if d > self.maxvel:
+            result = calc.adjust_length(result, self.maxvel)
+        elif 0 < d < self.minvel:
+            result = calc.adjust_length(result, self.minvel)
+
+        return result

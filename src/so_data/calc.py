@@ -32,6 +32,37 @@ def unit_vector3(vector):
     return vector
 
 
+def angle_between_vector3(v1, v2):
+    """ Returns the directed angle in radians between vectors 'v1' and 'v2'
+    - only working in 2D!::
+
+            >>> angle_between((1, 0), (0, 1))
+            1.5707963267948966
+            >>> angle_between((0, 1), (1, 0))
+            -1.5707963267948966
+            >>> angle_between((1, 0), (1, 0))
+            0.0
+            >>> angle_between((1, 0), (-1, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector3(v1)
+    v2_u = unit_vector3(v2)
+
+    v1_u = [v1_u.x, v1_u.y]
+    v2_u = [v2_u.x, v2_u.y]
+
+    # det needs square matrix as input!
+    angle = np.math.atan2(np.linalg.det([v1_u, v2_u]), np.dot(v1_u, v2_u))
+
+    if np.isnan(angle):
+        if (v1_u == v2_u).all:
+            return 0.0
+        else:
+            return np.pi
+
+    return angle
+
+
 def angle_between(v1, v2):
     """ Returns the directed angle in radians between vectors 'v1' and 'v2'
     - only working in 2D!::

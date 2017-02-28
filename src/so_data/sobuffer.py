@@ -9,7 +9,9 @@ offers basic functionalities: receiving (spreading), evaporation, aggregation
 from __future__ import \
     division  # force floating point division when using plain /
 import rospy
+import tf.transformations
 from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3
 import numpy as np
 import calc
 import random
@@ -638,6 +640,44 @@ class SoBuffer(object):
                                     self._moving[frame][pid][
                                         -1].goal_radius + self._view_distance:
                         gradients.append(self._moving[frame][pid][-1])
+
+        return gradients
+
+    # Aggregation of data for Decision patterns
+    def pheromone_list_angle(self, frame, view_angle, static=True):
+        """
+        function determines all gradients within view distance with a certain
+        frame ID & within a view angle,
+        excluding all gradients from agent itself
+        2D only so far
+        :param frame: frame ID of agent data
+        :return: list of gradients
+        """
+        self._evaporate_buffer()
+
+        gradients = []
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        # heading vector
+        heading = tf.transformations.quaternion_matrix(
+                [self._own_pos[-1].q.x, self._own_pos[-1].q.y,
+                 self._own_pos[-1].q.z, self._own_pos[-1].q.w]).dot(
+                 np.array([self._own_pos[-1].direction.x,
+                           self._own_pos[-1].direction.y,
+                           self._own_pos[-1].direction.z, 1]))
+
+        heading = Vector3(heading[0], heading[1], heading[2])
+
+        if static and frame in self._static.keys():
+            for element in self._static[frame]:
+                grad = calc.delta_vector(element.p, self.own_pos[-1].p)
+                if calc.vector_length(grad) <= element.diffusion + \
+                         element.goal_radius + self._view_distance:
+                    if calc.angle_between_vector3(grad, heading) <= view_angle:
+                        gradients.append(element)
 
         return gradients
 
