@@ -385,11 +385,25 @@ class SoBuffer(object):
         """
         function determines all gradients within view distance
         :param frameids: frame IDs to be considered looking for gradients
-        :return: list of gradients [attractive, repulsive, own position]
+        :return: list of gradients []
         """
         self._evaporate_buffer()
 
         gradients = []
+
+        # determine frames to consider
+        if not frameids:
+            frameids = []
+            if static:
+                frameids += self._static.keys()
+            if moving:
+                frameids += self._moving.keys()
+            elif repulsion:
+                frameids.append(self.pose_frame)
+
+        # if view distance is infinite, return list of all gradients
+        if self._view_distance == np.inf:
+            return self.all_gradients(frameids, static, moving, repulsion)
 
         # no own position available
         if not self._own_pos:
@@ -424,6 +438,30 @@ class SoBuffer(object):
                             <= self._moving[fid][pid][-1].diffusion + \
                                     self._moving[fid][pid][
                                         -1].goal_radius + self._view_distance:
+                        gradients.append(self._moving[fid][pid][-1])
+
+        return gradients
+
+    def all_gradients(self, frameids, static, moving, repulsion):
+        """
+        function returns all gradients as a list
+        :return: list of gradients
+        """
+
+        self._evaporate_buffer()
+
+        gradients = []
+
+        for fid in frameids:
+            if static and fid in self._static.keys():
+                for element in self._static[fid]:
+                    gradients.append(element)
+
+            # moving gradients
+            if (moving or repulsion) and fid in self._moving.keys() \
+                    and self._moving[fid]:
+                for pid in self._moving[fid].keys():
+                    if self._moving[fid][pid]:
                         gradients.append(self._moving[fid][pid][-1])
 
         return gradients
