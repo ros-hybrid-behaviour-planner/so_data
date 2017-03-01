@@ -254,18 +254,22 @@ The following options are available:
 7. Get list of agent data (all received values)
 
 ```python
-def agent_set(self, frame)
+    def agent_set(self, frame)
+```
+
+8. Get list of pheromones within a specified view angle
+
+```python
+    def pheromone_list_angle(self, frame, view_angle)
 ```
  
  
-
- #TODO ab hier weiter korrigieren 
  
  
  gradient(.py)
 --------------
 
-The soBuffer includes two different approaches of calculating the attraction/repulsion of gradients. 
+Module gradient includes two different approaches of calculating the attraction/repulsion of gradients. 
 The first approach follows the approach presented in "Social potentials for scalable multi-robot formations" by Balch and Hybinette (2000). 
 The second approach is based on "New Potential Functions for Mobile Robot Path Planning" by Ge and Cui (1999) which was enhanced with an inner goal_radius which leads to infinite repulsion. 
 
@@ -274,12 +278,12 @@ The second approach is based on "New Potential Functions for Mobile Robot Path P
 The paper of Balch and Hybinette includes formulas to calculate attraction and repulsion of gradients. Attraction values are within `[0,1]` while repulsion values are within `[0, inf.]`. 
 Attraction and repulsion can be combined to generate the movement vector. 
 In some scenarios the attractive gradient might not be reached as its attraction and repulsion lead to a zero potential value at a point not being the attractive gradient source. 
-Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data
+Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data, `pose` is the current position of the robot 
 
 ```python
-def _calc_attractive_gradient(self, gradient)
+def _calc_attractive_gradient(self, gradient, pose)
 
-def _calc_repulsive_gradient(self, gradient)
+def _calc_repulsive_gradient(self, gradient, pose)
 ```
 
 ##### Ge and Cui (1999)
@@ -289,15 +293,15 @@ The implementation of the attractive gradient is similar to Balch and Hybinette,
 Therewith, to determine the closest attractive gradient the method based on Balch and Hybinette can be used. 
 Ge and Cui enhanced the repulsive gradient calculation to ensure that the gradient source can be reached. 
 The formulas in this paper were enhanced with setting the repulsive gradient to infinite when the agent is within its `goal_radius`. 
-To ensure that the calculation of the repulsive vector works as expected, the attractive gradient was not enhanced with being set to zero in its goal region. 
-By setting `collision_avoidance = 'reach'`, both static and moving gradients will be considered in the gradient calculation. 
+The attractive gradient was enhanced with being set to zero in its goal region. 
 
 ```python 
-def _calc_attractive_gradient_ge(self, gradient)
+def _calc_attractive_gradient_ge(self, gradient, pose)
 
-def _calc_repulsive_gradient_ge(self, gradient, goal)
+def _calc_repulsive_gradient_ge(self, gradient, goal, pose)
 ```
 
+ #TODO ab hier weiter korrigieren 
 
 
 
@@ -307,13 +311,20 @@ def _calc_repulsive_gradient_ge(self, gradient, goal)
 Decision and Movement Patterns
 -------------------------------
 
-### TODO PATTERNS.PY 
+### patterns(.py)
+
+Module patterns includes two abstract classes which are blueprints for movement mechanisms and decision mechanisms. 
+
+Movement patterns require the implementation of method `move()` which returns a movement vector.
+Decision patterns require the implementation of method `calc_value()` which determines the agent's current value and sets its state accordingly. 
+These patterns have furthermore function `spread()` which allows to spread the current value of the agent. 
 
 ### Movement Patterns / Mechanisms 
 
 1. Repulsion
 2. Flocking
 3. Chemotaxis
+4. Ant Foraging
 
 ####  repulsion(.py)
 
@@ -327,9 +338,9 @@ class RepulsionFernandez(MovementPattern):
     def __init__(self, buffer, frame=None, static=False, moving=True)
 ```
 
-Frame allows to specify the header frame id which is used for agent data. 
+`frame` allows to specify the header frame id which is used for agent data. 
 If no frame is specified, the pose frame of the buffer will be used. 
-static and moving indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
+`static` and `moving` indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
 
 The calculation is based on a list of agent gradients returned by buffer method `agent_list`. 
 
@@ -343,7 +354,41 @@ class RepulsionGradient(MovementPattern):
 ```
 
 The parameters are similar to `RepulsionFernandez`. 
+Details about the gradient calculation can be found in chapter gradient(.py). 
 
+### flocking(.py)
+
+Module flocking contains algorithms to realize flocking in free-space (free flocking). 
+It offers all formulas presented in "Flocking for Multi-Agent Dynamic Systems: Algorithms and Theory" by Olfati-Saber (2006) for Algorithm 1.
+
+Algorithm one consists of two parts: 
+
+1. gradient-based term
+2. velocity consensus term 
+
+which incorporate the three flocking rules presented by Reynolds. 
+
+Please find more information about the formulas in the paper by Olfati-Saber.
+
+The approach leads to some problems in combination with RHBP and some enhancements might be required.
+
+The calculations need the following input data: `Boid = collections.namedtuple('Boid', ['p', 'v'])` with `p` being the robot's current position and `v` being the robot's velocity.
+In class `Flocking` data from an SoBuffer instance is transformed to match this input and the methods implementing the flocking behaviour based on Olfati-Saber are invoked.
+
+```python
+
+class Flocking(MovementPattern):
+    def __init__(self, buffer, a, b, h, epsilon, max_acceleration, frame=None,
+                 moving=True, static=False, maxvel=1.0, minvel=0.1)
+```
+
+Input are an SoBuffer instance and several parameters for flocking. 
+These are `a`, `b`, `h` and `epsilon`. 
+`max_acceleration` sets the maximum acceleration the agent will have. 
+`maxvel` and `minvel` set furthermore the maximum or minimum velocity. 
+`frame` specifies the header frame id which is used for agent data. 
+If no frame is specified, the pose frame of the buffer will be used. 
+`static` and `moving` indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
 
 #### flockingrey(.py)
 
@@ -369,12 +414,12 @@ Class `FlockingRey` request a list from the buffer using method `agent_list`.
 class FlockingRey(MovementPattern):
     def __init__(self, buffer, frame=None, moving=True, static=False, maxvel=1.0)
 ```
-A buffer has to be handed offer to the pattern implementation.
-Frame allows to specify the header frame ID which is used for agent data in this setting. 
+A `buffer` has to be handed offer to the pattern implementation.
+`Frame` allows to specify the header frame ID which is used for agent data in this setting. 
 If no frame is specified, the pose frame parameter of the buffer will be used. 
 
-Static and moving indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
-maxvel sets the maximum length of the movement vector. 
+`Static` and `moving` indicate whether moving gradient data or static gradient data will be returned by the soBuffer. 
+`maxvel` sets the maximum length of the movement vector. 
 
 
 #### chemotaxis(.py)
@@ -469,27 +514,9 @@ The other parameters allow to adjust the gradient message with morphogenetic dat
 All parameters with '_center' define the center gradient message which is spread by the barycenter. 
 
 
+#### Quorum
 
-
-
-flocking(.py)
--------------
-
-The flocking.py file contains algorithms to realize flocking in free-space (free flocking). 
-It offers all formulas presented in "Flocking for Multi-Agent Dynamic Systems: Algorithms and Theory" by Olfati-Saber (2006) for Algorithm 1.
-Algorithm one consists of two parts: 
-
-1. gradient-based term
-2. velocity consensus term 
-
-which incorporate the three flocking rules presented by Reynolds. 
-
-Please find more information about the formulas in the paper by Olfati-Saber.
-
-The approach leads to some problems in combination with RHBP and some enhancements might be required.
-
-The calculations need the following input data: `Boid = collections.namedtuple('Boid', ['p', 'v'])` with `p` being the robot's current position and `v` being the robot's velocity.
-
+Pattern quorum sensing could be implemented universally. 
 
 
 calc(.py)
@@ -498,7 +525,8 @@ calc(.py)
 The file calc.py includes some basic vector (Vector3) calculations which are commonly required. These are:
 
 * `def unit_vector(vector)` and `def unit_vector3(vector)`: returns a unit vector based on the input vector
-* `def angle_between(v1, v2)`: returns the directed vector between two vectors (max. 2D at the moment)   
+* `def angle_between(v1, v2)`: returns the directed vector between two vectors (np.array) (max. 2D at the moment)   
+* `def angle_between_vector3(v1, v2)`: returns directed vector between two vectors (Vector3)
 * `def get_gradient_distance(gradpos, pose)`: returns distance between agent and gradient center 
 * `def vector_length(vector)`: returns the length of a vector 
 * `def delta_vector(q1, q2)`: returns difference between vector q1 and q2 
