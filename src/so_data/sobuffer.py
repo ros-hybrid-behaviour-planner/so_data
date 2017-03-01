@@ -259,8 +259,8 @@ class SoBuffer(object):
     def aggregation_option(self, frame_id):
         """
         determines aggregation option to be used
-        :param frame_id:
-        :return:
+        :param frame_id: frame ID for which aggregation option is searched
+        :return: aggregation option
         """
         # set aggregation option for received message based on frameID
         if frame_id in self._aggregation.keys():
@@ -385,6 +385,10 @@ class SoBuffer(object):
         """
         function determines all gradients within view distance
         :param frameids: frame IDs to be considered looking for gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
         :return: list of gradients []
         """
         self._evaporate_buffer()
@@ -445,6 +449,11 @@ class SoBuffer(object):
     def all_gradients(self, frameids, static, moving, repulsion):
         """
         function returns all gradients as a list
+        :param frameids: frame IDs to be considered looking for gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
         :return: list of gradients
         """
 
@@ -473,6 +482,10 @@ class SoBuffer(object):
          view distance
         :param frameids: frame IDs to be considered looking for repulsive
         gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
         :return: list of repulsive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
@@ -527,7 +540,9 @@ class SoBuffer(object):
         function determines which attractive gradients are currently within
          view distance
         :param frameids: frame IDs to be considered looking for attractive
-        gradients
+                         gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
         :return: list of attractive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
@@ -651,6 +666,8 @@ class SoBuffer(object):
         function determines all gradients within view distance with a certain
         frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
+        :param static: consider static gradients
+        :param moving: consider moving gradients
         :return: list of gradients
         """
         self._evaporate_buffer()
@@ -682,13 +699,15 @@ class SoBuffer(object):
         return gradients
 
     # Aggregation of data for Decision patterns
-    def pheromone_list_angle(self, frame, view_angle, static=True):
+    def pheromone_list_angle(self, frame, view_angle):
         """
         function determines all gradients within view distance with a certain
         frame ID & within a view angle,
-        excluding all gradients from agent itself
+        only static gradients as pheromones are deposited in environment,
         2D only so far
         :param frame: frame ID of agent data
+        :param view_angle: angle in which agent can see pheromones
+                        (+/- from heading)
         :return: list of gradients
         """
         self._evaporate_buffer()
@@ -709,7 +728,7 @@ class SoBuffer(object):
 
         heading = Vector3(heading[0], heading[1], heading[2])
 
-        if static and frame in self._static.keys():
+        if frame in self._static.keys():
             for element in self._static[frame]:
                 grad = calc.delta_vector(element.p, self.own_pos[-1].p)
                 if calc.vector_length(grad) <= element.diffusion + \
