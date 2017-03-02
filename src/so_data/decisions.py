@@ -59,13 +59,12 @@ class MorphogenesisBarycenter(DecisionPattern):
         sets state of robot based on it
         :return: distance (float)
         """
-
         values = self._buffer.agent_list(self.frame, moving=self.moving,
                                          static=self.static)
         own_pos = self._buffer.get_own_pose()
 
         if not values or not own_pos:
-            return 0
+            return [0, 'None']
 
         # determine summed up distances to neighbors
         dist = 0
@@ -88,12 +87,11 @@ class MorphogenesisBarycenter(DecisionPattern):
                 count += 1
 
         # set state
+        state = 'None'
         if neighbors != 0 and count == neighbors:
-            self.state = 'Center'
-        else:
-            self.state = 'None'
+            state = 'Center'
 
-        return dist
+        return [dist, state]
 
     def spread(self):
         """
@@ -101,7 +99,6 @@ class MorphogenesisBarycenter(DecisionPattern):
         + spreads center gradient if robot is barycenter
         """
         super(MorphogenesisBarycenter, self).spread()
-        self.last_state = self.state
 
         # if barycenter: spread gradient for chemotaxis
         if self.state == 'Center':
@@ -160,7 +157,7 @@ class GossipMax(DecisionPattern):
             if tmpMax < tmp:
                 tmpMax = tmp
 
-        return tmpMax
+        return [tmpMax, None]
 
     def spread(self):
         """
@@ -211,15 +208,15 @@ class Quorum(DecisionPattern):
         determines number of agents within view
         :return: state
         """
+
         values = self._buffer.agent_list(self.frames, moving=self.moving,
                                          static=self.static)
 
         count = len(values)
 
+        state = False
         # set state
         if count >= self.threshold:
-            self.state = True
-        else:
-            self.state = False
+            state = True
 
-        return count
+        return [count, state]

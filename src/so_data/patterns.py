@@ -113,13 +113,13 @@ class DecisionPattern(object):
     def calc_value(self):
         """
         method to determine current key-value value and to set state
-        :return:
+        :return: [value, state]
         """
         pass
 
     def spread(self):
         """
-        method to spread new values
+        method to spread calculated values (determined by calc_value)
         :return:
         """
         # create gossip message
@@ -145,8 +145,10 @@ class DecisionPattern(object):
 
         msg.moving = True  # set to moving as gradient is tied to agent
 
-        # determine value
-        self.value = self.calc_value()
+        # set value and state
+        tmp = self.calc_value()
+        self.value = tmp[0]
+        self.state = tmp[1]
         msg.payload.append(KeyValue(self.key, "%.9f" % self.value))
 
         # spread gradient
