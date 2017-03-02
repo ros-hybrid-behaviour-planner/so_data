@@ -7,41 +7,39 @@ Module including sample implementation of ant foraging
 """
 
 import random
-from patterns import MovementPattern
 import gradient
 import calc
 import rospy
 from geometry_msgs.msg import Vector3
 from so_data.msg import SoMessage
-import numpy as np
 from so_data.sobroadcaster import SoBroadcaster
+from patterns import MovementPattern, DecisionPattern
+from chemotaxis import ChemotaxisBalch
 
 
 class STATE(object):
     NONE = 1
     EXPLORATION = 2
     EXPLOITATION = 3
+    RETURN = 4
 
 
-class ForagingPheromones(MovementPattern):
+class ForagingPheromones(ChemotaxisBalch):
     """
     Foraging: set state and move to nest while depositing pheromones
+    enhancement of ChemotaxisBalch behaviour
     """
-    def __init__(self, probability,  buffer, frames=None, repulsion=False,
+    def __init__(self, buffer, frames=None, repulsion=False,
                  moving=False, static=True, maxvel=1.0, minvel=0.5,
-                 state=0, frame='Pheromone', attraction=1, ev_factor=1.0,
-                 ev_time=5):
+                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=10):
         """
         initialize behaviour
         :param value: exploration probability
         """
+
         super(ForagingPheromones, self).__init__(buffer, frames, repulsion,
                                                  moving, static, maxvel,
                                                  minvel)
-
-        self.state = state
-        self.probability = probability
-
         self.frame = frame
         self.attraction = attraction
         self.ev_factor = ev_factor
@@ -50,22 +48,6 @@ class ForagingPheromones(MovementPattern):
 
         self._broadcaster = SoBroadcaster()
 
-    def set_state(self):
-        """
-        defines whether agent is exploring or exploiting
-        """
-        # set state
-        if random.random() < self.probability:
-            self.state = STATE.EXPLORATION
-        else:
-            self.state = STATE.EXPLOITATION
-
-    def reset_state(self):
-        """
-        resets state to None
-        """
-        self.state = STATE.NONE
-
     def move(self):
         """
         :return: movement vector
@@ -73,81 +55,11 @@ class ForagingPheromones(MovementPattern):
         # spread pheromone
         self.spread()
 
-        vector_repulsion = Vector3()
-
-        pose = self._buffer.get_own_pose()
-
-        # get all gradients within view distance
-        # repulsive gradients
-        gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
-                                                               self.static,
-                                                               self.moving,
-                                                               self.repulsion)
-
-        # attractive gradient
-        vector_attraction = self.goal_gradient()
-
-        if pose:
-            if gradients_repulsive:
-                for grdnt in gradients_repulsive:
-
-                    grad = gradient.calc_repulsive_gradient(grdnt, pose)
-
-                    # robot position is within obstacle goal radius
-                    # handle infinite repulsion
-                    if grad.x == np.inf or grad.x == -1 * np.inf:
-                        # create random vector with length (goal_radius +
-                        # gradient.diffusion)
-                        dv = calc.delta_vector(pose.p, grdnt.p)
-
-                        if calc.vector_length(dv) == 0:
-                            vector_repulsion = calc.add_vectors(
-                                vector_repulsion,
-                                calc.random_vector(
-                                    grdnt.goal_radius +
-                                    grdnt.diffusion))
-                        else:
-                            vector_repulsion = calc.add_vectors(
-                                vector_repulsion,
-                                calc.adjust_length(
-                                    dv,
-                                    grdnt.goal_radius + grdnt.diffusion))
-                    else:
-                        vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                            grad)
-        if vector_attraction:
-            result = calc.add_vectors(vector_attraction, vector_repulsion)
-        else:
-            result = vector_repulsion
-
-        d = calc.vector_length(result)
-        if d > self.maxvel:
-            result = calc.adjust_length(result, self.maxvel)
-        elif 0 < d < self.minvel:
-            result = calc.adjust_length(result, self.minvel)
-
-        return result
-
-    def goal_gradient(self):
-        """
-        :return: vector to goal gradient
-        """
-        grad = None
-
-        attractive = self._buffer.max_attractive_gradient(self.frames,
-                                                          self.static,
-                                                          self.moving)
-
-        pose = self._buffer.get_own_pose()
-
-        if attractive and pose:
-            grad = gradient.calc_attractive_gradient(attractive, pose)
-
-        return grad
+        return super(ForagingPheromones, self).move()
 
     def spread(self):
         """
-        method to spread new values
+        method to spread pheromones
         :return:
         """
         # create gossip message
@@ -177,6 +89,30 @@ class ForagingPheromones(MovementPattern):
         self._broadcaster.send_data(msg)
 
 
+class ForagingDecision(DecisionPattern):
+    """
+    Decision mechanism for foraging: explore vs exploit
+    """
+    def __init__(self, buffer, probability):
+        """
+        :param probability:
+        :param buffer:
+        """
+        super(ForagingDecision, self).__init__(buffer, value=probability)
+
+    def calc_value(self):
+        """
+        determines whether agent will explore or exploit
+        """
+        # set state
+        if random.random() < self.value:
+            state = STATE.EXPLORATION
+        else:
+            state = STATE.EXPLOITATION
+
+        return [self.value, state]
+
+
 class FollowTrail(MovementPattern):
     """
     Foraging - Follow pheromone trail behaviour
@@ -201,8 +137,7 @@ class FollowTrail(MovementPattern):
 
         # get all gradients within view distance
 
-        view = self._buffer.pheromone_list_angle(self.frames, self.angle,
-                                             self.static)
+        view = self._buffer.pheromone_list_angle(self.frames, self.angle)
 
         # attractive gradient
         result = Vector3()
