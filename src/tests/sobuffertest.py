@@ -13,7 +13,7 @@ import rospy
 from geometry_msgs.msg import Vector3, Quaternion
 from copy import deepcopy
 from std_msgs.msg import Header
-
+import numpy as np
 
 class SoBufferTest(unittest.TestCase):
     """
@@ -955,6 +955,101 @@ class SoBufferTest(unittest.TestCase):
                          SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
                                    -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
                                    False, []))
+
+    def test_agent_set(self):
+        """
+        test agent set function
+        :return:
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        self.assertEqual(bffr.agent_set(bffr.pose_frame), [])
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot': {
+                'robot1': [SoMessage(None, None, Vector3(0, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, []),
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot2': [SoMessage(),
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot4': []
+            }
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        result = [
+            [SoMessage(None, None, Vector3(1, 2, 0),
+                       Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                       Vector3(), 0, 0, True, [])],
+            [SoMessage(None, None, Vector3(0, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                       1.0, 0, None, Vector3(), 0, 0, True, []),
+             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                       1.0, 0, None, Vector3(), 0, 0, True, [])]]
+
+        self.assertEqual(bffr.agent_set(bffr.pose_frame), result)
+
+    def test_static_list_angle(self):
+        """
+        test static_list_angle method
+        :return:
+        """
+
+        bffr = SoBuffer(view_distance=2.0)
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 0), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(1, 0, 0), 0, 0, False, [])]
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 3), Quaternion(), 1,
+                               1.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(3, 3, 0), Quaternion(), -1,
+                               0.2, 0.5, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1,
+                               5.0, 0.2, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     ],
+            'Center': [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(),
+                                 -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, []),
+                       SoMessage(None, None, Vector3(0, 0, 0), Quaternion(),
+                                 -1, 3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, [])]
+        }
+
+        result = [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(), -1,
+                            8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
+                            []),
+                  SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1,
+                            3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0, False,
+                            [])]
+
+        self.assertEqual(bffr.static_list_angle('Center', np.pi), result)
+
+        self.assertEqual(bffr.static_list_angle('Center', np.pi/2),
+                         [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(),
+                                    -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                                    0, False, [])])
+
+        self.assertEqual(bffr.static_list_angle('Center', 0), [])
+
+
 
 
 # run tests - start roscore before running tests

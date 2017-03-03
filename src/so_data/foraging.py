@@ -115,7 +115,7 @@ class ForagingDecision(DecisionPattern):
 
 class FollowTrail(MovementPattern):
     """
-    Foraging - Follow pheromone trail behaviour
+    Foraging - Follow pheromone trail behaviour (chemotaxis)
     """
     def __init__(self, buffer, frame, angle=1.3, repulsion=False,
                  moving=False, static=True, maxvel=1.0, minvel=0.5):
@@ -130,14 +130,13 @@ class FollowTrail(MovementPattern):
 
     def move(self):
         """
-        :return: movement vector
+        :return: movement vector following trail
         """
-
         pose = self._buffer.get_own_pose()
 
         # get all gradients within view distance
 
-        view = self._buffer.pheromone_list_angle(self.frames, self.angle)
+        view = self._buffer.static_list_angle(self.frames, self.angle)
 
         # attractive gradient
         result = Vector3()

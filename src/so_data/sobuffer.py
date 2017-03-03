@@ -699,7 +699,7 @@ class SoBuffer(object):
         return gradients
 
     # Aggregation of data for Decision patterns
-    def pheromone_list_angle(self, frame, view_angle):
+    def static_list_angle(self, frame, view_angle):
         """
         function determines all gradients within view distance with a certain
         frame ID & within a view angle,
@@ -733,7 +733,8 @@ class SoBuffer(object):
                 grad = calc.delta_vector(element.p, self.own_pos[-1].p)
                 if calc.vector_length(grad) <= element.diffusion + \
                          element.goal_radius + self._view_distance:
-                    if calc.angle_between_vector3(grad, heading) <= view_angle:
+                    if np.abs(calc.angle_between_vector3(grad, heading)) \
+                            <= view_angle:
                         gradients.append(element)
 
         return gradients
@@ -796,8 +797,8 @@ class SoBuffer(object):
                     # in case that gradient concentration is lower than
                     # minimum and no goal_radius exists, delete data
                     if self._static[fid][i].goal_radius == 0.0 and \
-                                    self._static[fid][
-                                        i].diffusion < self._min_diffusion:
+                                    self._static[fid][i].diffusion < \
+                                    self._min_diffusion:
                         del self._static[fid][i]  # remove element
 
         for fid in self._moving.keys():

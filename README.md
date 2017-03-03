@@ -257,10 +257,10 @@ The following options are available:
     def agent_set(self, frame)
 ```
 
-8. Get list of pheromones within a specified view angle
+8. Get list of static gradients with a specified frame within a specified view angle
 
 ```python
-    def pheromone_list_angle(self, frame, view_angle)
+    def static_list_angle(self, frame, view_angle)
 ```
  
  
