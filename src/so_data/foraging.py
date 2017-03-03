@@ -25,6 +25,32 @@ class STATE(object):
     RETURN = 4
 
 
+# Decision Behaviour
+class ForagingDecision(DecisionPattern):
+    """
+    Decision mechanism for foraging: explore vs exploit
+    """
+    def __init__(self, buffer, probability):
+        """
+        :param probability:
+        :param buffer:
+        """
+        super(ForagingDecision, self).__init__(buffer, value=probability)
+
+    def calc_value(self):
+        """
+        determines whether agent will explore or exploit
+        """
+        # set state
+        if random.random() < self.value:
+            state = STATE.EXPLORATION
+        else:
+            state = STATE.EXPLOITATION
+
+        return [self.value, state]
+
+
+# Movement Behaviour
 class ForagingPheromones(ChemotaxisBalch):
     """
     Foraging: set state and move to nest while depositing pheromones
@@ -88,30 +114,6 @@ class ForagingPheromones(ChemotaxisBalch):
 
         # spread gradient
         self._broadcaster.send_data(msg)
-
-
-class ForagingDecision(DecisionPattern):
-    """
-    Decision mechanism for foraging: explore vs exploit
-    """
-    def __init__(self, buffer, probability):
-        """
-        :param probability:
-        :param buffer:
-        """
-        super(ForagingDecision, self).__init__(buffer, value=probability)
-
-    def calc_value(self):
-        """
-        determines whether agent will explore or exploit
-        """
-        # set state
-        if random.random() < self.value:
-            state = STATE.EXPLORATION
-        else:
-            state = STATE.EXPLOITATION
-
-        return [self.value, state]
 
 
 class FollowTrail(MovementPattern):
