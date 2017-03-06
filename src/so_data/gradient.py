@@ -102,10 +102,13 @@ def calc_attractive_gradient_ge(gradient, pose):
 
     if d <= 0:
         v = Vector3()
-    elif 0 < d <= 0 + gradient.diffusion:
-        v = calc.adjust_length(calc.unit_vector3(tmp), d)
+    elif 0 < d <= gradient.diffusion:
+        v = calc.adjust_length(tmp, d)
     elif d > gradient.diffusion:
-        v = calc.adjust_length(tmp, gradient.diffusion)
+        if gradient.diffusion == 0:
+            v = calc.adjust_length(tmp, 1)
+        else:
+            v = calc.adjust_length(tmp, gradient.diffusion)
 
     return v
 

@@ -51,7 +51,7 @@ class ForagingDecision(DecisionPattern):
 
 
 # Movement Behaviour
-class ForagingPheromones(ChemotaxisGe):
+class DepositPheromones(ChemotaxisGe):
     """
     Foraging: set state and move to nest while depositing pheromones
     enhancement of ChemotaxisBalch behaviour
@@ -64,9 +64,8 @@ class ForagingPheromones(ChemotaxisGe):
         :param value: exploration probability
         """
 
-        super(ForagingPheromones, self).__init__(buffer, frames, repulsion,
-                                                 moving, static, maxvel,
-                                                 minvel)
+        super(DepositPheromones, self).__init__(buffer, frames, repulsion,
+                                                moving, static, maxvel, minvel)
         self.frame = frame
         self.attraction = attraction
         self.ev_factor = ev_factor
@@ -82,7 +81,7 @@ class ForagingPheromones(ChemotaxisGe):
         # spread pheromone
         self.spread()
 
-        return super(ForagingPheromones, self).move()
+        return super(DepositPheromones, self).move()
 
     def spread(self):
         """
@@ -116,7 +115,7 @@ class ForagingPheromones(ChemotaxisGe):
         self._broadcaster.send_data(msg)
 
 
-class FollowTrail(MovementPattern):
+class Exploitation(MovementPattern):
     """
     Foraging - Follow pheromone trail behaviour (chemotaxis)
     """
@@ -126,8 +125,8 @@ class FollowTrail(MovementPattern):
         initialize behaviour
         :param value: exploration probability
         """
-        super(FollowTrail, self).__init__(buffer, frame, repulsion, moving,
-                                          static, maxvel, minvel)
+        super(Exploitation, self).__init__(buffer, frame, repulsion, moving,
+                                           static, maxvel, minvel)
 
         self.angle = angle
 
@@ -166,8 +165,8 @@ class FollowTrail(MovementPattern):
         return self.angle * 2
 
 
-# WalkRandom
-class WalkRandom(MovementPattern):
+# Exploration: WalkRandom
+class Exploration(MovementPattern):
     """
     movement mechanism to follow random movement
     """
@@ -182,8 +181,8 @@ class WalkRandom(MovementPattern):
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(WalkRandom, self).__init__(buffer, frames, repulsion, moving,
-                                         static, maxvel, minvel)
+        super(Exploration, self).__init__(buffer, frames, repulsion, moving,
+                                          static, maxvel, minvel)
 
     def move(self):
         """
