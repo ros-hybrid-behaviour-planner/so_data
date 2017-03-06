@@ -138,7 +138,7 @@ class Exploitation(MovementPattern):
 
         # get all gradients within view distance
 
-        view = self._buffer.static_list_angle(self.frames, self.angle)
+        view = self._buffer.static_list_angle([self.frames], self.angle)
 
         # attractive gradient
         result = Vector3()

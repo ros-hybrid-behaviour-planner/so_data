@@ -699,15 +699,16 @@ class SoBuffer(object):
         return gradients
 
     # Aggregation of data for Decision patterns
-    def static_list_angle(self, frameids, view_angle):
+    def static_list_angle(self, frameids, view_angle_xy, view_angle_yz=np.pi):
         """
         function determines all gradients within view distance with a certain
         frame ID & within a view angle,
         only static gradients as pheromones are deposited in environment,
-        2D only so far
-        :param frame: frame ID of agent data
-        :param view_angle: angle in which agent can see pheromones
-                        (+/- from heading)
+        :param frameids: frame ID of agent data
+        :param view_angle_xy: angle in which agent can see pheromones on
+        x-y-plane (+/- from heading)
+        :param view_angle_yz: angle in which agent can see pheromones on
+        y-z-plane (+/- from heading)
         :return: list of gradients
         """
         self._evaporate_buffer()
@@ -738,9 +739,14 @@ class SoBuffer(object):
                     grad = calc.delta_vector(element.p, self.own_pos[-1].p)
                     if calc.vector_length(grad) <= element.diffusion + \
                              element.goal_radius + self._view_distance:
-                        if np.abs(calc.angle_between_vector3(grad, heading)) \
-                                <= view_angle:
-                            gradients.append(element)
+                        if np.abs(calc.angle_between([grad.x, grad.y],
+                                                     [heading.x, heading.y])) \
+                                <= view_angle_xy:
+                            if np.abs(calc.angle_between([grad.y, grad.z],
+                                                         [heading.y,
+                                                          heading.z])) \
+                                    <= view_angle_yz:
+                                gradients.append(element)
 
         return gradients
 
@@ -768,11 +774,13 @@ class SoBuffer(object):
             if frame in self._moving.keys() and self._moving[frame]:
                 for pid in self._moving[frame].keys():
                     if pid != self._id and self._moving[frame][pid]:
-                        if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
+                        if calc.get_gradient_distance(self._moving[frame][pid][
+                                                          -1].p,
                                                       self._own_pos[-1].p) \
                                 <= self._moving[frame][pid][-1].diffusion + \
                                         self._moving[frame][pid][
-                                            -1].goal_radius + self._view_distance:
+                                            -1].goal_radius + \
+                                        self._view_distance:
                             gradients.append(self._moving[frame][pid])
 
         return gradients
