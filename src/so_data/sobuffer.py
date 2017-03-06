@@ -779,7 +779,6 @@ class SoBuffer(object):
         :return:
         """
         with self.lock:
-      #  if True:
             # interate through keys
             for fid in self._static.keys():
                 if self._static[fid]:  # array not empty
@@ -793,8 +792,8 @@ class SoBuffer(object):
                                 n = diff.secs // self._static[fid][i].ev_time
                                 self._static[fid][i].diffusion *= \
                                     self._static[fid][i].ev_factor ** n
-                                self._static[fid][i].ev_stamp += rospy.Duration(
-                                    n * self._static[fid][i].ev_time)
+                                self._static[fid][i].ev_stamp += rospy.\
+                                    Duration(n * self._static[fid][i].ev_time)
                         else:  # delta t for evaporation = 0 and evaporation
                             # applies, set diffusion immediately to 0
                             if self._static[fid][i].ev_factor < 1.0:
@@ -810,27 +809,32 @@ class SoBuffer(object):
             for fid in self._moving.keys():
                 if self._moving[fid]:
                     for pid in self._moving[fid].keys():
-                        for i in xrange(len(self._moving[fid][pid]) - 1, -1, -1):
+                        for i in xrange(len(self._moving[fid][pid]) - 1,
+                                        -1, -1):
                             if self._moving[fid][pid][i].ev_time > 0:
-                                diff = rospy.Time.now() - self._moving[fid][pid][
-                                    i].ev_stamp
+                                diff = rospy.Time.now() - self._moving[fid][
+                                    pid][i].ev_stamp
                                 if diff >= rospy.Duration(
                                         self._moving[fid][pid][i].ev_time):
-                                    n = diff.secs // self._moving[fid][pid][i].ev_time
+                                    n = diff.secs // self._moving[fid][pid][
+                                        i].ev_time
                                     self._moving[fid][pid][i].diffusion *= \
-                                        self._moving[fid][pid][i].ev_factor ** n
-                                    self._moving[fid][pid][i].ev_stamp += rospy.Duration(
-                                        n * self._moving[fid][pid][i].ev_time)
+                                        self._moving[fid][pid][i].ev_factor \
+                                        ** n
+                                    self._moving[fid][pid][i].ev_stamp += \
+                                        rospy.Duration(n * self._moving[fid][
+                                            pid][i].ev_time)
                             else:  # delta t for evaporation = 0 and evaporation
                                 # applies, set diffusion immediately to 0
                                 if self._moving[fid][pid][i].ev_factor < 1.0:
                                     self._moving[fid][pid][i].diffusion = 0.0
 
-                                # in case that gradient concentration is lower than
-                                # minimum and no goal_radius exists, delete data
-                            if self._moving[fid][pid][i].goal_radius == 0.0 and \
-                                            self._moving[fid][pid][i].diffusion < \
-                                            self._min_diffusion:
+                                # in case that gradient concentration is lower
+                                    # than minimum and no goal_radius exists,
+                                    # delete data
+                            if self._moving[fid][pid][i].goal_radius == 0.0 \
+                                    and self._moving[fid][pid][i].diffusion < \
+                                        self._min_diffusion:
                                 del self._moving[fid][pid][i]  # remove element
 
     def _evaporate_msg(self, msg):
