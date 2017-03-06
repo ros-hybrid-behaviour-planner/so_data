@@ -399,24 +399,10 @@ class SoBuffer(object):
 
         gradients = []
 
-        # determine frames to consider
-        if not frameids:
-            frameids = []
-            if static:
-                frameids += self._static.keys()
-            if moving:
-                frameids += self._moving.keys()
-            elif repulsion:
-                frameids.append(self.pose_frame)
-
         # if view distance is infinite, return list of all gradients
         if self._view_distance == np.inf:
             return self.all_gradients(frameids, static, moving, repulsion)
 
-        # no own position available
-        if not self._own_pos:
-            return gradients
-
         # determine frames to consider
         if not frameids:
             frameids = []
@@ -426,6 +412,10 @@ class SoBuffer(object):
                 frameids += self._moving.keys()
             elif repulsion:
                 frameids.append(self.pose_frame)
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
 
         for fid in frameids:
             # static gradients
@@ -450,7 +440,8 @@ class SoBuffer(object):
 
         return gradients
 
-    def all_gradients(self, frameids, static, moving, repulsion):
+    def all_gradients(self, frameids=None, static=True, moving=True,
+                      repulsion=False):
         """
         function returns all gradients as a list
         :param frameids: frame IDs to be considered looking for gradients
@@ -460,6 +451,15 @@ class SoBuffer(object):
                           repulsion between agents
         :return: list of gradients
         """
+        # determine frames to consider
+        if not frameids:
+            frameids = []
+            if static:
+                frameids += self._static.keys()
+            if moving:
+                frameids += self._moving.keys()
+            elif repulsion:
+                frameids.append(self.pose_frame)
 
         self._evaporate_buffer()
 
@@ -665,12 +665,11 @@ class SoBuffer(object):
         return tmp_grad
 
     # Aggregation of data for Decision patterns
-    def agent_list(self, frame, static=False, moving=True):
+    def agent_list(self, frameids=None):
         """
-        function determines all gradients within view distance with a certain
-        frame ID, excluding all gradients from agent itself
+        function determines all moving gradients within view distance with a
+        certain frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
-        :param static: consider static gradients
         :param moving: consider moving gradients
         :return: list of gradients
         """
@@ -682,28 +681,25 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
-        if static and frame in self._static.keys():
-            for element in self._static[frame]:
-                if element.parent_frame != self._id:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
-                        gradients.append(element)
+        # determine frames to consider
+        if not frameids:
+            frameids = self._moving.keys()
 
-        if moving and frame in self._moving.keys() and self._moving[frame]:
-            for pid in self._moving[frame].keys():
-                if pid != self._id and self._moving[frame][pid]:
-                    if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[frame][pid][-1].diffusion + \
-                                    self._moving[frame][pid][
-                                        -1].goal_radius + self._view_distance:
-                        gradients.append(self._moving[frame][pid][-1])
+        for frame in frameids:
+            if frame in self._moving.keys() and self._moving[frame]:
+                for pid in self._moving[frame].keys():
+                    if pid != self._id and self._moving[frame][pid]:
+                        if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
+                                                      self._own_pos[-1].p) \
+                                <= self._moving[frame][pid][-1].diffusion + \
+                                        self._moving[frame][pid][
+                                            -1].goal_radius + self._view_distance:
+                            gradients.append(self._moving[frame][pid][-1])
 
         return gradients
 
     # Aggregation of data for Decision patterns
-    def static_list_angle(self, frame, view_angle):
+    def static_list_angle(self, frameids, view_angle):
         """
         function determines all gradients within view distance with a certain
         frame ID & within a view angle,
@@ -722,6 +718,10 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
+        # determine frames to consider
+        if not frameids:
+            frameids = self._static.keys()
+
         # heading vector
         heading = tf.transformations.quaternion_matrix(
                 [self._own_pos[-1].q.x, self._own_pos[-1].q.y,
@@ -732,19 +732,20 @@ class SoBuffer(object):
 
         heading = Vector3(heading[0], heading[1], heading[2])
 
-        if frame in self._static.keys():
-            for element in self._static[frame]:
-                grad = calc.delta_vector(element.p, self.own_pos[-1].p)
-                if calc.vector_length(grad) <= element.diffusion + \
-                         element.goal_radius + self._view_distance:
-                    if np.abs(calc.angle_between_vector3(grad, heading)) \
-                            <= view_angle:
-                        gradients.append(element)
+        for frame in frameids:
+            if frame in self._static.keys():
+                for element in self._static[frame]:
+                    grad = calc.delta_vector(element.p, self.own_pos[-1].p)
+                    if calc.vector_length(grad) <= element.diffusion + \
+                             element.goal_radius + self._view_distance:
+                        if np.abs(calc.angle_between_vector3(grad, heading)) \
+                                <= view_angle:
+                            gradients.append(element)
 
         return gradients
 
     # Aggregation of data for Decision patterns
-    def agent_set(self, frame):
+    def agent_set(self, frameids=None):
         """
         function determines all gradients within view distance with a certain
         frame ID, excluding all gradients from agent itself
@@ -759,15 +760,20 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
-        if frame in self._moving.keys() and self._moving[frame]:
-            for pid in self._moving[frame].keys():
-                if pid != self._id and self._moving[frame][pid]:
-                    if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[frame][pid][-1].diffusion + \
-                                    self._moving[frame][pid][
-                                        -1].goal_radius + self._view_distance:
-                        gradients.append(self._moving[frame][pid])
+        # determine frames to consider
+        if not frameids:
+            frameids = self._moving.keys()
+
+        for frame in frameids:
+            if frame in self._moving.keys() and self._moving[frame]:
+                for pid in self._moving[frame].keys():
+                    if pid != self._id and self._moving[frame][pid]:
+                        if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
+                                                      self._own_pos[-1].p) \
+                                <= self._moving[frame][pid][-1].diffusion + \
+                                        self._moving[frame][pid][
+                                            -1].goal_radius + self._view_distance:
+                            gradients.append(self._moving[frame][pid])
 
         return gradients
 

@@ -59,8 +59,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         sets state of robot based on it
         :return: distance (float)
         """
-        values = self._buffer.agent_list(self.frame, moving=self.moving,
-                                         static=self.static)
+        values = self._buffer.agent_list([self.frame])
         own_pos = self._buffer.get_own_pose()
 
         if not values or not own_pos:
@@ -135,8 +134,8 @@ class GossipMax(DecisionPattern):
         :param state: robot state
         """
 
-        super(GossipMax, self).__init__(buffer, frame, key, value, state, moving,
-                                        static, goal_radius, ev_factor,
+        super(GossipMax, self).__init__(buffer, frame, key, value, state,
+                                        moving, static, goal_radius, ev_factor,
                                         ev_time, diffusion)
 
     def calc_value(self):
@@ -144,8 +143,7 @@ class GossipMax(DecisionPattern):
         determines maximum received value by all agent gradients
         :return: maximum number
         """
-        values = self._buffer.agent_list(self.frame, moving=self.moving,
-                                         static=self.static)
+        values = self._buffer.agent_list([self.frame])
 
         tmpMax = self.value
 
@@ -199,7 +197,7 @@ class Quorum(DecisionPattern):
 
         # set standard agent frame if no frame is specified
         if not frame:
-            self.frames = self._buffer.pose_frame
+            self.frame = self._buffer.pose_frame
 
         self.threshold = threshold
 
@@ -209,8 +207,7 @@ class Quorum(DecisionPattern):
         :return: state
         """
 
-        values = self._buffer.agent_list(self.frames, moving=self.moving,
-                                         static=self.static)
+        values = self._buffer.agent_list([self.frame])
 
         count = len(values)
 

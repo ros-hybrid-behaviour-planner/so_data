@@ -28,7 +28,7 @@ class SoBufferTest(unittest.TestCase):
         """
         bffr = SoBuffer(view_distance=2.0)
 
-        self.assertEqual(bffr.agent_list(bffr.pose_frame), [])
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), [])
 
         # 2 neighbors within view, one outside view
         bffr._moving = {
@@ -66,8 +66,8 @@ class SoBufferTest(unittest.TestCase):
             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
                       1.0, 0, None, Vector3(), 0, 0, True, [])]
 
-        self.assertEqual(bffr.agent_list(bffr.pose_frame), result)
-        self.assertEqual(bffr.agent_list(bffr.pose_frame, static=True), result)
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), result)
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), result)
 
     # EVAPORATION
     def test_evaporation_buffer(self):
@@ -963,7 +963,7 @@ class SoBufferTest(unittest.TestCase):
         """
         bffr = SoBuffer(view_distance=2.0)
 
-        self.assertEqual(bffr.agent_set(bffr.pose_frame), [])
+        self.assertEqual(bffr.agent_set([bffr.pose_frame]), [])
 
         # 2 neighbors within view, one outside view
         bffr._moving = {
@@ -1000,7 +1000,7 @@ class SoBufferTest(unittest.TestCase):
              SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
                        1.0, 0, None, Vector3(), 0, 0, True, [])]]
 
-        self.assertEqual(bffr.agent_set(bffr.pose_frame), result)
+        self.assertEqual(bffr.agent_set([bffr.pose_frame]), result)
 
     def test_static_list_angle(self):
         """
@@ -1040,14 +1040,14 @@ class SoBufferTest(unittest.TestCase):
                             3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0, False,
                             [])]
 
-        self.assertEqual(bffr.static_list_angle('Center', np.pi), result)
+        self.assertEqual(bffr.static_list_angle(['Center'], np.pi), result)
 
-        self.assertEqual(bffr.static_list_angle('Center', np.pi/2),
+        self.assertEqual(bffr.static_list_angle(['Center'], np.pi/2),
                          [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(),
                                     -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0,
                                     0, False, [])])
 
-        self.assertEqual(bffr.static_list_angle('Center', 0), [])
+        self.assertEqual(bffr.static_list_angle(['Center'], 0), [])
 
 
 
