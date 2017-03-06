@@ -15,7 +15,7 @@ from geometry_msgs.msg import Vector3
 from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from patterns import MovementPattern, DecisionPattern
-from chemotaxis import ChemotaxisBalch
+from chemotaxis import ChemotaxisGe
 
 
 class STATE(object):
@@ -51,7 +51,7 @@ class ForagingDecision(DecisionPattern):
 
 
 # Movement Behaviour
-class ForagingPheromones(ChemotaxisBalch):
+class ForagingPheromones(ChemotaxisGe):
     """
     Foraging: set state and move to nest while depositing pheromones
     enhancement of ChemotaxisBalch behaviour
@@ -147,7 +147,7 @@ class FollowTrail(MovementPattern):
         if pose:
             if view:
                 for grdnt in view:
-                    grad = gradient.calc_attractive_gradient(grdnt, pose)
+                    grad = gradient.calc_attractive_gradient_ge(grdnt, pose)
                     result = calc.add_vectors(result, grad)
 
         d = calc.vector_length(result)
@@ -157,6 +157,13 @@ class FollowTrail(MovementPattern):
             result = calc.adjust_length(result, self.minvel)
 
         return result
+
+    def turn(self):
+        """
+        method to determine how far agent should turn
+        :return: 2 times view angle
+        """
+        return self.angle * 2
 
 
 # WalkRandom
