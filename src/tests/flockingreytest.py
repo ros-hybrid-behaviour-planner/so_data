@@ -5,11 +5,10 @@ Created on 21.12.2016
 
 Module with unit test for flockingrey.py
 """
-
+import rospy
 import unittest
 from geometry_msgs.msg import Vector3, Quaternion
 from so_data.flockingrey import *
-import rospy
 from so_data.gradientnode import create_gradient
 
 

@@ -7,10 +7,10 @@ Unit test for gradient.py
 """
 
 import unittest
-from so_data.msg import SoMessage
 import rospy
-from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
 import so_data.gradient as gradient
 
 

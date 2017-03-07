@@ -5,15 +5,14 @@ Created on 20.02.2017
 
 Unit test for decisions.py
 """
-
-from so_data.sobuffer import SoBuffer, AGGREGATION
 import unittest
-from so_data.msg import SoMessage
 import rospy
-from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
-from so_data.decisions import MorphogenesisBarycenter, GossipMax, Quorum
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
 from diagnostic_msgs.msg import KeyValue
+from so_data.decisions import MorphogenesisBarycenter, GossipMax, Quorum
+from so_data.sobuffer import SoBuffer, AGGREGATION
 
 
 class DecisionsTest(unittest.TestCase):

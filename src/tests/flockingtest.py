@@ -7,13 +7,13 @@ Unit Test for flocking.py
 """
 
 import unittest
-from so_data.msg import SoMessage
-from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
-from std_msgs.msg import Header
-import so_data.flocking
 import rospy
 import collections
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
+from std_msgs.msg import Header
+import so_data.flocking
 
 
 class FlockingTest(unittest.TestCase):

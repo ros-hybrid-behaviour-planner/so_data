@@ -5,15 +5,14 @@ Created on 20.02.2017
 
 Unit test for chemotaxis.py
 """
-
-from so_data.sobuffer import SoBuffer, AGGREGATION
 import unittest
-from so_data.msg import SoMessage
 import rospy
-from geometry_msgs.msg import Vector3, Quaternion
 import numpy as np
-from so_data.chemotaxis import *
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
 import so_data.calc as calc
+from so_data.sobuffer import SoBuffer, AGGREGATION
+from so_data.chemotaxis import *
 
 
 class ChemotaxisTest(unittest.TestCase):
@@ -167,7 +166,7 @@ class ChemotaxisTest(unittest.TestCase):
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(0.0, 2.0, 0.0))
+        self.assertEqual(result, Vector3(0.0, 1.0, 0.0))
 
         # all frameIDs
         chem.frames = []
@@ -175,7 +174,7 @@ class ChemotaxisTest(unittest.TestCase):
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
-        self.assertEqual(result, Vector3(-0.03, 1.96, 0.0))
+        self.assertEqual(result, Vector3(-0.02, 0.98, 0.0))
 
     def test_follow_all(self):
         """
