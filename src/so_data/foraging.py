@@ -16,6 +16,7 @@ from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from patterns import MovementPattern, DecisionPattern
 from chemotaxis import ChemotaxisGe
+from repulsion import RepulsionGradient
 
 
 class STATE(object):
@@ -184,6 +185,9 @@ class Exploration(MovementPattern):
         super(Exploration, self).__init__(buffer, frames, repulsion, moving,
                                           static, maxvel, minvel)
 
+        if repulsion:
+            self.rep = RepulsionGradient(buffer)
+
     def move(self):
         """
         calculates random movement vector
@@ -195,6 +199,9 @@ class Exploration(MovementPattern):
         g.x = 2 * tmp[0][0] - 1
         g.y = 2 * tmp[0][1] - 1
         g.z = 2 * tmp[0][2] - 1
+
+        if self.repulsion:
+            g = calc.add_vectors(g, self.rep.move())
 
         # adjust length
         d = calc.vector_length(g)

@@ -413,6 +413,9 @@ class SoBuffer(object):
             elif repulsion:
                 frameids.append(self.pose_frame)
 
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
+
         # no own position available
         if not self._own_pos:
             return gradients
@@ -460,6 +463,9 @@ class SoBuffer(object):
                 frameids += self._moving.keys()
             elif repulsion:
                 frameids.append(self.pose_frame)
+
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
 
         self._evaporate_buffer()
 
@@ -512,6 +518,9 @@ class SoBuffer(object):
                 frameids += self._moving.keys()
             elif repulsion:
                 frameids.append(self.pose_frame)
+
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
 
         for fid in frameids:
             # static gradients
