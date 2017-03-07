@@ -20,7 +20,7 @@ class RepulsionFernandez(MovementPattern):
     Repulsion calculation based on formulas presented by Fernandez-Marquez
     in "Description and composition of bio-inspired design patterns"
     """
-    def __init__(self, buffer, frame=None, static=False, moving=True):
+    def __init__(self, buffer, frames=None, static=False, moving=True):
         """
         :param buffer: soBuffer returning gradient data
         :param frame: agent frame ID
@@ -28,13 +28,11 @@ class RepulsionFernandez(MovementPattern):
         :param moving: consider moving gradients
         """
         # set standard agent frame if no frame is specified
-        if not frame:
-            self.frame = buffer.pose_frame
-        else:
-            self.frame = frame
+        if not frames:
+            frames = [buffer.pose_frame]
 
-        super(RepulsionFernandez, self).__init__(buffer, [self.frame],
-                                                 static=static, moving=moving)
+        super(RepulsionFernandez, self).__init__(buffer, frames, static=static,
+                                                 moving=moving)
 
     def move(self):
         """
@@ -43,7 +41,7 @@ class RepulsionFernandez(MovementPattern):
         """
 
         pose = self._buffer.get_own_pose()
-        view = self._buffer.agent_list(self.frame, self.static, self.moving)
+        view = self._buffer.agent_list(self.frames)
 
         mov = Vector3()
 
