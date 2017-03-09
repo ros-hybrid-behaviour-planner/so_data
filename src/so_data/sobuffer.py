@@ -17,6 +17,7 @@ import calc
 import random
 import gradient
 import threading
+import copy
 
 
 class AGGREGATION(object):
@@ -153,12 +154,13 @@ class SoBuffer(object):
         if not msg:  # evaporation let to disappearance of the message
             return
 
-        # store own position and neighbor / moving agents data
-        if msg.moving:
-            self.store_moving(msg)
+        with self.lock:
+            # store own position and neighbor / moving agents data
+            if msg.moving:
+                self.store_moving(msg)
         # aggregate and store static gradient data
-        else:
-            self.store_static(msg)
+            else:
+                self.store_static(msg)
 
     def store_moving(self, msg):
         """
@@ -420,26 +422,33 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
+        pose = copy.deepcopy(self._own_pos[-1])
+
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                    self._view_distance:
                             gradients.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in self._moving.keys() \
-                    and self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and calc.get_gradient_distance(
-                            self._moving[fid][pid][-1].p,
-                                                 self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        gradients.append(self._moving[fid][pid][-1])
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                            self._view_distance:
+                            gradients.append(element)
 
         return gradients
 
@@ -471,17 +480,22 @@ class SoBuffer(object):
 
         gradients = []
 
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
                     gradients.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in self._moving.keys() \
-                    and self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid]:
-                        gradients.append(self._moving[fid][pid][-1])
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        gradients.append(movingbuffer[fid][pid][-1])
 
         return gradients
 
@@ -509,6 +523,8 @@ class SoBuffer(object):
         if not self._own_pos:
             return []
 
+        pose = copy.deepcopy(self._own_pos[-1])
+
         # determine frames to consider
         if not frameids:
             frameids = []
@@ -522,29 +538,33 @@ class SoBuffer(object):
         if repulsion and self.pose_frame not in frameids:
             frameids.append(self.pose_frame)
 
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                            self._view_distance:
                         if element.attraction == -1:
                             gradients_repulsive.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in self._moving.keys() \
-                    and self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and \
-                                    calc.get_gradient_distance(
-                                        self._moving[fid][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        if self._moving[fid][pid][-1].attraction == -1:
-                            gradients_repulsive.append(self._moving[fid][pid][-1])
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                               self._view_distance:
+                            if element.attraction == -1:
+                                gradients_repulsive.append(element)
 
         return gradients_repulsive
 
@@ -567,6 +587,8 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients_attractive
 
+        pose = copy.deepcopy(self.own_pos[-1])
+
         # determine frames to consider
         if not frameids:
             frameids = []
@@ -575,29 +597,32 @@ class SoBuffer(object):
             if moving:
                 frameids += self._moving.keys()
 
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                    self._view_distance:
                         if element.attraction == 1:
                             gradients_attractive.append(element)
 
             # moving gradients
-            if moving and fid in self._moving.keys():
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and \
-                                    calc.get_gradient_distance(
-                                        self._moving[fid][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        if self._moving[fid][pid][-1].attraction == 1:
-                            gradients_attractive.append(self._moving[fid][pid]
-                                                        [-1])
+            if moving and fid in movingbuffer.keys():
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                            self._view_distance:
+                            if element.attraction == 1:
+                                gradients_attractive.append(element)
 
         return gradients_attractive
 
@@ -614,14 +639,15 @@ class SoBuffer(object):
         if not self._own_pos:
             return []
 
+        pose = copy.deepcopy(self._own_pos[-1])
+
         gradients = self.attractive_gradients(frameids, static, moving)
         tmp_grad = None
         tmp_att = np.inf
 
         if gradients:
             for grad in gradients:
-                g = gradient.calc_attractive_gradient(grad,
-                                                      self._own_pos[-1])
+                g = gradient.calc_attractive_gradient(grad, pose)
                 att = calc.vector_length(g)
                 # attraction decreases with being closer to gradient source
                 # / goal area
@@ -690,20 +716,24 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
+        pose = copy.deepcopy(self.own_pos[-1])
+
         # determine frames to consider
         if not frameids:
             frameids = self._moving.keys()
 
+        moving = copy.deepcopy(self._moving)
+
         for frame in frameids:
-            if frame in self._moving.keys() and self._moving[frame]:
-                for pid in self._moving[frame].keys():
-                    if pid != self._id and self._moving[frame][pid]:
-                        if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
-                                                      self._own_pos[-1].p) \
-                                <= self._moving[frame][pid][-1].diffusion + \
-                                        self._moving[frame][pid][
-                                            -1].goal_radius + self._view_distance:
-                            gradients.append(self._moving[frame][pid][-1])
+            if frame in moving.keys() and moving[frame]:
+                for pid in moving[frame].keys():
+                    if pid != self._id and moving[frame][pid]:
+                        if calc.get_gradient_distance(moving[frame][pid][-1].p,
+                                                      pose.p) \
+                                <= moving[frame][pid][-1].diffusion + \
+                                   moving[frame][pid][-1].goal_radius + \
+                                   self._view_distance:
+                            gradients.append(moving[frame][pid][-1])
 
         return gradients
 
@@ -728,24 +758,25 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
+        pose = copy.deepcopy(self.own_pos[-1])
+
         # determine frames to consider
         if not frameids:
             frameids = self._static.keys()
 
         # heading vector
-        heading = tf.transformations.quaternion_matrix(
-                [self._own_pos[-1].q.x, self._own_pos[-1].q.y,
-                 self._own_pos[-1].q.z, self._own_pos[-1].q.w]).dot(
-                 np.array([self._own_pos[-1].direction.x,
-                           self._own_pos[-1].direction.y,
-                           self._own_pos[-1].direction.z, 1]))
+        heading = tf.transformations.quaternion_matrix([pose.q.x, pose.q.y,
+                                                        pose.q.z, pose.q.w]).\
+            dot([pose.direction.x, pose.direction.y, pose.direction.z, 1])
 
         heading = Vector3(heading[0], heading[1], heading[2])
 
+        static = copy.deepcopy(self._static)
+
         for frame in frameids:
-            if frame in self._static.keys():
-                for element in self._static[frame]:
-                    grad = calc.delta_vector(element.p, self.own_pos[-1].p)
+            if frame in static.keys():
+                for element in static[frame]:
+                    grad = calc.delta_vector(element.p, pose.p)
                     if calc.vector_length(grad) <= element.diffusion + \
                              element.goal_radius + self._view_distance:
                         if np.abs(calc.angle_between([grad.x, grad.y],
@@ -775,22 +806,24 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
+        pose = copy.deepcopy(self.own_pos[-1])
+
         # determine frames to consider
         if not frameids:
             frameids = self._moving.keys()
 
+        moving = copy.deepcopy(self._moving)
+
         for frame in frameids:
-            if frame in self._moving.keys() and self._moving[frame]:
-                for pid in self._moving[frame].keys():
-                    if pid != self._id and self._moving[frame][pid]:
-                        if calc.get_gradient_distance(self._moving[frame][pid][
-                                                          -1].p,
-                                                      self._own_pos[-1].p) \
-                                <= self._moving[frame][pid][-1].diffusion + \
-                                        self._moving[frame][pid][
-                                            -1].goal_radius + \
+            if frame in moving.keys() and moving[frame]:
+                for pid in moving[frame].keys():
+                    if pid != self._id and moving[frame][pid]:
+                        if calc.get_gradient_distance(moving[frame][pid][-1].p,
+                                                      pose[-1].p) \
+                                <= moving[frame][pid][-1].diffusion + \
+                                        moving[frame][pid][-1].goal_radius + \
                                         self._view_distance:
-                            gradients.append(self._moving[frame][pid])
+                            gradients.append(moving[frame][pid])
 
         return gradients
 
