@@ -149,7 +149,7 @@ class DecisionPattern(object):
         tmp = self.calc_value()
         self.value = tmp[0]
         self.state = tmp[1]
-        msg.payload.append(KeyValue(self.key, "%.9f" % self.value))
+        msg.payload.append(KeyValue(self.key, "%.16f" % self.value))
 
         # spread gradient
         self._broadcaster.send_data(msg)

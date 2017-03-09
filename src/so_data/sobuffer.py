@@ -158,7 +158,7 @@ class SoBuffer(object):
             # store own position and neighbor / moving agents data
             if msg.moving:
                 self.store_moving(msg)
-        # aggregate and store static gradient data
+            # aggregate and store static gradient data
             else:
                 self.store_static(msg)
 
