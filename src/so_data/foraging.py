@@ -59,7 +59,7 @@ class DepositPheromones(ChemotaxisGe):
     """
     def __init__(self, buffer, frames=None, repulsion=False,
                  moving=False, static=True, maxvel=1.0, minvel=0.5,
-                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=10):
+                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=5):
         """
         initialize behaviour
         :param value: exploration probability

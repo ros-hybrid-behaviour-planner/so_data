@@ -12,6 +12,7 @@ import rospy
 import tf.transformations
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3
+from std_msgs.msg import Bool
 import numpy as np
 import calc
 import random
@@ -46,7 +47,7 @@ class SoBuffer(object):
     def __init__(self, aggregation=None, aggregation_distance=1.0,
                  min_diffusion=0.1, view_distance=1.5, id='',
                  moving_storage_size=2, store_all=True, framestorage=None,
-                 pose_frame='robot'):
+                 pose_frame='robot', ev_topic=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -127,6 +128,10 @@ class SoBuffer(object):
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
+        self.ev_topic = ev_topic
+        if self.ev_topic:
+            rospy.Subscriber(ev_topic, Bool, self._evaporate_buffer)
+
     def store_data(self, msg):
         """
         store received soMessage using evaporation and aggregation
@@ -144,11 +149,16 @@ class SoBuffer(object):
         # check if received msg should be stored
         if not self._store_all:
             if msg.header.frame_id not in self._frames:
-                return
+                if msg.header.frame_id != self.pose_frame:
+                    return
+                elif msg.parent_frame != self.id:
+                    return
 
         # Evaporation
         # evaporate stored data
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
+
         # evaporate received data
         msg = self._evaporate_msg(msg)
         if not msg:  # evaporation let to disappearance of the message
@@ -382,7 +392,7 @@ class SoBuffer(object):
         :return: robots last position
         """
         if self._own_pos:
-            return self._own_pos[-1]
+            return copy.deepcopy(self._own_pos[-1])
         else:
             return
 
@@ -397,7 +407,8 @@ class SoBuffer(object):
                           repulsion between agents
         :return: list of gradients []
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -476,7 +487,8 @@ class SoBuffer(object):
         if repulsion and self.pose_frame not in frameids:
             frameids.append(self.pose_frame)
 
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -515,7 +527,8 @@ class SoBuffer(object):
         # check if moving and / or static attractive gradients are
         # within view distance
 
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients_repulsive = []
 
@@ -580,7 +593,8 @@ class SoBuffer(object):
         """
         # check if moving and / or static attractive gradients are
         # within view distance
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients_attractive = []
 
@@ -708,7 +722,8 @@ class SoBuffer(object):
         :param moving: consider moving gradients
         :return: list of gradients
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -750,7 +765,8 @@ class SoBuffer(object):
         y-z-plane (+/- from heading)
         :return: list of gradients
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -798,7 +814,8 @@ class SoBuffer(object):
         :param frame: frame ID of agent data
         :return: list of gradients
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -819,7 +836,7 @@ class SoBuffer(object):
                 for pid in moving[frame].keys():
                     if pid != self._id and moving[frame][pid]:
                         if calc.get_gradient_distance(moving[frame][pid][-1].p,
-                                                      pose[-1].p) \
+                                                      pose.p) \
                                 <= moving[frame][pid][-1].diffusion + \
                                         moving[frame][pid][-1].goal_radius + \
                                         self._view_distance:
@@ -828,7 +845,7 @@ class SoBuffer(object):
         return gradients
 
     # EVAPORATION
-    def _evaporate_buffer(self):
+    def _evaporate_buffer(self, msg=None):
         """
         evaporate buffer data stored in self._static
         neighbor data is not evaporated as it is considered being fixed

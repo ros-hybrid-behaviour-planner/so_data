@@ -22,7 +22,7 @@ src:
 * **decisions.py**: module containing sample implementations of decision patterns (morphogenesis, gossip, quorum sensing) (+ unit test)
 * **flocking.py**: provides methods to calculate the flocking vector based on the paper by Olfati-Saber + mechanism implementation (+ unit test) 
 * **flockingrey.py**: provides methods to calculate a flocking vector based on the formulas by Reynolds (+ unit test)
-* **foraging.py**: TODO 
+* **foraging.py**: provides methods to calculate flocking based on the formulas by Olfati-Saber (+ unit test)
 * **gradient.py**: module including gradient calculations based on Balch and Hybinette as well as Ge and Cui (+ unit test)
 * **gradientnode.py**: allows to create nodes which spread artificial gradients 
 * **patterns.py**: provides abstract classes for movement and decision pattern implementations
@@ -100,10 +100,10 @@ diagnostic_msgs/KeyValue[] payload
 
 
 The parameters for the gradient sector are already included in the `SoMessage` file, but at the moment always the whole gradient (sphere) is used in calculations.
+
 ###### reserved frameIDs:
 * **'DEFAULT'**: value is used to specify aggregation option (store_data in soBuffer) for frameIDs having no specific option assigned to  
 * **'None'**: value is assigned to all gradient messages which have no frameID when received 
-
 
 
 sobuffer(.py)
@@ -220,6 +220,12 @@ The following options are available:
                   repulsion=False)
 ```
 
+2. Get all gradients (view distance = np.inf) 
+```python
+def all_gradients(self, frameids=None, static=True, moving=True,
+                  repulsion=False)
+```
+
 2. Get all repulsive gradients within view 
 
 ```python
@@ -233,7 +239,7 @@ The following options are available:
     def attractive_gradients(self, frameids=None, static=True, moving=True)
 ```
 
-4. Get the relatively nearest attractive gradient (= attractive gradient with minimum attraction)
+4. Get the relatively nearest attractive gradient (= attractive gradient with minimum attraction based on Blach and Hybinette)
 
 ```python
     def max_attractive_gradient(self, frameids=None, static=True, moving=True)
@@ -262,8 +268,6 @@ The following options are available:
 ```python
     def static_list_angle(self, frame, view_angle)
 ```
- 
- 
  
  
  gradient(.py)
@@ -301,13 +305,6 @@ def _calc_attractive_gradient_ge(self, gradient, pose)
 def _calc_repulsive_gradient_ge(self, gradient, goal, pose)
 ```
 
- #TODO ab hier weiter korrigieren 
-
-
-
-
-
-
 Decision and Movement Patterns
 -------------------------------
 
@@ -317,7 +314,8 @@ Module patterns includes two abstract classes which are blueprints for movement 
 
 Movement patterns require the implementation of method `move()` which returns a movement vector.
 Decision patterns require the implementation of method `calc_value()` which determines the agent's current value and sets its state accordingly. 
-These patterns have furthermore function `spread()` which allows to spread the current value of the agent. 
+These patterns have furthermore function `spread()` which allows to spread the current value of the agent.
+It sets furthermore state and value of the mechanism. 
 
 ### Movement Patterns / Mechanisms 
 
@@ -344,7 +342,7 @@ If no frame is specified, the pose frame of the buffer will be used.
 
 The calculation is based on a list of agent gradients returned by buffer method `agent_list`. 
 
-Fernandez-Marquez formula incorporates that the agents will try to stay as close as possible (outside repulsion radius) when the view distance is larger than the repulsion radius. 
+Fernandez-Marquez's formula incorporates that the agents will try to stay as close as possible (outside repulsion radius) when the view distance is larger than the repulsion radius. 
 
 `RepulsionGradient` implements the repulsion mechanism using the formulas to calculate repulsive gradients by Balch and Hybinette (see gradient.py). 
 
@@ -354,7 +352,7 @@ class RepulsionGradient(MovementPattern):
 ```
 
 The parameters are similar to `RepulsionFernandez`. 
-Details about the gradient calculation can be found in chapter gradient(.py). 
+More information about the gradient calculation can be found in chapter gradient(.py). 
 
 ### flocking(.py)
 
@@ -370,10 +368,11 @@ which incorporate the three flocking rules presented by Reynolds.
 
 Please find more information about the formulas in the paper by Olfati-Saber.
 
-The approach leads to some problems in combination with RHBP and some enhancements might be required.
+The approach leads to some problems in combination with RHBP and some enhancements might be required as the velocity of the turtles might be zero at several occasions.
 
 The calculations need the following input data: `Boid = collections.namedtuple('Boid', ['p', 'v'])` with `p` being the robot's current position and `v` being the robot's velocity.
-In class `Flocking` data from an SoBuffer instance is transformed to match this input and the methods implementing the flocking behaviour based on Olfati-Saber are invoked.
+`Flocking` implements flocking based on Olfati-Saber as a movement pattern. 
+In class `Flocking` data from an SoBuffer instance (from method `agent_set()`) is transformed to match this input and the methods implementing the flocking behaviour based on Olfati-Saber are invoked.
 
 ```python
 
@@ -394,7 +393,7 @@ If no frame is specified, the pose frame of the buffer will be used.
 
 Module flockingrey includes the implementation of flocking based on the formulas presented by Reynolds in his paper [Steering Behaviors For Autonomous Characters](www.red3d.com/cwr/steer/gdc99/).
 
-The calculations require either robot positions or heading vectors (not velocity!). 
+The calculations require either robot positions or heading vectors (not velocities!). 
 The flocking methods need a current gradient of the agent and a list of neighbor gradients. 
 The current heading vector of the robot is calculated using the SoMessage values `q` (orientation) and `direction`.
 The quaternion q is then transformed to a transformation matrix using method `tf.transformations.quaternion_matrix(quaternion)`.
@@ -405,8 +404,7 @@ The three movement vectors calculated by these methods can be summed up to deter
 
 Furthermore, the implementation of the flocking mechanism as a subclass of `MovementPattern` (see patterns.py) is provided by this module. 
 
-`FlockingRey` is an implementation of `MovementPattern`.
-It calculates the overall movement vector based on the formulas by Reynolds. 
+`FlockingRey` calculates the overall movement vector based on the formulas by Reynolds. 
 The calculations of cohesion, separation and alignment require a list of SoMessages as the input. 
 Class `FlockingRey` request a list from the buffer using method `agent_list`. 
 
@@ -470,6 +468,16 @@ Furthermore, it requests a list of repulsive vectors within view.
 The movement vector for the attractive gradient is calculated and added to the sum of the repulsive movement vectors to determine the overall movement vector. 
 
 
+##### Other Chemotaxis Implemenations
+
+Module chemotaxis includes furthermore the following implementations of chemotaxis behaviour:
+
+* `class CollisionAvoidance(MovementPattern)`: mechanism to avoid all repulsive gradients
+* `class FollowAll(MovementPattern)`: mechanism to follow the overall potential (all gradients within view)
+* `class AvoidAll(MovementPattern)`: mechanism to avoid all gradients within view 
+* `class FollowMax(MovementPattern)`: mechanism to follow the strongest gradient (max potential) 
+
+
 ### decisions(.py)
 
 Module decisions includes sample implementations of decision patterns. 
@@ -516,8 +524,18 @@ All parameters with '_center' define the center gradient message which is spread
 
 #### Quorum
 
-Pattern quorum sensing could be implemented universally. 
+Pattern quorum sensing could be implemented independent from particular scenarios.
+Quorum is a decision which is solely based on the number of neighbors within view of an agent. 
 
+```python 
+class Quorum(DecisionPattern):
+    def __init__(self, buffer, threshold, frame=None, value=0, state=False,
+                 moving=True, static=False, diffusion=np.inf, goal_radius=0,
+                 ev_factor=1.0, ev_time=0.0):
+```
+
+An SoBuffer instance has to be handed over to the mechanism.
+It provides a list of neighbors of the agents with method `agent_list()`. 
 
 calc(.py)
 ---------
