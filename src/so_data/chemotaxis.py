@@ -12,7 +12,6 @@ import calc
 from geometry_msgs.msg import Vector3
 from patterns import MovementPattern
 
-
 # Mechanisms to reach one attractive Gradient & to avoid repulsive gradients
 class ChemotaxisGe(MovementPattern):
     """
@@ -200,7 +199,6 @@ class ChemotaxisBalch(MovementPattern):
         attractive = self._buffer.max_attractive_gradient(self.frames,
                                                           self.static,
                                                           self.moving)
-
         pose = self._buffer.get_own_pose()
 
         if attractive and pose:

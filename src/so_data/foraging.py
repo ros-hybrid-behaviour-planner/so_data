@@ -20,10 +20,10 @@ from repulsion import RepulsionGradient
 
 
 class STATE(object):
-    NONE = 1
-    EXPLORATION = 2
-    EXPLOITATION = 3
-    RETURN = 4
+    NONE = 'None'
+    EXPLORATION = 'Exploration'
+    EXPLOITATION = 'Exploitation'
+    RETURN = 'Return'
 
 
 # Decision Behaviour
