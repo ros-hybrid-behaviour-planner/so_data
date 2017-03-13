@@ -174,8 +174,7 @@ class Quorum(DecisionPattern):
     Quorum Sensing
     """
     def __init__(self, buffer, threshold, frame=None, value=0, state=False,
-                 moving=True, static=False, diffusion=np.inf, goal_radius=0,
-                 ev_factor=1.0, ev_time=0.0):
+                 moving=True, static=False):
         """
         initialize behaviour
         :param buffer: SoBuffer
@@ -183,17 +182,10 @@ class Quorum(DecisionPattern):
         :param frame: frame id (header frame) agent data
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradient in list returned by buffer
-        :param goal_radius: gossip gradient goal radius
-        :param ev_factor: gossip gradient evaporation factor
-        :param ev_time: gossip gradient evaporation time
-        :param diffusion: gossip gradient diffusion
         :param state: robot state
         """
         super(Quorum, self).__init__(buffer, frame, value=value, state=state,
-                                     moving=moving, static=static,
-                                     goal_radius=goal_radius,
-                                     ev_factor=ev_factor, ev_time=ev_time,
-                                     diffusion=diffusion)
+                                     moving=moving, static=static)
 
         # set standard agent frame if no frame is specified
         if not frame:

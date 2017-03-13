@@ -31,10 +31,10 @@ class ForagingDecision(DecisionPattern):
     """
     Decision mechanism for foraging: explore vs exploit
     """
-    def __init__(self, buffer, probability):
+    def __init__(self, buffer=None, probability=0.5):
         """
-        :param probability:
-        :param buffer:
+        :param probability: exploration  probability
+        :param buffer: soBuffer instance
         """
         super(ForagingDecision, self).__init__(buffer, value=probability)
 
@@ -62,7 +62,17 @@ class DepositPheromones(ChemotaxisGe):
                  frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=5):
         """
         initialize behaviour
-        :param value: exploration probability
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param repulsion: enable collision avoidance between agents
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
+        :param frame: pheromone frame
+        :param attraction: attraction value of pheromone
+        :param ev_factor: pheromone evaporation factor
+        :param ev_time: pheromone evaporation time
         """
 
         super(DepositPheromones, self).__init__(buffer, frames, repulsion,
@@ -120,16 +130,27 @@ class Exploitation(MovementPattern):
     """
     Foraging - Follow pheromone trail behaviour (chemotaxis)
     """
-    def __init__(self, buffer, frame, angle=1.3, repulsion=False,
-                 moving=False, static=True, maxvel=1.0, minvel=0.5):
+    def __init__(self, buffer, frames, angle_xy=1.3, angle_yz=np.pi,
+                 maxvel=1.0, minvel=0.5, repulsion=False):
         """
         initialize behaviour
-        :param value: exploration probability
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param angle_xy: view angle in xy-plane
+        :param angle_yz: view angle in yz-plane
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
+        :param repulsion: enable repulsion between gradients
         """
-        super(Exploitation, self).__init__(buffer, frame, repulsion, moving,
-                                           static, maxvel, minvel)
+        super(Exploitation, self).__init__(buffer, frames, repulsion=repulsion,
+                                           moving=False, static=True,
+                                           maxvel=maxvel, minvel=minvel)
 
-        self.angle = angle
+        self.angle_xy = angle_xy
+        self.angle_yz = angle_yz
+
+        if repulsion:
+            self.rep = RepulsionGradient(buffer)
 
     def move(self):
         """
@@ -139,7 +160,8 @@ class Exploitation(MovementPattern):
 
         # get all gradients within view distance
 
-        view = self._buffer.static_list_angle([self.frames], self.angle)
+        view = self._buffer.static_list_angle(self.frames, self.angle_xy,
+                                              self.angle_yz)
 
         # attractive gradient
         result = Vector3()
@@ -149,6 +171,9 @@ class Exploitation(MovementPattern):
                 for grdnt in view:
                     grad = gradient.calc_attractive_gradient_ge(grdnt, pose)
                     result = calc.add_vectors(result, grad)
+
+        if self.repulsion:
+            result = calc.add_vectors(result, self.rep.move())
 
         d = calc.vector_length(result)
         if d > self.maxvel:
@@ -163,7 +188,7 @@ class Exploitation(MovementPattern):
         method to determine how far agent should turn
         :return: 2 times view angle
         """
-        return self.angle * 2
+        return [self.angle_xy * 2, self.angle_yz*2]
 
 
 # Exploration: WalkRandom
@@ -171,19 +196,17 @@ class Exploration(MovementPattern):
     """
     movement mechanism to follow random movement
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer=None, repulsion=False, maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
-        :param frames: frames to be included in list returned by buffer
         :param repulsion: enable collision avoidance between agents
-        :param moving: consider moving gradients in list returned by buffer
-        :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(Exploration, self).__init__(buffer, frames, repulsion, moving,
-                                          static, maxvel, minvel)
+        super(Exploration, self).__init__(buffer, frames=None,
+                                          repulsion=repulsion,
+                                          moving=False, static=False,
+                                          maxvel=maxvel, minvel=minvel)
 
         if repulsion:
             self.rep = RepulsionGradient(buffer)

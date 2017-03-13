@@ -137,7 +137,7 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
 * **store_all** (True): defines whether all frameIDs will be stored or only frameIDs indicated in framestorage 
 * **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to not storing any gradients. 
 * **pose_frame** ('robot'): frame ID indicating gradient data of agents / robots (poses)
-
+* **ev_topic** (None): topic which can be set to trigger evaporation in a certain frequency and not by every return and storage process
 
 ### Gradient Storage
 
@@ -314,7 +314,7 @@ Module patterns includes two abstract classes which are blueprints for movement 
 
 Movement patterns require the implementation of method `move()` which returns a movement vector.
 Decision patterns require the implementation of method `calc_value()` which determines the agent's current value and sets its state accordingly. 
-These patterns have furthermore function `spread()` which allows to spread the current value of the agent.
+Decision patterns have furthermore function `spread()` which allows to spread the current value of the agent.
 It sets furthermore state and value of the mechanism. 
 
 ### Movement Patterns / Mechanisms 
@@ -478,14 +478,106 @@ Module chemotaxis includes furthermore the following implementations of chemotax
 * `class FollowMax(MovementPattern)`: mechanism to follow the strongest gradient (max potential) 
 
 
+#### Foraging
+
+Module Foraging includes several behaviours required for the ant foraging pattern. 
+The included behaviours are:
+
+* Decision Mechanism: decision between exploration and exploitation
+* Movement Mechanisms:
+    * Exploration: random movement of the agent
+    * Exploitation: chemotaxis behaviour following a pheromone trail
+    * Return to nest: movement towards nest while depositing pheromones
+    
+##### Decision Mechanism 
+
+The decision mechanism `ForagingDecision` is an implementation of the decision pattern. 
+
+```python
+class ForagingDecision(DecisionPattern):
+    def __init__(self, buffer=None, probability=0.5)
+```   
+
+A `buffer` can be handed over as a parameter as this is standard for all decision mechanisms. 
+But it is currently not used in the decision or rather `calc_value()` implementation.
+
+`probablity` is the exploration probability. 
+With this probability, the state will be set to `Exploration`. 
+Otherwise, `Exploitation` will be set as the state.
+`probability` is assigned to the value of the decision mechanism.
+
+##### Exploration
+
+Exploration is a Movement Pattern which creates random movement vectors. 
+
+```Python
+class Exploration(MovementPattern):
+    def __init__(self, buffer=None, repulsion=False, maxvel=1.0, minvel=0.1)
+```
+
+A buffer has to be handed over to the mechanism.
+
+Repulsion allows to enable collision avoidance between agents.
+A RepulsionGradient mechanism will be created within the mechanism and the repulsive vector added to the random movement vector. 
+
+Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+
+
+##### Exploitation
+
+Exploitation lets the agent follow a trail of pheromones. 
+It follows all gradients within specified view angles.
+
+```python
+class Exploitation(MovementPattern):
+    def __init__(self, buffer, frames, angle_xy=1.3, angle_yz=np.pi, maxvel=1.0, 
+                 minvel=0.5, repulsion=False)
+```
+
+A buffer has to be handed over to the mechanism.
+Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+angle_xy specifies the view angle in the xy-plane.
+angle_yz specified the view angle in the yz-plane. 
+Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+
+Repulsion allows to enable collision avoidance between agents.
+A RepulsionGradient mechanism will be created within the mechanism and the repulsive vector added to the movement vector. 
+
+
+##### Return to Nest 
+
+DepositPheromones is a movement pattern which lets the agent return to the nest and deposit pheromones on the way.
+It is based on the ChemotaxisGe behaviour. 
+
+Before the agent moves, it will deposit a pheromone at the place it currently is posed on. 
+The movement vector is calculated using the move() implementation of the ChemotaxisGe behaviour. 
+
+```python
+class DepositPheromones(ChemotaxisGe):
+    def __init__(self, buffer, frames=None, repulsion=False,
+                 moving=False, static=True, maxvel=1.0, minvel=0.5,
+                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=5)
+```
+A buffer has to be handed over to the mechanism.
+Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+
+Moving and static define whether moving or static gradient will be considered. 
+Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
+Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
+Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+
+frame, attraction, ev_factor and ev_time are the paramters for the spread pheromone gradients. 
+
 ### decisions(.py)
 
 Module decisions includes sample implementations of decision patterns. 
-The implementation of the decision mechanisms is very application specific as the algorithm has to be adjusted to the aim. 
+The implementation of the decision mechanisms is application specific. 
 
 #### Sample Gossip Mechanism
 
 Module decision includes a sample gossip mechanism which determines the maximum value spread as a payload attribute. 
+The received maximum values are compared to the own current value.
+In case that a received value is larger than the current value, the current value will be updated. 
 
 ```python
 class GossipMax(DecisionPattern):
@@ -493,7 +585,7 @@ class GossipMax(DecisionPattern):
                  diffusion=np.inf, goal_radius=0, ev_factor=1.0, ev_time=0.0)
 ```
 
-As always, a SoBuffer has to be handed over to the mechanism which will provide the necessary gradients data. 
+A SoBuffer has to be handed over to the mechanism which will provide the necessary gradients data. 
 In this case the data will be provided by method `agent_list`. 
 Furthermore a frame and a key have to be specified to indicate which gradient frame id is used for the gossip mechanism and which key the payload data to be considered has. 
 Parameter state sets the initial value which will be compared and spread. 
@@ -504,6 +596,10 @@ The other parameters allow to adjust the gradient message which will be spread t
 #### Sample Morphogenesis Mechanism 
 
 Module decision includes a sample morphogenesis mechanism which determines the barycenter of a robot group and lets it spread a center gradient. 
+Each agent determines the distance to each received neighbor gradient. 
+The agents spread morphogenetic gradients which include the position and the current sum of distances if the robots.  
+The own and the received sum of distances will be compared. 
+The barycenter is the agent which has the smallest sum of distances. 
 
 ```python 
 class MorphogenesisBarycenter(DecisionPattern):
@@ -526,16 +622,22 @@ All parameters with '_center' define the center gradient message which is spread
 
 Pattern quorum sensing could be implemented independent from particular scenarios.
 Quorum is a decision which is solely based on the number of neighbors within view of an agent. 
+In case that a threshold number of agents within view is passed, the agent's state will be set to True. 
+Otherwise the state is False. 
 
 ```python 
 class Quorum(DecisionPattern):
     def __init__(self, buffer, threshold, frame=None, value=0, state=False,
-                 moving=True, static=False, diffusion=np.inf, goal_radius=0,
-                 ev_factor=1.0, ev_time=0.0):
+                 moving=True, static=False)
 ```
 
 An SoBuffer instance has to be handed over to the mechanism.
 It provides a list of neighbors of the agents with method `agent_list()`. 
+threshold defines the number of agents which should be at least within view distance. 
+frame defines the header frame ID of the quorum gradients. 
+value is the initial value of the agent. 
+state is the initial state of the agent. 
+Moving and static defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 
 
 calc(.py)
 ---------
@@ -584,11 +686,11 @@ The second method is `get_gradient(index)` which returns a gradient list based o
 New gradient lists can be added to the currently available set and the method can be used in other files, e.g. in main.py of the swarm_behaviour package to draw the gradients in the turtlesim environment. 
 
 
-topicgradienttf(.py) and posegradienttf(.py)
---------------------------------------------
+topicgradienttf(.py), posegradienttf(.py), posestampedgradienttf(.py)
+---------------------------------------------------------------------
 
 topicGradientTf offers an abstract class which can be used as a blueprint to transform data received by a topic to a gradient message and spreach it. 
-A sample implementation can be found in poseGradientTf. 
-There a subscription to the pose topic (geometry_msgs/pose) is made and the received data is put into a soMessage and buffered in `self._current_value`. 
+A sample implementation can be found in poseGradientTf and poseStrampedGradientTf. 
+There a subscription to the pose topic (geometry_msgs/pose or poseStamped) is made and the received data is put into a soMessage and buffered in `self._current_value`. 
 The message can either be spread right away (as part of the subscription callback) or the sending is done in a ROS node with a specific frequency. 
 Using the class within a ROS node leads to sending the last buffered soMessage. 
