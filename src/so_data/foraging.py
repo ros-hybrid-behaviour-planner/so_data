@@ -196,7 +196,7 @@ class Exploration(MovementPattern):
     """
     movement mechanism to follow random movement
     """
-    def __init__(self, buffer=None, repulsion=False, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, repulsion=False, maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param repulsion: enable collision avoidance between agents
