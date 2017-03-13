@@ -126,11 +126,12 @@ class SoBuffer(object):
         # RETURN AGGREGATED GRADIENT DATA
         self._view_distance = view_distance
 
-        rospy.Subscriber('so_data', SoMessage, self.store_data)
-
         self.ev_topic = ev_topic
-        if self.ev_topic:
+
+        if ev_topic:
             rospy.Subscriber(ev_topic, Bool, self._evaporate_buffer)
+
+        rospy.Subscriber('so_data', SoMessage, self.store_data)
 
     def store_data(self, msg):
         """
