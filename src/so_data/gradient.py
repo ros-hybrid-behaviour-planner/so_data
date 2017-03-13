@@ -25,15 +25,16 @@ def calc_attractive_gradient(gradient, pose):
     tmp = calc.delta_vector(gradient.p, pose.p)
 
     # shortest distance considered (goal_radius of agent == size of agent)
-    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius
+    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius \
+        - gradient.goal_radius
 
-    if d <= gradient.goal_radius:
+    if d <= 0:
         v = Vector3()
-    elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+    elif 0 < d <= gradient.diffusion:
         # calculate magnitude of vector
-        magnitude = (d - gradient.goal_radius) / gradient.diffusion
+        magnitude = d / gradient.diffusion
         v = calc.adjust_length(tmp, magnitude)
-    elif d > gradient.goal_radius + gradient.diffusion:
+    elif d > gradient.diffusion:
         # calculate attraction vector
         v = calc.adjust_length(tmp, 1.0)
 
@@ -52,9 +53,10 @@ def calc_repulsive_gradient(gradient, pose):
     tmp = calc.delta_vector(pose.p, gradient.p)
 
     # shortest distance considered (goal_radius of agent == size of agent)
-    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius
+    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius \
+        - gradient.goal_radius
 
-    if d <= gradient.goal_radius:  # infinitely large repulsion
+    if d <= 0:  # infinitely large repulsion
         v = Vector3(np.inf, np.inf, np.inf)
         # calculate norm vector for direction
         tmp = calc.unit_vector3(tmp)
@@ -67,15 +69,13 @@ def calc_repulsive_gradient(gradient, pose):
         if tmp.z != 0.0:
             v.z *= tmp.z
 
-    elif gradient.goal_radius < d <= gradient.diffusion + \
-            gradient.goal_radius:
+    elif 0 < d <= gradient.diffusion:
         # calculate magnitude of vector
-        magnitude = (gradient.diffusion + gradient.goal_radius - d) / \
-                    gradient.diffusion
+        magnitude = (gradient.diffusion - d) / gradient.diffusion
         # calculate vector
         v = calc.adjust_length(tmp, magnitude)
 
-    elif d > gradient.diffusion + gradient.goal_radius:
+    elif d > gradient.diffusion:
         v = Vector3()
 
     return v
@@ -97,14 +97,18 @@ def calc_attractive_gradient_ge(gradient, pose):
     tmp = calc.delta_vector(gradient.p, pose.p)
 
     # shortest distance considered (goal_radius of agent == size of agent)
-    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius
+    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius \
+        - gradient.goal_radius
 
-    if d <= gradient.goal_radius:
+    if d <= 0:
         v = Vector3()
-    elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
-        v = tmp
-    elif d > gradient.goal_radius + gradient.diffusion:
-        v = calc.adjust_length(tmp, (gradient.goal_radius+gradient.diffusion))
+    elif 0 < d <= gradient.diffusion:
+        v = calc.adjust_length(tmp, d)
+    elif d > gradient.diffusion:
+        if gradient.diffusion == 0:
+            v = calc.adjust_length(tmp, 1)
+        else:
+            v = calc.adjust_length(tmp, gradient.diffusion)
 
     return v
 
@@ -123,9 +127,10 @@ def calc_repulsive_gradient_ge(gradient, goal, pose):
     tmp = calc.delta_vector(pose.p, gradient.p)
 
     # shortest distance considered (goal_radius of agent == size of agent)
-    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius
+    d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius \
+        - gradient.goal_radius
 
-    if d <= gradient.goal_radius:
+    if d <= 0:
         v = Vector3(np.inf, np.inf, np.inf)
         # calculate norm vector for direction
         tmp = calc.unit_vector3(tmp)
@@ -137,31 +142,28 @@ def calc_repulsive_gradient_ge(gradient, goal, pose):
             v.y *= tmp.y
         if tmp.z != 0.0:
             v.z *= tmp.z
-    elif gradient.goal_radius < d <= gradient.goal_radius + gradient.diffusion:
+    elif 0 < d <= gradient.diffusion:
         # unit vector obstacle - agent
         tmp = calc.unit_vector3(tmp)
-        # distance repulsive gradient - goal
-        d_goal = calc.get_gradient_distance(pose.p, goal.p)
+        # distance agent - goal
+        d_goal = calc.get_gradient_distance(pose.p, goal.p) - \
+                 pose.goal_radius - goal.goal_radius
         # unit vector agent - goal
-        ag = Vector3()
-        ag.x = (goal.p.x - pose.p.x) / d_goal
-        ag.y = (goal.p.y - pose.p.y) / d_goal
-        ag.z = (goal.p.z - pose.p.z) / d_goal
+        ag = calc.delta_vector(goal.p, pose.p)
+        ag = calc.unit_vector3(ag)
         # closest distance to obstacle  - diffusion
-        d_obs_diff = (1.0 / (d - gradient.goal_radius)) - \
-                     (1.0 / gradient.diffusion)
+        d_obs_diff = (1.0 / d) - (1.0 / gradient.diffusion)
         # parameters
         n = 1.0
         eta = 1.0
         # weighting rep1 and rep2
-        f_rep1 = eta * d_obs_diff * ((d_goal ** n) /
-                                     ((d - gradient.goal_radius) ** n))
+        f_rep1 = eta * d_obs_diff * ((d_goal ** n) / (d ** n))
         f_rep2 = eta * (n / 2.0) * np.square(d_obs_diff) * (d_goal ** (n - 1))
         v.x = f_rep1 * tmp.x + f_rep2 * ag.x
         v.y = f_rep1 * tmp.y + f_rep2 * ag.y
         v.z = f_rep1 * tmp.z + f_rep2 * ag.z
 
-    elif d > gradient.goal_radius + gradient.diffusion:
+    elif d > gradient.diffusion:
         v = Vector3()
 
     return v

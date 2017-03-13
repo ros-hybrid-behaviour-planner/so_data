@@ -9,11 +9,16 @@ offers basic functionalities: receiving (spreading), evaporation, aggregation
 from __future__ import \
     division  # force floating point division when using plain /
 import rospy
+import tf.transformations
 from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3
+from std_msgs.msg import Bool
 import numpy as np
 import calc
 import random
 import gradient
+import threading
+import copy
 
 
 class AGGREGATION(object):
@@ -42,7 +47,7 @@ class SoBuffer(object):
     def __init__(self, aggregation=None, aggregation_distance=1.0,
                  min_diffusion=0.1, view_distance=1.5, id='',
                  moving_storage_size=2, store_all=True, framestorage=None,
-                 pose_frame='robot'):
+                 pose_frame='robot', ev_topic=None):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -89,6 +94,9 @@ class SoBuffer(object):
         :type pose_frame: str.
         """
 
+        # lock for evaporation
+        self.lock = threading.Lock()
+
         # STORE DATA
         self._static = {}  # static gradient storage, dict
         self._own_pos = []  # own positions storage
@@ -118,6 +126,11 @@ class SoBuffer(object):
         # RETURN AGGREGATED GRADIENT DATA
         self._view_distance = view_distance
 
+        self.ev_topic = ev_topic
+
+        if ev_topic:
+            rospy.Subscriber(ev_topic, Bool, self._evaporate_buffer)
+
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
     def store_data(self, msg):
@@ -137,22 +150,28 @@ class SoBuffer(object):
         # check if received msg should be stored
         if not self._store_all:
             if msg.header.frame_id not in self._frames:
-                return
+                if msg.header.frame_id != self.pose_frame:
+                    return
+                elif msg.parent_frame != self.id:
+                    return
 
         # Evaporation
         # evaporate stored data
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
+
         # evaporate received data
         msg = self._evaporate_msg(msg)
         if not msg:  # evaporation let to disappearance of the message
             return
 
-        # store own position and neighbor / moving agents data
-        if msg.moving:
-            self.store_moving(msg)
-        # aggregate and store static gradient data
-        else:
-            self.store_static(msg)
+        with self.lock:
+            # store own position and neighbor / moving agents data
+            if msg.moving:
+                self.store_moving(msg)
+            # aggregate and store static gradient data
+            else:
+                self.store_static(msg)
 
     def store_moving(self, msg):
         """
@@ -257,8 +276,8 @@ class SoBuffer(object):
     def aggregation_option(self, frame_id):
         """
         determines aggregation option to be used
-        :param frame_id:
-        :return:
+        :param frame_id: frame ID for which aggregation option is searched
+        :return: aggregation option
         """
         # set aggregation option for received message based on frameID
         if frame_id in self._aggregation.keys():
@@ -374,7 +393,7 @@ class SoBuffer(object):
         :return: robots last position
         """
         if self._own_pos:
-            return self._own_pos[-1]
+            return copy.deepcopy(self._own_pos[-1])
         else:
             return
 
@@ -383,15 +402,20 @@ class SoBuffer(object):
         """
         function determines all gradients within view distance
         :param frameids: frame IDs to be considered looking for gradients
-        :return: list of gradients [attractive, repulsive, own position]
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
+        :return: list of gradients []
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
-        # no own position available
-        if not self._own_pos:
-            return gradients
+        # if view distance is infinite, return list of all gradients
+        if self._view_distance == np.inf:
+            return self.all_gradients(frameids, static, moving, repulsion)
 
         # determine frames to consider
         if not frameids:
@@ -403,26 +427,88 @@ class SoBuffer(object):
             elif repulsion:
                 frameids.append(self.pose_frame)
 
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        pose = copy.deepcopy(self._own_pos[-1])
+
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                    self._view_distance:
                             gradients.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in self._moving.keys() \
-                    and self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and calc.get_gradient_distance(
-                            self._moving[fid][pid][-1].p,
-                                                 self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        gradients.append(self._moving[fid][pid][-1])
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                            self._view_distance:
+                            gradients.append(element)
+
+        return gradients
+
+    def all_gradients(self, frameids=None, static=True, moving=True,
+                      repulsion=False):
+        """
+        function returns all gradients as a list
+        :param frameids: frame IDs to be considered looking for gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
+        :return: list of gradients
+        """
+        # determine frames to consider
+        if not frameids:
+            frameids = []
+            if static:
+                frameids += self._static.keys()
+            if moving:
+                frameids += self._moving.keys()
+            elif repulsion:
+                frameids.append(self.pose_frame)
+
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
+
+        if not self.ev_topic:
+            self._evaporate_buffer()
+
+        gradients = []
+
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
+        for fid in frameids:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    gradients.append(element)
+
+            # moving gradients
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        gradients.append(movingbuffer[fid][pid][-1])
 
         return gradients
 
@@ -433,18 +519,25 @@ class SoBuffer(object):
          view distance
         :param frameids: frame IDs to be considered looking for repulsive
         gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :param repulsion: consider moving gradients with pose frame for
+                          repulsion between agents
         :return: list of repulsive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
         # within view distance
 
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients_repulsive = []
 
         # no own position available
         if not self._own_pos:
             return []
+
+        pose = copy.deepcopy(self._own_pos[-1])
 
         # determine frames to consider
         if not frameids:
@@ -456,29 +549,36 @@ class SoBuffer(object):
             elif repulsion:
                 frameids.append(self.pose_frame)
 
+        if repulsion and self.pose_frame not in frameids:
+            frameids.append(self.pose_frame)
+
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving or repulsion:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                            self._view_distance:
                         if element.attraction == -1:
                             gradients_repulsive.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in self._moving.keys() \
-                    and self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and \
-                                    calc.get_gradient_distance(
-                                        self._moving[fid][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        if self._moving[fid][pid][-1].attraction == -1:
-                            gradients_repulsive.append(self._moving[fid][pid][-1])
+            if (moving or repulsion) and fid in movingbuffer.keys() \
+                    and movingbuffer[fid]:
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                               self._view_distance:
+                            if element.attraction == -1:
+                                gradients_repulsive.append(element)
 
         return gradients_repulsive
 
@@ -487,17 +587,22 @@ class SoBuffer(object):
         function determines which attractive gradients are currently within
          view distance
         :param frameids: frame IDs to be considered looking for attractive
-        gradients
+                         gradients
+        :param static: consider static gradients
+        :param moving: consider moving gradients
         :return: list of attractive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
         # within view distance
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients_attractive = []
 
         if not self._own_pos:
             return gradients_attractive
+
+        pose = copy.deepcopy(self.own_pos[-1])
 
         # determine frames to consider
         if not frameids:
@@ -507,29 +612,32 @@ class SoBuffer(object):
             if moving:
                 frameids += self._moving.keys()
 
+        if static:
+            staticbuffer = copy.deepcopy(self._static)
+        if moving:
+            movingbuffer = copy.deepcopy(self._moving)
+
         for fid in frameids:
             # static gradients
-            if static and fid in self._static.keys():
-                for element in self._static[fid]:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
+            if static and fid in staticbuffer.keys():
+                for element in staticbuffer[fid]:
+                    if calc.get_gradient_distance(element.p, pose.p) <= \
+                                            element.diffusion + \
+                                            element.goal_radius + \
+                                    self._view_distance:
                         if element.attraction == 1:
                             gradients_attractive.append(element)
 
             # moving gradients
-            if moving and fid in self._moving.keys():
-                for pid in self._moving[fid].keys():
-                    if self._moving[fid][pid] and \
-                                    calc.get_gradient_distance(
-                                        self._moving[fid][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[fid][pid][-1].diffusion + \
-                                    self._moving[fid][pid][
-                                        -1].goal_radius + self._view_distance:
-                        if self._moving[fid][pid][-1].attraction == 1:
-                            gradients_attractive.append(self._moving[fid][pid]
-                                                        [-1])
+            if moving and fid in movingbuffer.keys():
+                for pid in movingbuffer[fid].keys():
+                    if movingbuffer[fid][pid]:
+                        element = movingbuffer[fid][pid][-1]
+                        if calc.get_gradient_distance(element.p, pose.p) \
+                            <= element.diffusion + element.goal_radius + \
+                            self._view_distance:
+                            if element.attraction == 1:
+                                gradients_attractive.append(element)
 
         return gradients_attractive
 
@@ -546,14 +654,15 @@ class SoBuffer(object):
         if not self._own_pos:
             return []
 
+        pose = copy.deepcopy(self._own_pos[-1])
+
         gradients = self.attractive_gradients(frameids, static, moving)
         tmp_grad = None
         tmp_att = np.inf
 
         if gradients:
             for grad in gradients:
-                g = gradient.calc_attractive_gradient(grad,
-                                                      self._own_pos[-1])
+                g = gradient.calc_attractive_gradient(grad, pose)
                 att = calc.vector_length(g)
                 # attraction decreases with being closer to gradient source
                 # / goal area
@@ -606,14 +715,16 @@ class SoBuffer(object):
         return tmp_grad
 
     # Aggregation of data for Decision patterns
-    def agent_list(self, frame, static=False, moving=True):
+    def agent_list(self, frameids=None):
         """
-        function determines all gradients within view distance with a certain
-        frame ID, excluding all gradients from agent itself
+        function determines all moving gradients within view distance with a
+        certain frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
+        :param moving: consider moving gradients
         :return: list of gradients
         """
-        self._evaporate_buffer()
+        if not self.ev_topic:
+            self._evaporate_buffer()
 
         gradients = []
 
@@ -621,85 +732,184 @@ class SoBuffer(object):
         if not self._own_pos:
             return gradients
 
-        if static and frame in self._static.keys():
-            for element in self._static[frame]:
-                if element.parent_frame != self._id:
-                    if calc.get_gradient_distance(element.p, self._own_pos[
-                        -1].p) <= element.diffusion + \
-                            element.goal_radius + self._view_distance:
-                        gradients.append(element)
+        pose = copy.deepcopy(self.own_pos[-1])
 
-        if moving and frame in self._moving.keys() and self._moving[frame]:
-            for pid in self._moving[frame].keys():
-                if pid != self._id and self._moving[frame][pid]:
-                    if calc.get_gradient_distance(self._moving[frame][pid][-1].p,
-                                                  self._own_pos[-1].p) \
-                            <= self._moving[frame][pid][-1].diffusion + \
-                                    self._moving[frame][pid][
-                                        -1].goal_radius + self._view_distance:
-                        gradients.append(self._moving[frame][pid][-1])
+        # determine frames to consider
+        if not frameids:
+            frameids = self._moving.keys()
+
+        moving = copy.deepcopy(self._moving)
+
+        for frame in frameids:
+            if frame in moving.keys() and moving[frame]:
+                for pid in moving[frame].keys():
+                    if pid != self._id and moving[frame][pid]:
+                        if calc.get_gradient_distance(moving[frame][pid][-1].p,
+                                                      pose.p) \
+                                <= moving[frame][pid][-1].diffusion + \
+                                   moving[frame][pid][-1].goal_radius + \
+                                   self._view_distance:
+                            gradients.append(moving[frame][pid][-1])
+
+        return gradients
+
+    # Aggregation of data for Decision patterns
+    def static_list_angle(self, frameids, view_angle_xy, view_angle_yz=np.pi):
+        """
+        function determines all gradients within view distance with a certain
+        frame ID & within a view angle,
+        only static gradients as pheromones are deposited in environment,
+        :param frameids: frame ID of agent data
+        :param view_angle_xy: angle in which agent can see pheromones on
+        x-y-plane (+/- from heading)
+        :param view_angle_yz: angle in which agent can see pheromones on
+        y-z-plane (+/- from heading)
+        :return: list of gradients
+        """
+        if not self.ev_topic:
+            self._evaporate_buffer()
+
+        gradients = []
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        pose = copy.deepcopy(self.own_pos[-1])
+
+        # determine frames to consider
+        if not frameids:
+            frameids = self._static.keys()
+
+        # heading vector
+        heading = tf.transformations.quaternion_matrix([pose.q.x, pose.q.y,
+                                                        pose.q.z, pose.q.w]).\
+            dot([pose.direction.x, pose.direction.y, pose.direction.z, 1])
+
+        heading = Vector3(heading[0], heading[1], heading[2])
+
+        static = copy.deepcopy(self._static)
+
+        for frame in frameids:
+            if frame in static.keys():
+                for element in static[frame]:
+                    grad = calc.delta_vector(element.p, pose.p)
+                    if calc.vector_length(grad) <= element.diffusion + \
+                             element.goal_radius + self._view_distance:
+                        if np.abs(calc.angle_between([grad.x, grad.y],
+                                                     [heading.x, heading.y])) \
+                                <= view_angle_xy:
+                            if np.abs(calc.angle_between([grad.y, grad.z],
+                                                         [heading.y,
+                                                          heading.z])) \
+                                    <= view_angle_yz:
+                                gradients.append(element)
+
+        return gradients
+
+    # Aggregation of data for Decision patterns
+    def agent_set(self, frameids=None):
+        """
+        function determines all gradients within view distance with a certain
+        frame ID, excluding all gradients from agent itself
+        :param frame: frame ID of agent data
+        :return: list of gradients
+        """
+        if not self.ev_topic:
+            self._evaporate_buffer()
+
+        gradients = []
+
+        # no own position available
+        if not self._own_pos:
+            return gradients
+
+        pose = copy.deepcopy(self.own_pos[-1])
+
+        # determine frames to consider
+        if not frameids:
+            frameids = self._moving.keys()
+
+        moving = copy.deepcopy(self._moving)
+
+        for frame in frameids:
+            if frame in moving.keys() and moving[frame]:
+                for pid in moving[frame].keys():
+                    if pid != self._id and moving[frame][pid]:
+                        if calc.get_gradient_distance(moving[frame][pid][-1].p,
+                                                      pose.p) \
+                                <= moving[frame][pid][-1].diffusion + \
+                                        moving[frame][pid][-1].goal_radius + \
+                                        self._view_distance:
+                            gradients.append(moving[frame][pid])
 
         return gradients
 
     # EVAPORATION
-    def _evaporate_buffer(self):
+    def _evaporate_buffer(self, msg=None):
         """
         evaporate buffer data stored in self._static
         neighbor data is not evaporated as it is considered being fixed
         :return:
         """
-        # interate through keys
-        for fid in self._static:
-            if self._static[fid]:  # array not empty
-                # go in reverse order
-                for i in xrange(len(self._static[fid]) - 1, -1, -1):
-                    if self._static[fid][i].ev_time > 0:
-                        diff = rospy.Time.now() - self._static[fid][
-                            i].ev_stamp
-                        if diff >= rospy.Duration(
-                                self._static[fid][i].ev_time):
-                            n = diff.secs // self._static[fid][i].ev_time
-                            self._static[fid][i].diffusion *= \
-                                self._static[fid][i].ev_factor ** n
-                            self._static[fid][i].ev_stamp += rospy.Duration(
-                                n * self._static[fid][i].ev_time)
-                    else:  # delta t for evaporation = 0 and evaporation
-                        # applies, set diffusion immediately to 0
-                        if self._static[fid][i].ev_factor < 1.0:
-                            self._static[fid][i].diffusion = 0.0
-
-                    # in case that gradient concentration is lower than
-                    # minimum and no goal_radius exists, delete data
-                    if self._static[fid][i].goal_radius == 0.0 and \
-                                    self._static[fid][
-                                        i].diffusion < self._min_diffusion:
-                        del self._static[fid][i]  # remove element
-
-        for fid in self._moving:
-            if self._moving[fid]:
-                for pid in self._moving[fid].keys():
-                    for i in xrange(len(self._moving[fid][pid]) - 1, -1, -1):
-                        if self._moving[fid][pid][i].ev_time > 0:
-                            diff = rospy.Time.now() - self._moving[fid][pid][
+        with self.lock:
+            # interate through keys
+            for fid in self._static.keys():
+                if self._static[fid]:  # array not empty
+                    # go in reverse order
+                    for i in xrange(len(self._static[fid]) - 1, -1, -1):
+                        if self._static[fid][i].ev_time > 0:
+                            diff = rospy.Time.now() - self._static[fid][
                                 i].ev_stamp
                             if diff >= rospy.Duration(
-                                    self._moving[fid][pid][i].ev_time):
-                                n = diff.secs // self._moving[fid][pid][i].ev_time
-                                self._moving[fid][pid][i].diffusion *= \
-                                    self._moving[fid][pid][i].ev_factor ** n
-                                self._moving[fid][pid][i].ev_stamp += rospy.Duration(
-                                    n * self._moving[fid][pid][i].ev_time)
+                                    self._static[fid][i].ev_time):
+                                n = diff.secs // self._static[fid][i].ev_time
+                                self._static[fid][i].diffusion *= \
+                                    self._static[fid][i].ev_factor ** n
+                                self._static[fid][i].ev_stamp += rospy.\
+                                    Duration(n * self._static[fid][i].ev_time)
                         else:  # delta t for evaporation = 0 and evaporation
                             # applies, set diffusion immediately to 0
-                            if self._moving[fid][pid][i].ev_factor < 1.0:
-                                self._moving[fid][pid][i].diffusion = 0.0
+                            if self._static[fid][i].ev_factor < 1.0:
+                                self._static[fid][i].diffusion = 0.0
 
-                            # in case that gradient concentration is lower than
-                            # minimum and no goal_radius exists, delete data
-                        if self._moving[fid][pid][i].goal_radius == 0.0 and \
-                                        self._moving[fid][pid][i].diffusion < \
+                        # in case that gradient concentration is lower than
+                        # minimum and no goal_radius exists, delete data
+                        if self._static[fid][i].goal_radius == 0.0 and \
+                                        self._static[fid][i].diffusion < \
                                         self._min_diffusion:
-                            del self._moving[fid][pid][i]  # remove element
+                            del self._static[fid][i]  # remove element
+
+            for fid in self._moving.keys():
+                if self._moving[fid]:
+                    for pid in self._moving[fid].keys():
+                        for i in xrange(len(self._moving[fid][pid]) - 1,
+                                        -1, -1):
+                            if self._moving[fid][pid][i].ev_time > 0:
+                                diff = rospy.Time.now() - self._moving[fid][
+                                    pid][i].ev_stamp
+                                if diff >= rospy.Duration(
+                                        self._moving[fid][pid][i].ev_time):
+                                    n = diff.secs // self._moving[fid][pid][
+                                        i].ev_time
+                                    self._moving[fid][pid][i].diffusion *= \
+                                        self._moving[fid][pid][i].ev_factor \
+                                        ** n
+                                    self._moving[fid][pid][i].ev_stamp += \
+                                        rospy.Duration(n * self._moving[fid][
+                                            pid][i].ev_time)
+                            else:  # delta t for evaporation = 0 and evaporation
+                                # applies, set diffusion immediately to 0
+                                if self._moving[fid][pid][i].ev_factor < 1.0:
+                                    self._moving[fid][pid][i].diffusion = 0.0
+
+                                # in case that gradient concentration is lower
+                                    # than minimum and no goal_radius exists,
+                                    # delete data
+                            if self._moving[fid][pid][i].goal_radius == 0.0 \
+                                    and self._moving[fid][pid][i].diffusion < \
+                                        self._min_diffusion:
+                                del self._moving[fid][pid][i]  # remove element
 
     def _evaporate_msg(self, msg):
         """
@@ -728,3 +938,7 @@ class SoBuffer(object):
     @property
     def view_distance(self):
         return self._view_distance
+
+    @property
+    def own_pos(self):
+        return self._own_pos

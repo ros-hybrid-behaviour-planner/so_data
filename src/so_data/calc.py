@@ -16,6 +16,8 @@ def unit_vector(vector):
     """
     Returns the unit vector of the vector.
     """
+    if np.linalg.norm(vector) == 0.0:
+        return [0, 0]
     return vector/np.linalg.norm(vector)
 
 
@@ -34,7 +36,7 @@ def unit_vector3(vector):
 
 def angle_between(v1, v2):
     """ Returns the directed angle in radians between vectors 'v1' and 'v2'
-    - only working in 2D!::
+    (related to two axis):
 
             >>> angle_between((1, 0), (0, 1))
             1.5707963267948966

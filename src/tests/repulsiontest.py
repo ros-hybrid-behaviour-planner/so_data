@@ -8,12 +8,12 @@ Module with unit test for repulsion.py
 
 import unittest
 import rospy
-import so_data.calc
-from so_data.repulsion import RepulsionFernandez, RepulsionGradient
-from so_data.sobuffer import SoBuffer
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from std_msgs.msg import Header
+import so_data.calc
+from so_data.repulsion import RepulsionFernandez, RepulsionGradient
+from so_data.sobuffer import SoBuffer
 
 
 class RepulsionTest(unittest.TestCase):

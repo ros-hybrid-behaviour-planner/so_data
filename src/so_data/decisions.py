@@ -18,11 +18,10 @@ class MorphogenesisBarycenter(DecisionPattern):
     """
     Find barycenter of robot group
     """
-    def __init__(self, buffer, frame, key, moving=True, static=False,
-                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, diffusion=np.inf,
-                 attraction=-1, state='None', goal_center=2.0,
-                 moving_center=False, attraction_center=1,
-                 diffusion_center=20):
+    def __init__(self, buffer, frame, key, center_frame='Center', moving=True,
+                 static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
+                 diffusion=np.inf, attraction=-1, value=0, state='None',
+                 goal_center=2.0, moving_center=False, attraction_center=1):
         """
         initialize behaviour
         :param buffer: SoBuffer
@@ -43,32 +42,28 @@ class MorphogenesisBarycenter(DecisionPattern):
         """
 
         super(MorphogenesisBarycenter, self).__init__(buffer, frame, key,
-                                                      state, moving, static,
-                                                      goal_radius, ev_factor,
-                                                      ev_time, diffusion,
-                                                      attraction)
-
-        self.last_state = 'None'
+                                                      value, state, moving,
+                                                      static, goal_radius,
+                                                      ev_factor, ev_time,
+                                                      diffusion, attraction)
 
         # Center gradient
         self.goal_center = goal_center
         self.moving_center = moving_center
         self.attraction_center = attraction_center
-        self.diffusion_center = diffusion_center
+        self.center_frame = center_frame
 
-    def value(self):
+    def calc_value(self):
         """
         sums up distance to all morphogenetic gradients determines and
-        sets state of robot
+        sets state of robot based on it
         :return: distance (float)
         """
-
-        values = self._buffer.agent_list(self.frame, moving=self.moving,
-                                         static=self.static)
+        values = self._buffer.agent_list([self.frame])
         own_pos = self._buffer.get_own_pose()
 
         if not values or not own_pos:
-            return -1
+            return [0, 'None']
 
         # determine summed up distances to neighbors
         dist = 0
@@ -91,12 +86,11 @@ class MorphogenesisBarycenter(DecisionPattern):
                 count += 1
 
         # set state
+        state = 'None'
         if neighbors != 0 and count == neighbors:
-            self.state = 'Center'
-        else:
-            self.state = 'None'
+            state = 'Center'
 
-        return dist
+        return [dist, state]
 
     def spread(self):
         """
@@ -104,17 +98,17 @@ class MorphogenesisBarycenter(DecisionPattern):
         + spreads center gradient if robot is barycenter
         """
         super(MorphogenesisBarycenter, self).spread()
-        self.last_state = self.state
 
         # if barycenter: spread gradient for chemotaxis
         if self.state == 'Center':
             rospy.loginfo("Agent state: Center")
+            # send Center gradient: diffusion = sum of distance of agent
             center_gradient = create_gradient(self.get_pos().p,
                                               goal_radius=self.goal_center,
                                               attraction=self.attraction_center,
-                                              diffusion=self.diffusion_center,
+                                              diffusion=self.value,
                                               moving=self.moving_center,
-                                              frameid=self.frame)
+                                              frameid=self.center_frame)
 
             self._broadcaster.send_data(center_gradient)
 
@@ -123,7 +117,7 @@ class GossipMax(DecisionPattern):
     """
     Gossip mechanism to find maximum value
     """
-    def __init__(self, buffer, frame, key, state=1, moving=True,
+    def __init__(self, buffer, frame, key, value=1, state=None, moving=True,
                  static=False, diffusion=np.inf, goal_radius=0,
                  ev_factor=1.0, ev_time=0.0):
         """
@@ -140,27 +134,28 @@ class GossipMax(DecisionPattern):
         :param state: robot state
         """
 
-        super(GossipMax, self).__init__(buffer, frame, key, state, moving,
-                                        static, goal_radius, ev_factor,
+        super(GossipMax, self).__init__(buffer, frame, key, value, state,
+                                        moving, static, goal_radius, ev_factor,
                                         ev_time, diffusion)
 
-    def value(self):
+    def calc_value(self):
         """
         determines maximum received value by all agent gradients
         :return: maximum number
         """
-        values = self._buffer.agent_list(self.frame, moving=self.moving,
-                                         static=self.static)
+        values = self._buffer.agent_list([self.frame])
+
+        tmpMax = self.value
 
         for el in values:
             k = [i.key for i in el.payload]
             index = k.index(self.key)
 
             tmp = float(el.payload[index].value)
-            if self.state < tmp:
-                self.state = tmp
+            if tmpMax < tmp:
+                tmpMax = tmp
 
-        return self.state
+        return [tmpMax, None]
 
     def spread(self):
         """
@@ -170,29 +165,47 @@ class GossipMax(DecisionPattern):
         super(GossipMax, self).spread()
 
         # Show info
-        rospy.loginfo("Current max: " + str(self.last_value))
+        rospy.loginfo("Current max: " + str(self.value))
 
 
+# QUORUM
+class Quorum(DecisionPattern):
+    """
+    Quorum Sensing
+    """
+    def __init__(self, buffer, threshold, frame=None, value=0, state=False,
+                 moving=True, static=False):
+        """
+        initialize behaviour
+        :param buffer: SoBuffer
+        :param threshold: number of agents which has to be reached
+        :param frame: frame id (header frame) agent data
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradient in list returned by buffer
+        :param state: robot state
+        """
+        super(Quorum, self).__init__(buffer, frame, value=value, state=state,
+                                     moving=moving, static=static)
 
-    # QUORUM SENSING: DENSITY FUNCTION
-    # def quorum(self):
-    #     """
-    #     calculates agent density within view; only considers agent data
-    #     :return: True (threshold passed), False (threshold not passed)
-    #     """
-    #     count = 0
-    #
-    #     if self.pose_frame in self._moving.keys():
-    #         for pid in self._moving[self.pose_frame].keys():
-    #             if self._moving[self.pose_frame][pid]:
-    #                 val = self._moving[self.pose_frame][pid][-1]
-    #                 # check if neighbor is in sight
-    #                 if calc.get_gradient_distance(val.p, self._own_pos[-1].p) \
-    #                     <= val.diffusion + val.goal_radius + \
-    #                     self._view_distance:
-    #                     count += 1
-    #
-    #     if count >= self.threshold:
-    #         return True
-    #     else:
-    #         return False
+        # set standard agent frame if no frame is specified
+        if not frame:
+            self.frame = self._buffer.pose_frame
+
+        self.threshold = threshold
+
+    def calc_value(self):
+        """
+        determines number of agents within view
+        :return: state
+        """
+
+        values = self._buffer.agent_list([self.frame])
+
+        count = len(values)
+
+        state = False
+        # set state
+        if count >= self.threshold:
+            state = True
+
+        return [count, state]

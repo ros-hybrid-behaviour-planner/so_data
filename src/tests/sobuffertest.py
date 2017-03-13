@@ -5,15 +5,14 @@ Created on 14.11.2016
 
 Unit test for sobuffer.py
 """
-
-from so_data.sobuffer import SoBuffer, AGGREGATION
 import unittest
-from so_data.msg import SoMessage
-import rospy
-from geometry_msgs.msg import Vector3, Quaternion
+import numpy as np
 from copy import deepcopy
+import rospy
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
 from std_msgs.msg import Header
-
+from so_data.sobuffer import SoBuffer, AGGREGATION
 
 class SoBufferTest(unittest.TestCase):
     """
@@ -28,7 +27,7 @@ class SoBufferTest(unittest.TestCase):
         """
         bffr = SoBuffer(view_distance=2.0)
 
-        self.assertEqual(bffr.agent_list(bffr.pose_frame), [])
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), [])
 
         # 2 neighbors within view, one outside view
         bffr._moving = {
@@ -66,8 +65,8 @@ class SoBufferTest(unittest.TestCase):
             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
                       1.0, 0, None, Vector3(), 0, 0, True, [])]
 
-        self.assertEqual(bffr.agent_list(bffr.pose_frame), result)
-        self.assertEqual(bffr.agent_list(bffr.pose_frame, static=True), result)
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), result)
+        self.assertEqual(bffr.agent_list([bffr.pose_frame]), result)
 
     # EVAPORATION
     def test_evaporation_buffer(self):
@@ -110,14 +109,12 @@ class SoBufferTest(unittest.TestCase):
                       Quaternion(),
                       1, 4.0, 0.0, 0.8, 5, now, Vector3(), 0, 0, False, [])
         ], 'gradient': [
-            SoMessage(Header(None, now - rospy.Duration(45), 'gradient'), 'None',
-                      Vector3(1, 1, 0), Quaternion(), 1, 4.0, 0.0, 0.8, 5,
-                      now - rospy.Duration(45), Vector3(), 0, 0,
-                      False, []),
-            SoMessage(Header(None, now - rospy.Duration(15), 'gradient'), 'None',
-                      Vector3(3, 3, 0), Quaternion(), 1, 4.0, 0.0, 0.6, 5,
-                      now - rospy.Duration(15), Vector3(), 0,
-                      0, False, [])
+            SoMessage(Header(None, now - rospy.Duration(45), 'gradient'),
+                      'None', Vector3(1, 1, 0), Quaternion(), 1, 4.0, 0.0, 0.8,
+                      5, now - rospy.Duration(45), Vector3(), 0, 0, False, []),
+            SoMessage(Header(None, now - rospy.Duration(15), 'gradient'),
+                      'None', Vector3(3, 3, 0), Quaternion(), 1, 4.0, 0.0, 0.6,
+                      5, now - rospy.Duration(15), Vector3(), 0, 0, False, [])
         ], 'robo': [
             SoMessage(Header(None, now - rospy.Duration(10), 'robo'), 'None',
                       Vector3(4, 4, 0), Quaternion(), 1, 4.0, 0.0, 0.8, 4,
@@ -157,12 +154,10 @@ class SoBufferTest(unittest.TestCase):
                       False, [])],
             'gradient': [],
             'robo': [
-                SoMessage(Header(None, now - rospy.Duration(10), 'robo'), 'None',
-                          Vector3(4, 4, 0), Quaternion(), 1, 4.0 * (0.8 ** 2),
-                          0.0,
-                          0.8, 4, now - rospy.Duration(2), Vector3(), 0, 0,
-                          False, []),
-
+                SoMessage(Header(None, now - rospy.Duration(10), 'robo'),
+                          'None', Vector3(4, 4, 0), Quaternion(), 1,
+                          4.0 * (0.8 ** 2), 0.0, 0.8, 4,
+                          now - rospy.Duration(2), Vector3(), 0, 0, False, [])
             ]}
 
         self.assertEqual(bffr._static, data)
@@ -328,31 +323,31 @@ class SoBufferTest(unittest.TestCase):
         now = rospy.Time.now()
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(2, 2, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(3, 3, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['grad'].append(msg)
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(3, 3, 0),
-                        Quaternion(), 1, 3.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 3.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(5, 5, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['grad'].append(deepcopy(msg))
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(2, 2, 0),
-                        Quaternion(), 1, 5.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 5.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
@@ -367,14 +362,14 @@ class SoBufferTest(unittest.TestCase):
         testlist = {'grad': [], 'silk': []}
         now = rospy.Time.now()
 
-        msg = SoMessage(Header(None, now, 'pheromone'), 'None', Vector3(2, 2, 0),
-                        Quaternion(), 1,
-                        4.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+        msg = SoMessage(Header(None, now, 'pheromone'), 'None',
+                        Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 1.0, 0,
+                        None, Vector3(), 0, 0, False, [])
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(3, 3, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['grad'].append(deepcopy(msg))
         bffr.store_data(msg)
 
@@ -383,14 +378,14 @@ class SoBufferTest(unittest.TestCase):
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(5, 5, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['grad'].append(deepcopy(msg))
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'silk'), 'None', Vector3(5, 5, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['silk'].append(deepcopy(msg))
         bffr.store_data(msg)
 
@@ -534,7 +529,8 @@ class SoBufferTest(unittest.TestCase):
                         0.0, 0.3, 0, None, Vector3(), 0, 0, False, [])
         bffr.store_data(msg)
 
-        # received data is older than stored one, will be evaporated and than compared
+        # received data is older than stored one, will be evaporated
+        # and than compared
         msg = SoMessage(Header(None, now - rospy.Duration(10), None), None,
                         Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 0.8, 5,
                         now - rospy.Duration(10), Vector3(), 0, 0, False, [])
@@ -562,41 +558,41 @@ class SoBufferTest(unittest.TestCase):
         now = rospy.Time.now()
 
         # replaced by fourth robot1 message
-        msg = SoMessage(Header(None, now - rospy.Duration(10), 'robot'), 'robot1',
-                        Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0, 1.0, 0.8,
-                        5, None, Vector3(), 0, 0, True, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(10), 'robot'),
+                        'robot1', Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0,
+                        1.0, 0.8, 5, None, Vector3(), 0, 0, True, [])
         bffr.store_data(msg)
 
         # position older than newest stored position --> ignore
-        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'), 'robot1',
-                        Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 0.8, 5,
-                        None, Vector3(), 0, 0, True, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'),
+                        'robot1', Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0,
+                        0.8, 5, None, Vector3(), 0, 0, True, [])
         bffr.store_data(msg)
 
         # add to position list
-        msg = SoMessage(Header(None, now - rospy.Duration(5), 'robot'), 'robot1',
-                        Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 0.8, 5,
-                        None, Vector3(), 0, 0, True, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(5), 'robot'),
+                        'robot1', Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0,
+                        0.8, 5, None, Vector3(), 0, 0, True, [])
         testlist['robot']['robot1'].append(msg)
         bffr.store_data(msg)
 
         # add to position list
         msg = SoMessage(Header(None, now, 'robot'), 'robot1', Vector3(2, 2, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 0.8, 5, None, Vector3(), 0, 0, True, [])
+                        Quaternion(), 1, 4.0, 1.0, 0.8, 5, None, Vector3(), 0,
+                        0, True, [])
         testlist['robot']['robot1'].append(msg)
         bffr.store_data(msg)
 
-        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'), 'robot2',
-                        Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 0.8, 5,
-                        None, Vector3(), 0, 0, True, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'),
+                        'robot2', Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0,
+                        0.8, 5, None, Vector3(), 0, 0, True, [])
         testlist['robot']['robot2'].append(msg)
         bffr.store_data(msg)
 
         # own position
-        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'), 'robot3',
-                        Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0, 0.8, 5,
-                        None, Vector3(), 0, 0, True, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(15), 'robot'),
+                        'robot3', Vector3(2, 2, 0), Quaternion(), 1, 4.0, 1.0,
+                        0.8, 5, None, Vector3(), 0, 0, True, [])
         ownpos.append(msg)
         bffr.store_data(msg)
 
@@ -652,7 +648,8 @@ class SoBufferTest(unittest.TestCase):
 
     def test_store_data_various_aggregations(self):
         """
-        test store data method with different aggregation options for different frame IDs
+        test store data method with different aggregation options for
+        different frame IDs
         :return:
         """
         bffr = SoBuffer(aggregation={'DEFAULT': AGGREGATION.MAX,
@@ -661,33 +658,33 @@ class SoBufferTest(unittest.TestCase):
         now = rospy.Time.now()
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(2, 2, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(4, 5, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(3, 3, 0),
-                        Quaternion(), 1, 3.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 3.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(5, 5, 0),
-                        Quaternion(), 1, 4.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 4.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['grad'].append(SoMessage(Header(None, now, 'grad'), 'None',
                                           Vector3(4.5, 5, 0), Quaternion(), 1,
-                                          4.0, 1.0, 1.0,
-                                          0, None, Vector3(), 0, 0, False, []))
+                                          4.0, 1.0, 1.0, 0, None, Vector3(),
+                                          0, 0, False, []))
         bffr.store_data(msg)
 
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(2, 2, 0),
-                        Quaternion(), 1, 5.0,
-                        1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])
+                        Quaternion(), 1, 5.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                        0, False, [])
         testlist['None'].append(deepcopy(msg))
         bffr.store_data(msg)
 
@@ -705,14 +702,14 @@ class SoBufferTest(unittest.TestCase):
         testlist = {'robot': []}
 
         # replaced by fourth robot1 message
-        msg = SoMessage(Header(None, now - rospy.Duration(10), 'robot'), 'robot1',
-                        Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0, 1.0, 0.8,
-                        5, None, Vector3(), 0, 0, False, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(10), 'robot'),
+                        'robot1', Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0,
+                        1.0, 0.8, 5, None, Vector3(), 0, 0, False, [])
         bffr.store_data(msg)
 
-        msg = SoMessage(Header(None, now - rospy.Duration(5), 'robot'), 'robot5',
-                        Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0, 1.0, 0.8,
-                        5, None, Vector3(), 0, 0, False, [])
+        msg = SoMessage(Header(None, now - rospy.Duration(5), 'robot'),
+                        'robot5', Vector3(2.1, 2.2, 0), Quaternion(), 1, 4.0,
+                        1.0, 0.8, 5, None, Vector3(), 0, 0, False, [])
         testlist['robot'].append(msg)
         bffr.store_data(msg)
 
@@ -955,6 +952,99 @@ class SoBufferTest(unittest.TestCase):
                          SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
                                    -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
                                    False, []))
+
+    def test_agent_set(self):
+        """
+        test agent set function
+        :return:
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        self.assertEqual(bffr.agent_set([bffr.pose_frame]), [])
+
+        # 2 neighbors within view, one outside view
+        bffr._moving = {
+            'robot': {
+                'robot1': [SoMessage(None, None, Vector3(0, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, []),
+                           SoMessage(None, None, Vector3(2, 2, 0),
+                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot2': [SoMessage(),
+                           SoMessage(None, None, Vector3(5, 6, 0),
+                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot3': [SoMessage(),
+                           SoMessage(),
+                           SoMessage(None, None, Vector3(1, 2, 0),
+                                     Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                                     Vector3(), 0, 0, True, [])],
+                'robot4': []
+            }
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+
+        result = [
+            [SoMessage(None, None, Vector3(1, 2, 0),
+                       Quaternion(), 1, 4.0, 1.0, 1.0, 0, None,
+                       Vector3(), 0, 0, True, [])],
+            [SoMessage(None, None, Vector3(0, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                       1.0, 0, None, Vector3(), 0, 0, True, []),
+             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1, 1.0, 1.0,
+                       1.0, 0, None, Vector3(), 0, 0, True, [])]]
+
+        self.assertEqual(bffr.agent_set([bffr.pose_frame]), result)
+
+    def test_static_list_angle(self):
+        """
+        test static_list_angle method
+        :return:
+        """
+
+        bffr = SoBuffer(view_distance=2.0)
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 0), Quaternion(), 1, 1.0, 1.0,
+                      1.0, 0, None, Vector3(1, 0, 0), 0, 0, False, [])]
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 3), Quaternion(), 1,
+                               1.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(3, 3, 0), Quaternion(), -1,
+                               0.2, 0.5, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), 1,
+                               5.0, 0.2, 1.0, 0, None, Vector3(), 0, 0,
+                               False, []),
+                     ],
+            'Center': [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(),
+                                 -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, []),
+                       SoMessage(None, None, Vector3(0, 0, 0), Quaternion(),
+                                 -1, 3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0,
+                                 False, [])]
+        }
+
+        result = [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(), -1,
+                            8.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
+                            []),
+                  SoMessage(None, None, Vector3(0, 0, 0), Quaternion(), -1,
+                            3.0, 0.1, 1.0, 0, None, Vector3(), 0, 0, False,
+                            [])]
+
+        self.assertEqual(bffr.static_list_angle(['Center'], np.pi), result)
+
+        self.assertEqual(bffr.static_list_angle(['Center'], np.pi/2),
+                         [SoMessage(None, None, Vector3(1, 1.8, 0), Quaternion(),
+                                    -1, 8.0, 1.0, 1.0, 0, None, Vector3(), 0,
+                                    0, False, [])])
+
+        self.assertEqual(bffr.static_list_angle(['Center'], 0), [])
 
 
 # run tests - start roscore before running tests
