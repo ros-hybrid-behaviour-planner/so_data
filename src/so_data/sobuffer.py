@@ -12,7 +12,6 @@ import rospy
 import tf.transformations
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Bool
 import numpy as np
 import calc
 import random
@@ -47,7 +46,7 @@ class SoBuffer(object):
     def __init__(self, aggregation=None, aggregation_distance=1.0,
                  min_diffusion=0.1, view_distance=1.5, id='',
                  moving_storage_size=2, store_all=True, framestorage=None,
-                 pose_frame='robot', ev_topic=None):
+                 pose_frame='robot', ev_thread=False, ev_time=1):
 
         """
         :param aggregation: indicator which kind of aggregation should be
@@ -92,6 +91,12 @@ class SoBuffer(object):
 
         :param pose_frame: frame which indicates agent data (neighbors)
         :type pose_frame: str.
+
+        :param ev_thread: trigger evaporation by thread
+        :type ev_thread: bool
+
+        :param ev_time: delta t in s when evaporation should be triggered
+        :type ev_time: float
         """
 
         # lock for evaporation
@@ -126,10 +131,10 @@ class SoBuffer(object):
         # RETURN AGGREGATED GRADIENT DATA
         self._view_distance = view_distance
 
-        self.ev_topic = ev_topic
-
-        if ev_topic:
-            rospy.Subscriber(ev_topic, Bool, self._evaporate_buffer)
+        self.ev_thread = ev_thread
+        self.ev_time = ev_time
+        if ev_thread:
+            t = threading.Timer(self.ev_time, self._evaporate_buffer()).start()
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -157,7 +162,7 @@ class SoBuffer(object):
 
         # Evaporation
         # evaporate stored data
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         # evaporate received data
@@ -408,7 +413,7 @@ class SoBuffer(object):
                           repulsion between agents
         :return: list of gradients []
         """
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients = []
@@ -488,7 +493,7 @@ class SoBuffer(object):
         if repulsion and self.pose_frame not in frameids:
             frameids.append(self.pose_frame)
 
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients = []
@@ -528,7 +533,7 @@ class SoBuffer(object):
         # check if moving and / or static attractive gradients are
         # within view distance
 
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients_repulsive = []
@@ -594,7 +599,7 @@ class SoBuffer(object):
         """
         # check if moving and / or static attractive gradients are
         # within view distance
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients_attractive = []
@@ -723,7 +728,7 @@ class SoBuffer(object):
         :param moving: consider moving gradients
         :return: list of gradients
         """
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients = []
@@ -766,7 +771,7 @@ class SoBuffer(object):
         y-z-plane (+/- from heading)
         :return: list of gradients
         """
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients = []
@@ -815,7 +820,7 @@ class SoBuffer(object):
         :param frame: frame ID of agent data
         :return: list of gradients
         """
-        if not self.ev_topic:
+        if not self.ev_thread:
             self._evaporate_buffer()
 
         gradients = []
@@ -852,13 +857,17 @@ class SoBuffer(object):
         neighbor data is not evaporated as it is considered being fixed
         :return:
         """
+        if self.ev_thread:
+            t = threading.Timer(self.ev_time, self._evaporate_buffer()).start()
+
         with self.lock:
             # interate through keys
             for fid in self._static.keys():
                 if self._static[fid]:  # array not empty
                     # go in reverse order
                     for i in xrange(len(self._static[fid]) - 1, -1, -1):
-                        if self._static[fid][i].ev_time > 0:
+                        if self._static[fid][i].ev_time > 0 and \
+                                        self._static[fid][i].ev_factor != 1.0:
                             diff = rospy.Time.now() - self._static[fid][
                                 i].ev_stamp
                             if diff >= rospy.Duration(
@@ -885,7 +894,8 @@ class SoBuffer(object):
                     for pid in self._moving[fid].keys():
                         for i in xrange(len(self._moving[fid][pid]) - 1,
                                         -1, -1):
-                            if self._moving[fid][pid][i].ev_time > 0:
+                            if self._moving[fid][pid][i].ev_time > 0 and \
+                                    self._moving[fid][pid][i].ev_factor != 1.0:
                                 diff = rospy.Time.now() - self._moving[fid][
                                     pid][i].ev_stamp
                                 if diff >= rospy.Duration(

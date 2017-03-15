@@ -137,7 +137,8 @@ the dictionary and has to be specified. Does not affect storage of moving gradie
 * **store_all** (True): defines whether all frameIDs will be stored or only frameIDs indicated in framestorage 
 * **framestorage** ([]): array listing all frameIDs which should be stored. Empty array leads to not storing any gradients. 
 * **pose_frame** ('robot'): frame ID indicating gradient data of agents / robots (poses)
-* **ev_topic** (None): topic which can be set to trigger evaporation in a certain frequency and not by every return and storage process
+* **ev_thread** (False): bool which can be set to trigger evaporation in a certain frequency by a Timer thread and not by every return and storage process
+* **ev_time** (5): delta time in which thread will trigger evaporation of buffer (in seconds)
 
 ### Gradient Storage
 
