@@ -58,6 +58,7 @@ string  parent_frame
 
 geometry_msgs/Vector3 p
 geometry_msgs/Quaternion q
+geometry_msgs/Vector3 direction
 
 int8 attraction 
 float32 diffusion 
@@ -66,10 +67,6 @@ float32 goal_radius
 float32 ev_factor 
 float32 ev_time
 time ev_stamp
-
-geometry_msgs/Vector3 direction
-float32 angle_x
-float32 angle_y
 
 bool moving
 
@@ -84,6 +81,7 @@ diagnostic_msgs/KeyValue[] payload
 * main gradient attributes:
   * **p**: gradient center
   * **q**: quaternion indicating orientation (x,z,y,w as calculated by tf.transformations)
+  * **direction**: gradient sector direction; specifies the direction when quaternion indicates 0 angles
   * **attraction**: attractive `1` or repulsive `-1` gradient 
   * **diffusion**: radius in which information will be spread
   * **goal_radius**: area with minimum attraction or maximum repulsion; total reach of gradient = diffusion + goal_radius 
@@ -91,10 +89,6 @@ diagnostic_msgs/KeyValue[] payload
   * **ev_factor**: evaporation factor `[0,1]` applied on diffusion (`diffusion *= ev_factor`) after `ev_time`; `1` = no evaporation, `0` = data loss after `ev_time`
   * **ev_time**: delta time `>= 0` in which evaporation is applied 
   * **ev_stamp**: time stamp used for evaporation calculations; should be set equal to header time stamp initially 
-* gradient sector:
-  * **direction**: gradient sector direction; specifies the direction when quaternion indicates 0 angles
-  * **angle_x**: first gradient angle [0, 2*pi]
-  * **angle_y**: second gradient angle [0, 2*pi]
 * **moving**: gradient is moving (True) or static (False)
 * **payload**: array of key-value-pairs to store payload data 
 

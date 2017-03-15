@@ -24,7 +24,7 @@ class TopicGradientTf(object):
 
     def __init__(self, topic, frame, id, message_type=None, p=Vector3(),
                  attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
-                 ev_time=0, angle_x=0, angle_y=0, quaternion=Quaternion(),
+                 ev_time=0, quaternion=Quaternion(),
                  moving=True, payload=[], direction=Vector3(1, 0, 0)):
         """
         subscription to topic and variable initializatoin
@@ -61,8 +61,6 @@ class TopicGradientTf(object):
         self.ev_factor = ev_factor
         self.ev_time = ev_time
         self.direction = direction
-        self.angle_x = angle_x
-        self.angle_y = angle_y
         self.moving = moving
         self.payload = payload
 
@@ -117,8 +115,6 @@ class TopicGradientTf(object):
         msg.ev_time = self.ev_time
         msg.ev_stamp = now
         msg.direction = self.direction
-        msg.angle_x = self.angle_x
-        msg.angle_y = self.angle_y
         msg.moving = self.moving
         msg.payload = self.payload
 

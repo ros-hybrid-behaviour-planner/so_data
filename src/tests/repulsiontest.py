@@ -34,11 +34,11 @@ class RepulsionTest(unittest.TestCase):
 
         bffr._own_pos = [
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 4, 0), Quaternion(), 1, 4.0, 0.0, 1.0, 0,
-                      None, Vector3(), 0, 0, False, []),
+                      Vector3(2, 4, 0), Quaternion(), Vector3(), 1, 4.0, 0.0,
+                      1.0, 0, None, False, []),
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 2, 0), Quaternion(), 1, 2.0, 0.0, 1.0, 0,
-                      None, Vector3(), 0, 0, False, [])
+                      Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 2.0, 0.0,
+                      1.0, 0, None, False, [])
         ]
 
         # no neighbors specified
@@ -47,18 +47,17 @@ class RepulsionTest(unittest.TestCase):
         bffr._moving = {
             'robot': {'robot2': [
                 SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot2',
-                          Vector3(1, 3, 0), Quaternion(), -1, 1.0, 1.0, 1.0, 0,
-                          None, Vector3(), 0, 0, False, [])
+                          Vector3(1, 3, 0), Quaternion(), Vector3(), -1, 1.0,
+                          1.0, 1.0, 0, None, False, [])
             ],
                 'robot3': [
                     SoMessage(Header(None, rospy.Time.now(), 'robot'),
-                              'robot3', Vector3(2, 2, 0), Quaternion(), -1,
-                              4.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
+                              'robot3', Vector3(2, 2, 0), Quaternion(),
+                              Vector3(), -1, 4.0, 1.0, 1.0, 0, None, False,
                               []),
                     SoMessage(Header(None, rospy.Time.now(), 'robot'),
-                              'robot3', Vector3(3, 2, 0), Quaternion(), -1,
-                              1.0, 0.8, 1.0, 0, None, Vector3(), 0, 0, False,
-                              [])
+                              'robot3', Vector3(3, 2, 0), Quaternion(),
+                              Vector3(), -1, 1.0, 0.8, 1.0, 0, None, False, [])
                 ]}
         }
         # calculate resulting vector
@@ -74,8 +73,8 @@ class RepulsionTest(unittest.TestCase):
         bffr._moving = {
             'robot': {'robot2': [
                 SoMessage(Header(None, rospy.Time.now(), 'robot'), 'robot2',
-                          Vector3(2, 1.5, 0), Quaternion(), -1, 2.0, 1.0, 1.0,
-                          0, None, Vector3(), 0, 0, False, [])]}}
+                          Vector3(2, 1.5, 0), Quaternion(), Vector3(), -1, 2.0,
+                          1.0, 1.0, 0, None, False, [])]}}
 
         d = round(so_data.calc.vector_length(repulsion.move()), 0)
 
@@ -97,11 +96,11 @@ class RepulsionTest(unittest.TestCase):
 
         bffr._own_pos = [
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 4, 0), Quaternion(), -1, 4.0, 1.0, 1.0, 0,
-                      rospy.Time.now(), Vector3(), 0, 0, False, []),
+                      Vector3(2, 4, 0), Quaternion(), Vector3(), -1, 4.0, 1.0,
+                      1.0, 0, rospy.Time.now(), False, []),
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                      Vector3(2, 2, 0), Quaternion(), -1, 1.0, 0.0, 1.0, 0,
-                      rospy.Time.now(), Vector3(), 0, 0, False, [])
+                      Vector3(2, 2, 0), Quaternion(), Vector3(), -1, 1.0, 0.0,
+                      1.0, 0, rospy.Time.now(), False, [])
         ]
 
         # no neighbors specified
@@ -111,17 +110,17 @@ class RepulsionTest(unittest.TestCase):
             'robot':
                 {'robot2': [
                     SoMessage(Header(None, rospy.Time.now(), 'None'), 'None',
-                              Vector3(1, 3, 0), Quaternion(), -1, 1.0, 1.0, 1.0,
-                              0, rospy.Time.now(), Vector3(), 0, 0, False, [])],
+                              Vector3(1, 3, 0), Quaternion(), Vector3(), -1,
+                              1.0, 1.0, 1.0, 0, rospy.Time.now(), False, [])],
                     'robot3':
                         [SoMessage(Header(None, rospy.Time.now(), 'None'),
-                                   'None', Vector3(2, 2, 0), Quaternion(), -1,
-                                   4.0, 1.0, 1.0, 0, rospy.Time.now(),
-                                   Vector3(), 0, 0, False, []),
+                                   'None', Vector3(2, 2, 0), Quaternion(),
+                                   Vector3(), -1, 4.0, 1.0, 1.0, 0,
+                                   rospy.Time.now(), False, []),
                          SoMessage(Header(None, rospy.Time.now(), 'None'),
-                                   'None', Vector3(3, 2, 0), Quaternion(), -1,
-                                   1.0, 0.8, 1.0, 0, rospy.Time.now(),
-                                   Vector3(), 0, 0, False, [])],
+                                   'None', Vector3(3, 2, 0), Quaternion(),
+                                   Vector3(), -1, 1.0, 0.8, 1.0, 0,
+                                   rospy.Time.now(), False, [])],
                     'robot4': []
                 }
         }
@@ -139,8 +138,8 @@ class RepulsionTest(unittest.TestCase):
         bffr._moving = {
             'robot': {'robot2': [
                 SoMessage(Header(None, rospy.Time.now(), 'None'), None,
-                          Vector3(2, 2, 0), Quaternion(), -1, 2.0, 1.0, 1.0, 0,
-                          rospy.Time.now(), Vector3(), 0, 0, False, [])]}}
+                          Vector3(2, 2, 0), Quaternion(), Vector3(), -1, 2.0,
+                          1.0, 1.0, 0, rospy.Time.now(), False, [])]}}
 
         d = round(so_data.calc.vector_length(repulsion.move()), 0)
 

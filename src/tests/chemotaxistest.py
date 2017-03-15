@@ -28,34 +28,34 @@ class ChemotaxisTest(unittest.TestCase):
                          maxvel=np.inf)
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         bffr._moving = {
             'robot1': {'None': [
-                SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0,
-                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]},
+                SoMessage(None, None, Vector3(1, 2, 3), Quaternion(),
+                          Vector3(), -1, 3.0, 0.0, 1.0, 0, None, False, [])]},
             'robot2': {}
         }
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), 1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(7, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(7, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])],
             'test': [
-                SoMessage(None, None, Vector3(5, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(7, 2, 3), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 2, 6), Quaternion(), 1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(5, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(7, 2, 3), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(1, 2, 6), Quaternion(),
+                          Vector3(), 1, 4.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         # with all frameIDs
@@ -93,20 +93,20 @@ class ChemotaxisTest(unittest.TestCase):
         chem = ChemotaxisBalch(bffr, moving=False, static=True,
                                repulsion=False, maxvel=np.inf)
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         # only one frameID + repulsive gradient is not considered
@@ -137,26 +137,26 @@ class ChemotaxisTest(unittest.TestCase):
                             maxvel=np.inf)
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), -1, 3.0,
-                      0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 4.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(1, 0, 0), Quaternion(), 1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 4.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(1, 0, 0), Quaternion(),
+                          Vector3(), 1, 3.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(4, 2, 0), Quaternion(), -1, 4.0,
-                          2.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(4, 2, 0), Quaternion(),
+                          Vector3(), -1, 4.0, 2.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         bffr._moving = {
             'robot1': {'None': [
-                SoMessage(None, None, Vector3(1, -2, 1), Quaternion(), -1, 4.0,
-                          0.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]},
+                SoMessage(None, None, Vector3(1, -2, 1), Quaternion(),
+                          Vector3(), -1, 4.0, 0.0, 1.0, 0, None, False, [])]},
             'robot2': {}
         }
 
@@ -187,20 +187,20 @@ class ChemotaxisTest(unittest.TestCase):
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         # only one frameID + repulsive gradient is not considered as outside
         # view distance
@@ -232,20 +232,20 @@ class ChemotaxisTest(unittest.TestCase):
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         # only one frameID + repulsive gradient is not considered as outside
         # view distance
@@ -277,22 +277,22 @@ class ChemotaxisTest(unittest.TestCase):
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), -1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(10, 20, 1), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), -1, 2.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(10, 20, 1), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         # only one frameID + repulsive gradient is not considered as outside
         # view distance
@@ -322,20 +322,20 @@ class ChemotaxisTest(unittest.TestCase):
                                repulsion=False, maxvel=np.inf)
 
         bffr._own_pos = [
-            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), -1, 3.0, 0.0,
-                      1.0, 0, None, Vector3(), 0, 0, False, [])]
+            SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
+                      -1, 3.0, 0.0, 1.0, 0, None, False, [])]
 
         bffr._static = {
             'gradient': [
-                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(), -1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(), 1, 1.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])],
+                SoMessage(None, None, Vector3(2, 3, 1), Quaternion(),
+                          Vector3(), -1, 1.0, 1.0, 1.0, 0, None, False, []),
+                SoMessage(None, None, Vector3(2, 2, 2), Quaternion(),
+                          Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False, [])],
             'None': [
-                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(), -1, 3.0,
-                          1.0, 10, 0, None, Vector3(), 0, 0, False, []),
-                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(), 1, 2.0,
-                          1.0, 1.0, 0, None, Vector3(), 0, 0, False, [])]
+                SoMessage(None, None, Vector3(0, 3, 2), Quaternion(),
+                          Vector3(), -1, 3.0, 1.0, 10, 0, None, False, []),
+                SoMessage(None, None, Vector3(5, 6, 3), Quaternion(),
+                          Vector3(), 1, 2.0, 1.0, 1.0, 0, None, False, [])]
         }
 
         self.assertEqual(calc.vector_length(chem.goal_gradient()),

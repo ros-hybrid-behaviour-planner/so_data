@@ -15,16 +15,15 @@ from geometry_msgs.msg import Vector3, Quaternion
 from so_data.srv import EnvGradient, EnvGradientResponse
 
 
-def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
-                    angle_y=0.0, q=Quaternion(), moving = False,
-                    direction=Vector3(1,0,0), goal_radius=1.0, payload=[],
-                    ev_time=0, ev_factor=1.0, frameid=''):
+def create_gradient(position, attraction=0, diffusion=3.0, q=Quaternion(),
+                    moving = False, direction=Vector3(1,0,0), goal_radius=1.0,
+                    payload=[], ev_time=0, ev_factor=1.0, frameid='',
+                    parentframe=''):
     """
     creates a soMessage to specify a gradient
     :param position: agent position
     :param attraction: repulsion(-1), attraction(1)
     :param diffusion: diffusion radius
-    :param angle: angle for directed gradient
     :param direction: direction for directed gradient
     :param goal_radius: goal radius of gradient
     :param payload: payload data
@@ -32,20 +31,18 @@ def create_gradient(position, attraction=0, diffusion=3.0, angle_x=0.0,
     :param ev_factor: evaporation factor
     :return: soMessage
     """
-
     now = rospy.Time.now()
 
     msg = SoMessage()
     msg.p = position
     msg.q = q
+    msg.direction = direction
     msg.attraction = attraction
     msg.header.stamp = now
     msg.header.frame_id = frameid
+    msg.parent_frame = parentframe
     msg.diffusion = diffusion
     msg.goal_radius = goal_radius
-    msg.direction = direction
-    msg.angle_x = angle_x
-    msg.angle_y = angle_y
     msg.ev_factor = ev_factor
     msg.ev_time = ev_time
     msg.ev_stamp = now

@@ -31,19 +31,19 @@ class DecisionsTest(unittest.TestCase):
         bffr._moving = {
             'morphogenesis': {
                 'robot1': [SoMessage(None, None, Vector3(2, 2, 0),
-                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
-                                     Vector3(), 0, 0, True,
+                                     Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0,
+                                     0, None, True,
                                      [KeyValue('dist', '7.0')])],
                 'robto2': [SoMessage(None, None, Vector3(1, 2, 0),
-                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
-                                     Vector3(), 0, 0, True,
+                                     Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
+                                     0, None, True,
                                      [KeyValue('dist', '4.0')])]
             }
         }
 
         bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 0), Quaternion(),
-                                   1, 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                   False, [KeyValue('dist', '5.0')])]
+                                   Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
+                                   [KeyValue('dist', '5.0')])]
 
         self.assertEqual(morph.state, 'None')
         self.assertEqual(morph.calc_value()[0], np.sqrt(2) + 1)
@@ -60,23 +60,20 @@ class DecisionsTest(unittest.TestCase):
         bffr._moving = {
             'gossip': {
                 'robot1': [SoMessage(None, None, Vector3(2, 2, 0),
-                                     Quaternion(), 1, 1.0, 1.0, 1.0, 0, None,
-                                     Vector3(), 0, 0, True,
-                                     [KeyValue('max', '1.0')])],
+                                     Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0,
+                                     0, None, True, [KeyValue('max', '1.0')])],
                 'robot2': [SoMessage(None, None, Vector3(1, 2, 0),
-                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
-                                     Vector3(), 0, 0, True,
-                                     [KeyValue('max', '4.0')])],
+                                     Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
+                                     0, None, True, [KeyValue('max', '4.0')])],
                 'robot4': [SoMessage(None, None, Vector3(5, 6, 0),
-                                     Quaternion(), 1, 2.0, 1.0, 1.0, 0, None,
-                                     Vector3(), 0, 0, True,
-                                     [KeyValue('max', '8.9')])]
+                                     Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
+                                     0, None, True, [KeyValue('max', '8.9')])]
             }
         }
 
         bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 0), Quaternion(),
-                                   1, 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                   False, [KeyValue('max', '3.0')])]
+                                   Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
+                                   [KeyValue('max', '3.0')])]
 
         self.assertEqual(gossip.calc_value()[0], 4.0)
 
@@ -96,26 +93,26 @@ class DecisionsTest(unittest.TestCase):
         bffr._moving = {
             'robot': {'robot1': [SoMessage(),
                                  SoMessage(None, None, Vector3(2, 2, 0),
-                                           Quaternion(), 1, 1.0, 1.0, 1.0, 0,
-                                           None, Vector3(), 0, 0, True, [])],
+                                           Quaternion(), Vector3(), 1, 1.0,
+                                           1.0, 1.0, 0, None, True, [])],
                       'robot2': [SoMessage(),
                                  SoMessage(None, None, Vector3(5, 6, 0),
-                                           Quaternion(), 1, 2.0, 1.0, 1.0, 0,
-                                           None, Vector3(), 0, 0, True, [])],
+                                           Quaternion(), Vector3(), 1, 2.0,
+                                           1.0, 1.0, 0, None, True, [])],
                       'robot3': [SoMessage(), SoMessage(),
                                  SoMessage(None, None, Vector3(1, 2, 0),
-                                           Quaternion(), 1, 4.0, 1.0, 1.0, 0,
-                                           None, Vector3(), 0, 0, True, [])],
+                                           Quaternion(), Vector3(), 1, 4.0,
+                                           1.0, 1.0, 0, None, True, [])],
                       'robot4': [] } }
 
         bffr._static = {
-            'None': [SoMessage(None, None, Vector3(5, 6, 5), Quaternion(), 1,
-                               1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0, False,
+            'None': [SoMessage(None, None, Vector3(5, 6, 5), Quaternion(),
+                               Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
                                [])]}
 
         bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
-                                   1, 1.0, 1.0, 1.0, 0, None, Vector3(), 0, 0,
-                                   False, [])]
+                                   Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
+                                   [])]
 
         self.assertEqual(quorum.calc_value()[1], True)
 
