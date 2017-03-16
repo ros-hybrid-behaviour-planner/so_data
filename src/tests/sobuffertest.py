@@ -14,6 +14,7 @@ from geometry_msgs.msg import Vector3, Quaternion
 from std_msgs.msg import Header
 from so_data.sobuffer import SoBuffer, AGGREGATION
 
+
 class SoBufferTest(unittest.TestCase):
     """
     testing of soBuffer methods

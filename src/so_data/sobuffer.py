@@ -134,7 +134,7 @@ class SoBuffer(object):
         self.ev_thread = ev_thread
         self.ev_time = ev_time
         if ev_thread:
-            t = threading.Timer(self.ev_time, self._evaporate_buffer()).start()
+            self._evaporate_buffer()
 
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
@@ -858,7 +858,9 @@ class SoBuffer(object):
         :return:
         """
         if self.ev_thread:
-            t = threading.Timer(self.ev_time, self._evaporate_buffer()).start()
+            t = threading.Timer(self.ev_time, self._evaporate_buffer)
+            t.daemon = True
+            t.start()
 
         with self.lock:
             # interate through keys
