@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="so_data" type="gradientsendernode.py" name="buffertest_node" output="screen">
+
+	</node>
+</launch>

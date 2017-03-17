@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="so_data" type="buffernode.py" name="buffernode_node" output="screen">
+
+	</node>
+</launch>
