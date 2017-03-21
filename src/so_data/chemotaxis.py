@@ -12,6 +12,7 @@ import calc
 from geometry_msgs.msg import Vector3
 from patterns import MovementPattern
 
+
 # Mechanisms to reach one attractive Gradient & to avoid repulsive gradients
 class ChemotaxisGe(MovementPattern):
     """
@@ -19,19 +20,18 @@ class ChemotaxisGe(MovementPattern):
     Tries to reach a goal (attractive gradient) while avoiding obstacles
     (repulsive gradients)
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(ChemotaxisGe, self).__init__(buffer, frames, repulsion, moving,
-                                           static, maxvel, minvel)
+        super(ChemotaxisGe, self).__init__(buffer, frames, moving, static,
+                                           maxvel, minvel)
 
         self.goal = None
 
@@ -46,8 +46,7 @@ class ChemotaxisGe(MovementPattern):
         # repulsive gradients
         gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
                                                                self.static,
-                                                               self.moving,
-                                                               self.repulsion)
+                                                               self.moving)
 
         # attractive gradient / set goal
         vector_attraction = self.goal_gradient()
@@ -117,19 +116,18 @@ class ChemotaxisBalch(MovementPattern):
     Tries to reach a goal (attractive gradient) while avoiding obstacles
     (repulsive gradients)
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(ChemotaxisBalch, self).__init__(buffer, frames, repulsion,
-                                              moving, static, maxvel, minvel)
+        super(ChemotaxisBalch, self).__init__(buffer, frames, moving, static,
+                                              maxvel, minvel)
 
     def move(self):
         """
@@ -143,8 +141,7 @@ class ChemotaxisBalch(MovementPattern):
         # repulsive gradients
         gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
                                                                self.static,
-                                                               self.moving,
-                                                               self.repulsion)
+                                                               self.moving)
 
         # attractive gradient
         vector_attraction = self.goal_gradient()
@@ -212,8 +209,8 @@ class CollisionAvoidance(MovementPattern):
     """
     movement mechanism to avoid all repulsive gradients
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
@@ -223,8 +220,8 @@ class CollisionAvoidance(MovementPattern):
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(CollisionAvoidance, self).__init__(buffer, frames, repulsion,
-                                              moving, static, maxvel, minvel)
+        super(CollisionAvoidance, self).__init__(buffer, frames, moving,
+                                                 static, maxvel, minvel)
 
     def move(self):
         """
@@ -238,8 +235,7 @@ class CollisionAvoidance(MovementPattern):
         # repulsive gradients
         gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
                                                                self.static,
-                                                               self.moving,
-                                                               self.repulsion)
+                                                               self.moving)
 
         if pose:
             if gradients_repulsive:
@@ -280,19 +276,18 @@ class FollowAll(MovementPattern):
     """
     movement mechanism to follow overall potential
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(FollowAll, self).__init__(buffer, frames, repulsion, moving,
-                                        static, maxvel, minvel)
+        super(FollowAll, self).__init__(buffer, frames, moving, static, maxvel,
+                                        minvel)
 
     def move(self):
         """
@@ -305,7 +300,7 @@ class FollowAll(MovementPattern):
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
-                                           self.moving, self.repulsion)
+                                           self.moving)
 
         if pose:
             if gradients:
@@ -366,8 +361,8 @@ class AvoidAll(MovementPattern):
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(AvoidAll, self).__init__(buffer, frames, repulsion, moving,
-                                        static, maxvel, minvel)
+        super(AvoidAll, self).__init__(buffer, frames, moving, static, maxvel,
+                                       minvel)
 
     def move(self):
         """
@@ -380,7 +375,7 @@ class AvoidAll(MovementPattern):
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
-                                           self.moving, self.repulsion)
+                                           self.moving)
 
         if pose:
             if gradients:
@@ -421,8 +416,8 @@ class FollowMax(MovementPattern):
     """
     movement mechanism to follow strongest gradient
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
@@ -432,8 +427,8 @@ class FollowMax(MovementPattern):
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(FollowMax, self).__init__(buffer, frames, repulsion, moving,
-                                        static, maxvel, minvel)
+        super(FollowMax, self).__init__(buffer, frames, moving, static, maxvel,
+                                        minvel)
 
     def move(self):
         """
@@ -467,6 +462,48 @@ class FollowMax(MovementPattern):
                         else:
                             g = calc.adjust_length(dv, grad.goal_radius
                                                    + grad.diffusion)
+
+        # adjust length
+        d = calc.vector_length(g)
+        if d > self.maxvel:
+            g = calc.adjust_length(g, self.maxvel)
+        elif 0 < d < self.minvel:
+            g = calc.adjust_length(g, self.minvel)
+
+        return g
+
+
+class FollowMin(MovementPattern):
+    """
+    movement mechanism to follow weakest gradient
+    """
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
+        """
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
+        """
+        super(FollowMin, self).__init__(buffer, frames, moving, static, maxvel,
+                                        minvel)
+
+    def move(self):
+        """
+        calculates movement vector based on gradient with strongest potential
+        :return: movement vector
+        """
+        pose = self._buffer.get_own_pose()
+        g = Vector3()
+
+        # strongest gradient
+        grad = self._buffer.min_attractive_gradient(self.frames, self.static,
+                                                    self.moving)
+
+        if pose and grad:
+            g = gradient.calc_attractive_gradient(grad, pose)
 
         # adjust length
         d = calc.vector_length(g)

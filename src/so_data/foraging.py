@@ -57,14 +57,13 @@ class DepositPheromones(ChemotaxisGe):
     Foraging: set state and move to nest while depositing pheromones
     enhancement of ChemotaxisBalch behaviour
     """
-    def __init__(self, buffer, frames=None, repulsion=False,
-                 moving=False, static=True, maxvel=1.0, minvel=0.5,
-                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=5):
+    def __init__(self, buffer, frames=None, moving=False, static=True,
+                 maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=1,
+                 ev_factor=0.9, ev_time=5):
         """
         initialize behaviour
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
@@ -75,8 +74,8 @@ class DepositPheromones(ChemotaxisGe):
         :param ev_time: pheromone evaporation time
         """
 
-        super(DepositPheromones, self).__init__(buffer, frames, repulsion,
-                                                moving, static, maxvel, minvel)
+        super(DepositPheromones, self).__init__(buffer, frames, moving, static,
+                                                maxvel, minvel)
         self.frame = frame
         self.attraction = attraction
         self.ev_factor = ev_factor
@@ -131,7 +130,7 @@ class Exploitation(MovementPattern):
     Foraging - Follow pheromone trail behaviour (chemotaxis)
     """
     def __init__(self, buffer, frames, angle_xy=1.3, angle_yz=np.pi,
-                 maxvel=1.0, minvel=0.5, repulsion=False):
+                 maxvel=1.0, minvel=0.5):
         """
         initialize behaviour
         :param buffer: soBuffer
@@ -140,17 +139,13 @@ class Exploitation(MovementPattern):
         :param angle_yz: view angle in yz-plane
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
-        :param repulsion: enable repulsion between gradients
         """
-        super(Exploitation, self).__init__(buffer, frames, repulsion=repulsion,
-                                           moving=False, static=True,
-                                           maxvel=maxvel, minvel=minvel)
+        super(Exploitation, self).__init__(buffer, frames, moving=False,
+                                           static=True, maxvel=maxvel,
+                                           minvel=minvel)
 
         self.angle_xy = angle_xy
         self.angle_yz = angle_yz
-
-        if repulsion:
-            self.rep = RepulsionGradient(buffer)
 
     def move(self):
         """
@@ -171,9 +166,6 @@ class Exploitation(MovementPattern):
                 for grdnt in view:
                     grad = gradient.calc_attractive_gradient_ge(grdnt, pose)
                     result = calc.add_vectors(result, grad)
-
-        if self.repulsion:
-            result = calc.add_vectors(result, self.rep.move())
 
         d = calc.vector_length(result)
         if d > self.maxvel:
@@ -196,20 +188,15 @@ class Exploration(MovementPattern):
     """
     movement mechanism to follow random movement
     """
-    def __init__(self, buffer, repulsion=False, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
-        :param repulsion: enable collision avoidance between agents
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(Exploration, self).__init__(buffer, frames=None,
-                                          repulsion=repulsion,
-                                          moving=False, static=False,
-                                          maxvel=maxvel, minvel=minvel)
-
-        if repulsion:
-            self.rep = RepulsionGradient(buffer)
+        super(Exploration, self).__init__(buffer, frames=None, moving=False,
+                                          static=False, maxvel=maxvel,
+                                          minvel=minvel)
 
     def move(self):
         """
@@ -222,9 +209,6 @@ class Exploration(MovementPattern):
         g.x = 2 * tmp[0][0] - 1
         g.y = 2 * tmp[0][1] - 1
         g.z = 2 * tmp[0][2] - 1
-
-        if self.repulsion:
-            g = calc.add_vectors(g, self.rep.move())
 
         # adjust length
         d = calc.vector_length(g)

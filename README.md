@@ -203,7 +203,6 @@ The criteria are/might be:
 * frameids: frameids of gradient data to be returned (None == all frames will be considered) 
 * static: static gradient data will be returned
 * moving: moving gradient data will be returned 
-* repulsion: moving gradient data with frame = pose frame will be returned 
 * frame: frame which will be considered in returning agent sets; if no frame is specified 'pose_frame' will be used
 
 The following options are available:
@@ -211,21 +210,18 @@ The following options are available:
 1. Get all gradients within view distance 
 
 ```python
-    def gradients(self, frameids=None, static=True, moving=True,
-                  repulsion=False)
+    def gradients(self, frameids=None, static=True, moving=True)
 ```
 
 2. Get all gradients (view distance = np.inf) 
 ```python
-def all_gradients(self, frameids=None, static=True, moving=True,
-                  repulsion=False)
+def all_gradients(self, frameids=None, static=True, moving=True)
 ```
 
 2. Get all repulsive gradients within view 
 
 ```python
-    def repulsive_gradients(self, frameids=None, static=True, moving=True,
-                            repulsion=False)
+    def repulsive_gradients(self, frameids=None, static=True, moving=True)
 ```
 
 3. Get all attractive gradients within view 
@@ -426,14 +422,13 @@ It is based on the formulas by Balch and Hybinette (see gradient.py).
 
 ```python 
 class ChemotaxisBalch(MovementPattern):
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
+    def __init__(self, buffer, frames=None, moving=True,
                  static=True, maxvel=1.0, minvel=0.1)
 ```
 
 A buffer has to be handed over to the mechanism.
 Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 Moving and static define whether moving or static gradient will be considered. 
-Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
 Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
@@ -448,13 +443,11 @@ It is based on the formulas by Ge and Cui (see gradient.py).
 
 ```python
 class ChemotaxisGe(MovementPattern):
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1)
+    def __init__(self, buffer, frames=None, moving=True, static=True, maxvel=1.0, minvel=0.1)
 ```
 A buffer has to be handed over to the mechanism.
 Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 Moving and static define whether moving or static gradient will be considered. 
-Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
 Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
@@ -507,14 +500,10 @@ Exploration is a Movement Pattern which creates random movement vectors.
 
 ```Python
 class Exploration(MovementPattern):
-    def __init__(self, buffer=None, repulsion=False, maxvel=1.0, minvel=0.1)
+    def __init__(self, buffer=None, maxvel=1.0, minvel=0.1)
 ```
 
 A buffer has to be handed over to the mechanism.
-
-Repulsion allows to enable collision avoidance between agents.
-A RepulsionGradient mechanism will be created within the mechanism and the repulsive vector added to the random movement vector. 
-
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
 
@@ -526,7 +515,7 @@ It follows all gradients within specified view angles.
 ```python
 class Exploitation(MovementPattern):
     def __init__(self, buffer, frames, angle_xy=1.3, angle_yz=np.pi, maxvel=1.0, 
-                 minvel=0.5, repulsion=False)
+                 minvel=0.5)
 ```
 
 A buffer has to be handed over to the mechanism.
@@ -534,9 +523,6 @@ Frames allows to specify a list of gradient frame IDs which will be considered i
 angle_xy specifies the view angle in the xy-plane.
 angle_yz specified the view angle in the yz-plane. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
-
-Repulsion allows to enable collision avoidance between agents.
-A RepulsionGradient mechanism will be created within the mechanism and the repulsive vector added to the movement vector. 
 
 
 ##### Return to Nest 
@@ -549,15 +535,14 @@ The movement vector is calculated using the move() implementation of the Chemota
 
 ```python
 class DepositPheromones(ChemotaxisGe):
-    def __init__(self, buffer, frames=None, repulsion=False,
-                 moving=False, static=True, maxvel=1.0, minvel=0.5,
-                 frame='Pheromone', attraction=1, ev_factor=0.9, ev_time=5)
+    def __init__(self, buffer, frames=None, moving=False, static=True, 
+                 maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=1, 
+                 ev_factor=0.9, ev_time=5)
 ```
 A buffer has to be handed over to the mechanism.
 Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 
 Moving and static define whether moving or static gradient will be considered. 
-Repulsion allows to enable collision avoidance between agents even when other moving gradients are not considered in the calculations. 
 Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 

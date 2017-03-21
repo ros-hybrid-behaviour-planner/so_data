@@ -19,12 +19,11 @@ class MovementPattern(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self,  buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self,  buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: SoBuffer
         :param frames: gradient frames to be considered
-        :param repulsion: include agent gradients (pose frame) in calculations
         :param moving: include moving gradients in calculations
         :param static: include static gradients in calculations
         :param maxvel: maximum velocity / length of movement vector
@@ -36,8 +35,6 @@ class MovementPattern(object):
 
         self.frames = frames
 
-        # apply repulsion
-        self.repulsion = repulsion
         # consider moving, static or both gradient types
         self.moving = moving
         self.static = static

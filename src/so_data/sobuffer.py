@@ -402,15 +402,12 @@ class SoBuffer(object):
         else:
             return
 
-    def gradients(self, frameids=None, static=True, moving=True,
-                  repulsion=False):
+    def gradients(self, frameids=None, static=True, moving=True):
         """
         function determines all gradients within view distance
         :param frameids: frame IDs to be considered looking for gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
-        :param repulsion: consider moving gradients with pose frame for
-                          repulsion between agents
         :return: list of gradients []
         """
         if not self.ev_thread:
@@ -420,7 +417,7 @@ class SoBuffer(object):
 
         # if view distance is infinite, return list of all gradients
         if self._view_distance == np.inf:
-            return self.all_gradients(frameids, static, moving, repulsion)
+            return self.all_gradients(frameids, static, moving)
 
         # determine frames to consider
         if not frameids:
@@ -429,11 +426,6 @@ class SoBuffer(object):
                 frameids += self._static.keys()
             if moving:
                 frameids += self._moving.keys()
-            elif repulsion:
-                frameids.append(self.pose_frame)
-
-        if repulsion and self.pose_frame not in frameids:
-            frameids.append(self.pose_frame)
 
         # no own position available
         if not self._own_pos:
@@ -443,7 +435,7 @@ class SoBuffer(object):
 
         if static:
             staticbuffer = copy.deepcopy(self._static)
-        if moving or repulsion:
+        if moving:
             movingbuffer = copy.deepcopy(self._moving)
 
         for fid in frameids:
@@ -457,7 +449,7 @@ class SoBuffer(object):
                             gradients.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in movingbuffer.keys() \
+            if moving and fid in movingbuffer.keys() \
                     and movingbuffer[fid]:
                 for pid in movingbuffer[fid].keys():
                     if movingbuffer[fid][pid]:
@@ -469,15 +461,12 @@ class SoBuffer(object):
 
         return gradients
 
-    def all_gradients(self, frameids=None, static=True, moving=True,
-                      repulsion=False):
+    def all_gradients(self, frameids=None, static=True, moving=True):
         """
         function returns all gradients as a list
         :param frameids: frame IDs to be considered looking for gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
-        :param repulsion: consider moving gradients with pose frame for
-                          repulsion between agents
         :return: list of gradients
         """
         # determine frames to consider
@@ -487,11 +476,6 @@ class SoBuffer(object):
                 frameids += self._static.keys()
             if moving:
                 frameids += self._moving.keys()
-            elif repulsion:
-                frameids.append(self.pose_frame)
-
-        if repulsion and self.pose_frame not in frameids:
-            frameids.append(self.pose_frame)
 
         if not self.ev_thread:
             self._evaporate_buffer()
@@ -500,7 +484,7 @@ class SoBuffer(object):
 
         if static:
             staticbuffer = copy.deepcopy(self._static)
-        if moving or repulsion:
+        if moving:
             movingbuffer = copy.deepcopy(self._moving)
 
         for fid in frameids:
@@ -509,7 +493,7 @@ class SoBuffer(object):
                     gradients.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in movingbuffer.keys() \
+            if moving and fid in movingbuffer.keys() \
                     and movingbuffer[fid]:
                 for pid in movingbuffer[fid].keys():
                     if movingbuffer[fid][pid]:
@@ -517,8 +501,7 @@ class SoBuffer(object):
 
         return gradients
 
-    def repulsive_gradients(self, frameids=None, static=True, moving=True,
-                            repulsion=False):
+    def repulsive_gradients(self, frameids=None, static=True, moving=True):
         """
         function determines which repulsive gradients are currently within
          view distance
@@ -526,8 +509,6 @@ class SoBuffer(object):
         gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
-        :param repulsion: consider moving gradients with pose frame for
-                          repulsion between agents
         :return: list of repulsive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
@@ -551,15 +532,10 @@ class SoBuffer(object):
                 frameids += self._static.keys()
             if moving:
                 frameids += self._moving.keys()
-            elif repulsion:
-                frameids.append(self.pose_frame)
-
-        if repulsion and self.pose_frame not in frameids:
-            frameids.append(self.pose_frame)
 
         if static:
             staticbuffer = copy.deepcopy(self._static)
-        if moving or repulsion:
+        if moving:
             movingbuffer = copy.deepcopy(self._moving)
 
         for fid in frameids:
@@ -574,7 +550,7 @@ class SoBuffer(object):
                             gradients_repulsive.append(element)
 
             # moving gradients
-            if (moving or repulsion) and fid in movingbuffer.keys() \
+            if moving and fid in movingbuffer.keys() \
                     and movingbuffer[fid]:
                 for pid in movingbuffer[fid].keys():
                     if movingbuffer[fid][pid]:
@@ -649,6 +625,7 @@ class SoBuffer(object):
     def max_attractive_gradient(self, frameids=None, static=True, moving=True):
         """
         Method to return relatively nearest attractive gradient
+        (= min movement vector length)
         based on attraction values of Balch & Hybinette
         :param frameids: frames to consider
         :param static: consider static gradients
@@ -672,6 +649,65 @@ class SoBuffer(object):
                 # attraction decreases with being closer to gradient source
                 # / goal area
                 if att < tmp_att:
+                    tmp_grad = grad
+                    tmp_att = att
+
+        return tmp_grad
+
+    def min_attractive_gradient(self, frameids=None, static=True, moving=True):
+        """
+        Method to return relatively furthest gradient
+        (= maximum attraction value length)
+        based on attraction values of Balch & Hybinette
+        :param frameids: frames to consider
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :return: gradient (Vector3)
+        """
+
+        if not self._own_pos:
+            return []
+
+        pose = copy.deepcopy(self._own_pos[-1])
+
+        gradients = self.attractive_gradients(frameids, static, moving)
+        tmp_grad = None
+        tmp_att = 0
+
+        if gradients:
+            for grad in gradients:
+                # gradient reach
+                g = gradient.calc_attractive_gradient(grad, pose)
+                att = calc.vector_length(g)
+                if att > tmp_att:
+                    tmp_grad = grad
+                    tmp_att = att
+
+        return tmp_grad
+
+    def min_reach_attractive_gradient(self, frameids=None, static=True,
+                                      moving=True):
+        """
+        Method to return gradient with minimum gradient reach
+        based on attraction values of Balch & Hybinette
+        :param frameids: frames to consider
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :return: gradient (Vector3)
+        """
+
+        if not self._own_pos:
+            return []
+
+        gradients = self.attractive_gradients(frameids, static, moving)
+        tmp_grad = None
+        tmp_att = 0
+
+        if gradients:
+            for grad in gradients:
+                # gradient reach
+                att = grad.diffusion + grad.goal_radius
+                if att > tmp_att:
                     tmp_grad = grad
                     tmp_att = att
 
