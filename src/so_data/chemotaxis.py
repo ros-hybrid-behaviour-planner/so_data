@@ -414,7 +414,8 @@ class AvoidAll(MovementPattern):
 
 class FollowMax(MovementPattern):
     """
-    movement mechanism to follow strongest gradient
+    movement mechanism to follow relatively strongest gradient
+    (min movement vector length)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
                  maxvel=1.0, minvel=0.1):
@@ -432,7 +433,7 @@ class FollowMax(MovementPattern):
 
     def move(self):
         """
-        calculates movement vector based on gradient with strongest potential
+        calculate movement vector
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
@@ -475,7 +476,8 @@ class FollowMax(MovementPattern):
 
 class FollowMin(MovementPattern):
     """
-    movement mechanism to follow weakest gradient
+    movement mechanism to follow relatively weakest gradient
+    (max movement vector length)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
                  maxvel=1.0, minvel=0.1):
@@ -492,15 +494,101 @@ class FollowMin(MovementPattern):
 
     def move(self):
         """
-        calculates movement vector based on gradient with strongest potential
+        calculate movement vector
+        :return: movement vector
+        """
+        pose = self._buffer.get_own_pose()
+        g = Vector3()
+
+        # relatively weakest gradient
+        grad = self._buffer.min_attractive_gradient(self.frames, self.static,
+                                                    self.moving)
+
+        if pose and grad:
+            g = gradient.calc_attractive_gradient(grad, pose)
+
+        # adjust length
+        d = calc.vector_length(g)
+        if d > self.maxvel:
+            g = calc.adjust_length(g, self.maxvel)
+        elif 0 < d < self.minvel:
+            g = calc.adjust_length(g, self.minvel)
+
+        return g
+
+
+class FollowMinReach(MovementPattern):
+    """
+    movement mechanism to follow gradient with minimum reach
+    """
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
+        """
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
+        """
+        super(FollowMinReach, self).__init__(buffer, frames, moving, static,
+                                             maxvel, minvel)
+
+    def move(self):
+        """
+        calculates movement vector
+        :return: movement vector
+        """
+        pose = self._buffer.get_own_pose()
+        g = Vector3()
+
+        # weakest gradient
+        grad = self._buffer.min_reach_attractive_gradient(self.frames,
+                                                          self.static,
+                                                          self.moving)
+
+        if pose and grad:
+            g = gradient.calc_attractive_gradient(grad, pose)
+
+        # adjust length
+        d = calc.vector_length(g)
+        if d > self.maxvel:
+            g = calc.adjust_length(g, self.maxvel)
+        elif 0 < d < self.minvel:
+            g = calc.adjust_length(g, self.minvel)
+
+        return g
+
+
+class FollowMaxReach(MovementPattern):
+    """
+    movement mechanism to follow gradient with maximum reach
+    """
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
+        """
+        :param buffer: soBuffer
+        :param frames: frames to be included in list returned by buffer
+        :param moving: consider moving gradients in list returned by buffer
+        :param static: consider static gradients in list returned by buffer
+        :param maxvel: maximum velocity of agent
+        :param minvel: minimum velocity of agent
+        """
+        super(FollowMaxReach, self).__init__(buffer, frames, moving, static,
+                                             maxvel, minvel)
+
+    def move(self):
+        """
+        calculates movement vector
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
         g = Vector3()
 
         # strongest gradient
-        grad = self._buffer.min_attractive_gradient(self.frames, self.static,
-                                                    self.moving)
+        grad = self._buffer.max_reach_attractive_gradient(self.frames,
+                                                          self.static,
+                                                          self.moving)
 
         if pose and grad:
             g = gradient.calc_attractive_gradient(grad, pose)

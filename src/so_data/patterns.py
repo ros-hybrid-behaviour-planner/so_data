@@ -86,7 +86,7 @@ class DecisionPattern(object):
         self._broadcaster = SoBroadcaster()
 
         self._buffer = buffer
-        # frames to consider in decision
+        # frame to consider in decision
         self.frame = frame
         # payload keys to consider
         self.key = key

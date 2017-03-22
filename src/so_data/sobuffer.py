@@ -689,7 +689,33 @@ class SoBuffer(object):
                                       moving=True):
         """
         Method to return gradient with minimum gradient reach
-        based on attraction values of Balch & Hybinette
+        :param frameids: frames to consider
+        :param static: consider static gradients
+        :param moving: consider moving gradients
+        :return: gradient (Vector3)
+        """
+
+        if not self._own_pos:
+            return []
+
+        gradients = self.attractive_gradients(frameids, static, moving)
+        tmp_grad = None
+        tmp_att = 0
+
+        if gradients:
+            for grad in gradients:
+                # gradient reach
+                att = grad.diffusion + grad.goal_radius
+                if att < tmp_att:
+                    tmp_grad = grad
+                    tmp_att = att
+
+        return tmp_grad
+
+    def max_reach_attractive_gradient(self, frameids=None, static=True,
+                                      moving=True):
+        """
+        Method to return gradient with maximum gradient reach
         :param frameids: frames to consider
         :param static: consider static gradients
         :param moving: consider moving gradients
