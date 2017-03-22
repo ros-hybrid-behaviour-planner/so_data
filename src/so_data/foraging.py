@@ -16,7 +16,6 @@ from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from patterns import MovementPattern, DecisionPattern
 from chemotaxis import ChemotaxisGe
-from repulsion import RepulsionGradient
 
 
 class STATE(object):
