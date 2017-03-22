@@ -12,6 +12,7 @@ import numpy as np
 import calc
 import collections
 from patterns import MovementPattern
+import rospy
 
 
 def agent_velocity(p1, p2):
@@ -270,7 +271,7 @@ class Flocking(MovementPattern):
             if len(neighbor) >= 2:  # at least 2 datapoints are available
                 neighbors.append(Boid(neighbor[-1].p,
                                       agent_velocity(neighbor[-1],
-                                                              neighbor[-2])))
+                                                     neighbor[0])))
 
         repulsion_radius = own_poses[-1].diffusion + own_poses[-1].goal_radius
 
