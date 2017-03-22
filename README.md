@@ -230,7 +230,7 @@ def all_gradients(self, frameids=None, static=True, moving=True)
     def attractive_gradients(self, frameids=None, static=True, moving=True)
 ```
 
-4. Get the relatively nearest attractive gradient (= attractive gradient with minimum attraction based on Blach and Hybinette)
+4. Get the relatively nearest attractive gradient (= attractive gradient with minimum attraction based on Balch and Hybinette)
 
 ```python
     def max_attractive_gradient(self, frameids=None, static=True, moving=True)
@@ -258,6 +258,24 @@ def all_gradients(self, frameids=None, static=True, moving=True)
 
 ```python
     def static_list_angle(self, frame, view_angle)
+```
+
+9. Get attractive gradient with minimum reach (diffusion + goal radius) within view 
+
+```python
+def min_reach_attractive_gradient(self, frameids=None, static=True, moving=True)
+```
+
+10. Get attractive gradient with maximum reach (diffusion + goal radius) within view
+
+```python
+ def max_reach_attractive_gradient(self, frameids=None, static=True, moving=True)
+```
+
+11. Get relatively furthest attractive gradient (= attractive gradient with maximum attraction based on Balch and Hybinette)
+
+```python
+def min_attractive_gradient(self, frameids=None, static=True, moving=True)
 ```
  
  
@@ -464,6 +482,9 @@ Module chemotaxis includes furthermore the following implementations of chemotax
 * `class FollowAll(MovementPattern)`: mechanism to follow the overall potential (all gradients within view)
 * `class AvoidAll(MovementPattern)`: mechanism to avoid all gradients within view 
 * `class FollowMax(MovementPattern)`: mechanism to follow the strongest gradient (max potential) 
+* `class FollowMin(MovementPattern)`: mechanism to follow the relatively furthest gradient
+* `class FollowMinReach(MovementPattern)`: mechanism to follow the gradient with minimum reach within view
+* `class FollowMaxReach(MovementPattern)`: mechanism to follow the gradient with maximum reach within view 
 
 
 #### Foraging
@@ -618,6 +639,26 @@ frame defines the header frame ID of the quorum gradients.
 value is the initial value of the agent. 
 state is the initial state of the agent. 
 Moving and static defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 
+
+
+supplements(.py)
+------------------
+
+Module supplementary includes additional mechanism implementations which are not directly related to the patterns described by Fernandez-Marquez et al., but build using them.
+
+It includes the following mechanisms:
+
+1. DepositPheromonesMin: this mechanism follows the gradient with minimum reach (FollowMinReach) within view while depositing pheromones
+
+```python
+class DepositPheromonesMin(FollowMinReach)
+```
+
+2. DepositPheromonesRandom: this mechanism lets an agent move randomly (Exploration) while depositing pheromones 
+
+```python
+class DepositPheromonesRandom(Exploration)
+```
 
 calc(.py)
 ---------
