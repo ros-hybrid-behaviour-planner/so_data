@@ -930,10 +930,54 @@ class SoBufferTest(unittest.TestCase):
                                    Vector3(), 1, 5.0, 0.2, 1.0, 0, None, False,
                                    []))
 
+        self.assertEqual(bffr.min_attractive_gradient(),
+                         SoMessage(None, None, Vector3(2, 1, 3), Quaternion(),
+                                   Vector3(), 1, 1.0, 0.1, 1.0, 0, None, False,
+                                   []))
+
         self.assertEqual(bffr.strongest_gradient(),
                          SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
                                    Vector3(), -1, 8.0, 1.0, 1.0, 0, None,
                                    False, []))
+
+    def test_max_min_reach_gradient(self):
+        """
+        test max reach attractive gradient methods
+        """
+        bffr = SoBuffer(view_distance=2.0)
+
+        bffr._static = {
+            'None': [SoMessage(None, None, Vector3(2, 1, 0), Quaternion(),
+                               Vector3(), 1, 2.0, 6.0, 1.0, 0, None, False,
+                               []),
+                     SoMessage(None, None, Vector3(3, 3, 0), Quaternion(),
+                               Vector3(), -1, 0.2, 0.5, 1.0, 0, None, False,
+                               []),
+                     SoMessage(None, None, Vector3(2, 2, 0), Quaternion(),
+                               Vector3(), 1, 5.0, 1.0, 1.0, 0, None, False,
+                               []),
+                     ],
+            'Center': [SoMessage(None, None, Vector3(1, 1, 1), Quaternion(),
+                                 Vector3(), -1, 8.0, 1.0, 1.0, 0, None, False,
+                                 []),
+                       SoMessage(None, None, Vector3(3, 1, 2), Quaternion(),
+                                 Vector3(), -1, 3.0, 0.1, 1.0, 0, None, False,
+                                 [])]
+        }
+
+        bffr._own_pos = [
+            SoMessage(None, None, Vector3(1, 1, 1), Quaternion(), Vector3(), 1,
+                      1.0, 0, 1.0, 0, None, False, [])]
+
+        self.assertEqual(bffr.max_reach_attractive_gradient(),
+                         SoMessage(None, None, Vector3(2, 1, 0), Quaternion(),
+                                   Vector3(), 1, 2.0, 6.0, 1.0, 0, None, False,
+                                   []))
+
+        self.assertEqual(bffr.min_reach_attractive_gradient(),
+                         SoMessage(None, None, Vector3(2, 2, 0), Quaternion(),
+                                   Vector3(), 1, 5.0, 1.0, 1.0, 0, None, False,
+                                   []))
 
     def test_agent_set(self):
         """

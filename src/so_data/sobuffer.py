@@ -700,7 +700,7 @@ class SoBuffer(object):
 
         gradients = self.attractive_gradients(frameids, static, moving)
         tmp_grad = None
-        tmp_att = 0
+        tmp_att = np.inf
 
         if gradients:
             for grad in gradients:
