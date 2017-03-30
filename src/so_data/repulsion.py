@@ -110,7 +110,8 @@ class RepulsionGradient(MovementPattern):
             for el in view:
                 grad = gradient.calc_repulsive_gradient(el, pose)
 
-                if grad.x == np.inf or grad.x == -1 * np.inf:
+                if abs(grad.x) == np.inf or abs(grad.y) == np.inf or \
+                                abs(grad.z) == np.inf:
                     dv = calc.delta_vector(pose.p, el.p)
 
                     if calc.vector_length(dv) == 0:
