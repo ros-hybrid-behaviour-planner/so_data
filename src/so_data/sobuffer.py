@@ -30,12 +30,12 @@ class AGGREGATION(object):
     * newparent = store newest received gradient per parent frame
     * newframe = stores last received message per header frame
     """
-    MIN = 0
-    MAX = 1
-    AVG = 2
-    NEW = 3
-    NEWPARENT = 4
-    NEWFRAME = 5
+    MIN = 'min'
+    MAX = 'max'
+    AVG = 'avg'
+    NEW = 'new'
+    NEWPARENT = 'newparent'
+    NEWFRAME = 'newframe'
 
 
 class SoBuffer(object):
