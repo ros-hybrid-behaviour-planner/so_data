@@ -4,7 +4,7 @@ Created on 21.03.2017
 @author: kaiser
 
 Module including supplementary mechanisms: DepositPheromonesMin,
-DepositPheromonesRandom
+DepositPheromonesRandom, SpreadGradient
 """
 
 import rospy
@@ -14,7 +14,6 @@ from chemotaxis import FollowMinReach
 from foraging import Exploration
 
 
-# Movement Behaviour
 class DepositPheromonesMin(FollowMinReach):
     """
     deposit pheromones while following pheromone with minimum reach within
@@ -88,7 +87,6 @@ class DepositPheromonesMin(FollowMinReach):
         self._broadcaster.send_data(msg)
 
 
-# Movement Behaviour
 class DepositPheromonesRandom(Exploration):
     """
     depositing pheromones while walking random
@@ -157,3 +155,73 @@ class DepositPheromonesRandom(Exploration):
 
         # spread gradient
         self._broadcaster.send_data(msg)
+
+
+class SpreadGradient(object):
+    """
+    mechanism to let agents spread gradients positioned at their current
+    position
+    """
+    def __init__(self, buffer, frame=None, goal_radius=0, ev_factor=1.0,
+                 ev_time=0.0, diffusion=20, attraction=1, moving=False):
+        """
+        initialization of decision patterns
+        :param buffer: SoBuffer
+        :param frame: gradient frame ID
+        :param moving: mark spread gradient as moving/static
+        :param goal_radius: goal radius of gradient to be spread
+        :param ev_factor: evaporation factor of gradient to be spread
+        :param ev_time: evaporation time of gradient to be spread
+        :param diffusion: diffusion radius of gradient to be spread
+        :param attraction: attraction value of gradient to be spread
+        """
+
+        self._broadcaster = SoBroadcaster()
+
+        self._buffer = buffer
+
+        # message
+        self.frame = frame
+        self.goal_radius = goal_radius
+        self.ev_factor = ev_factor
+        self.ev_time = ev_time
+        self.attraction = attraction
+        self.diffusion = diffusion
+        self.moving = moving
+
+    def spread(self):
+        """
+        method to spread calculated values (determined by calc_value)
+        :return:
+        """
+        # create gossip message
+        msg = SoMessage()
+        msg.header.frame_id = self.frame
+        msg.parent_frame = self._buffer.id
+
+        now = rospy.Time.now()
+        msg.header.stamp = now
+        msg.ev_stamp = now
+
+        # important to determine whether gradient is within view
+        current_pose = self._buffer.get_own_pose()
+        msg.p = current_pose.p
+        msg.q = current_pose.q
+        msg.attraction = self.attraction
+
+        msg.diffusion = self.diffusion
+
+        msg.goal_radius = self.goal_radius
+        msg.ev_factor = self.ev_factor
+        msg.ev_time = self.ev_time
+
+        msg.moving = self.moving
+
+        # spread gradient
+        self._broadcaster.send_data(msg)
+
+    def get_pos(self):
+        """
+        :return: current position of robot
+        """
+        return self._buffer.get_own_pose()
