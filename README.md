@@ -32,6 +32,7 @@ src:
 * **sobroadcaster.py**: allows to publish data to the so_data topic which will be subscribed to in the soBuffer 
 * **sobuffer.py**: implements a layer which provides the basic functionality patterns for gradient data: evaporation, spreading (receives gradients), aggregation (+ unit test)  
 * **topicgradienttf.py**: abstract class which can be used as a blueprint to transform topics in soMessages and publish them to the `so_data` topic 
+* **supplements.py**: module including supplementary mechanisms 
 
 msg:
 
@@ -659,6 +660,13 @@ class DepositPheromonesMin(FollowMinReach)
 ```python
 class DepositPheromonesRandom(Exploration)
 ```
+
+3. SpreadGradient: this mechanisms enables the spreading of a gradient at the current position of the robot; can be executed by using DecisionBehaviour of rhbp_selforga package 
+ 
+ ```python
+class SpreadGradient(object)
+```
+
 
 calc(.py)
 ---------
