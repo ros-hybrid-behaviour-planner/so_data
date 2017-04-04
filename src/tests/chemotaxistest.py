@@ -24,8 +24,7 @@ class ChemotaxisTest(unittest.TestCase):
         :return:
         """
         bffr = SoBuffer()
-        chem = FollowMax(bffr, moving=False, static=True, repulsion=False,
-                         maxvel=np.inf)
+        chem = FollowMax(bffr, moving=False, static=True, maxvel=np.inf)
 
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
@@ -90,8 +89,7 @@ class ChemotaxisTest(unittest.TestCase):
         :return:
         """
         bffr = SoBuffer()
-        chem = ChemotaxisBalch(bffr, moving=False, static=True,
-                               repulsion=False, maxvel=np.inf)
+        chem = ChemotaxisBalch(bffr, moving=False, static=True, maxvel=np.inf)
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
                       -1, 3.0, 0.0, 1.0, 0, None, False, [])]
@@ -133,8 +131,7 @@ class ChemotaxisTest(unittest.TestCase):
         """
 
         bffr = SoBuffer()
-        chem = ChemotaxisGe(bffr, moving=False, static=True, repulsion=False,
-                            maxvel=np.inf)
+        chem = ChemotaxisGe(bffr, moving=False, static=True, maxvel=np.inf)
 
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, -2, 0), Quaternion(), Vector3(),
@@ -182,8 +179,7 @@ class ChemotaxisTest(unittest.TestCase):
         :return:
         """
         bffr = SoBuffer()
-        chem = FollowAll(bffr, moving=False, static=True, repulsion=False,
-                         maxvel=np.inf)
+        chem = FollowAll(bffr, moving=False, static=True, maxvel=np.inf)
 
         bffr._static = {
             'gradient': [
@@ -227,8 +223,7 @@ class ChemotaxisTest(unittest.TestCase):
         """
 
         bffr = SoBuffer()
-        chem = AvoidAll(bffr, moving=False, static=True, repulsion=False,
-                            maxvel=np.inf)
+        chem = AvoidAll(bffr, moving=False, static=True, maxvel=np.inf)
 
         bffr._static = {
             'gradient': [
@@ -273,7 +268,7 @@ class ChemotaxisTest(unittest.TestCase):
 
         bffr = SoBuffer()
         chem = CollisionAvoidance(bffr, moving=True, static=True,
-                                  repulsion=True, maxvel=np.inf)
+                                  maxvel=np.inf)
 
         bffr._static = {
             'gradient': [
@@ -319,7 +314,7 @@ class ChemotaxisTest(unittest.TestCase):
         """
         bffr = SoBuffer()
         chem = ChemotaxisBalch(bffr, moving=False, static=True,
-                               repulsion=False, maxvel=np.inf)
+                               maxvel=np.inf)
 
         bffr._own_pos = [
             SoMessage(None, None, Vector3(1, 2, 3), Quaternion(), Vector3(),
