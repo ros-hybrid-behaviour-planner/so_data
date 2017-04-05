@@ -329,6 +329,10 @@ It sets furthermore state and value of the mechanism.
 
 ### Movement Patterns / Mechanisms 
 
+All movement mechanisms return `None` when no gradient is within view distance.   
+
+The following movement patterns were implemented: 
+
 1. Repulsion
 2. Flocking
 3. Chemotaxis
