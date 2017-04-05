@@ -158,13 +158,19 @@ class Exploitation(MovementPattern):
                                               self.angle_yz)
 
         # attractive gradient
-        result = Vector3()
+        result = None
 
         if pose:
             if view:
                 for grdnt in view:
                     grad = gradient.calc_attractive_gradient_ge(grdnt, pose)
-                    result = calc.add_vectors(result, grad)
+                    if not result:
+                        result = grad
+                    else:
+                        result = calc.add_vectors(result, grad)
+
+        if not result:
+            return None
 
         d = calc.vector_length(result)
         if d > self.maxvel:

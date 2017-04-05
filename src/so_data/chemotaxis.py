@@ -39,7 +39,7 @@ class ChemotaxisGe(MovementPattern):
         """
         :return: movement vector
         """
-        vector_repulsion = Vector3()
+        vector_repulsion = None
 
         pose = self._buffer.get_own_pose()
 
@@ -78,12 +78,20 @@ class ChemotaxisGe(MovementPattern):
                                 vector_repulsion, calc.adjust_length(dv,
                                         grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                            grad)
-        if vector_attraction:
+                        if vector_repulsion:
+                            vector_repulsion = calc.add_vectors(
+                                vector_repulsion, grad)
+                        else:
+                            vector_repulsion = grad
+
+        if vector_attraction and vector_repulsion:
             result = calc.add_vectors(vector_attraction, vector_repulsion)
-        else:
+        elif vector_repulsion:
             result = vector_repulsion
+        elif vector_attraction:
+            result = vector_attraction
+        else:
+            return None
 
         d = calc.vector_length(result)
         if d > self.maxvel:
@@ -133,7 +141,7 @@ class ChemotaxisBalch(MovementPattern):
         """
         :return: movement vector
         """
-        vector_repulsion = Vector3()
+        vector_repulsion = None
 
         pose = self._buffer.get_own_pose()
 
@@ -149,7 +157,6 @@ class ChemotaxisBalch(MovementPattern):
         if pose:
             if gradients_repulsive:
                 for grdnt in gradients_repulsive:
-
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
                     # robot position is within obstacle goal radius
@@ -172,12 +179,20 @@ class ChemotaxisBalch(MovementPattern):
                                     dv,
                                     grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                            grad)
-        if vector_attraction:
+                        if vector_repulsion:
+                            vector_repulsion = calc.add_vectors(
+                                vector_repulsion, grad)
+                        else:
+                            vector_repulsion = grad
+
+        if vector_attraction and vector_repulsion:
             result = calc.add_vectors(vector_attraction, vector_repulsion)
-        else:
+        elif vector_repulsion:
             result = vector_repulsion
+        elif vector_attraction:
+            result = vector_attraction
+        else:
+            return None
 
         d = calc.vector_length(result)
         if d > self.maxvel:
@@ -230,7 +245,7 @@ class CollisionAvoidance(MovementPattern):
         """
 
         pose = self._buffer.get_own_pose()
-        vector_repulsion = Vector3()
+        vector_repulsion = None
 
         # repulsive gradients
         gradients_repulsive = self._buffer.repulsive_gradients(self.frames,
@@ -259,8 +274,14 @@ class CollisionAvoidance(MovementPattern):
                                 vector_repulsion, calc.adjust_length(dv,
                                         grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        vector_repulsion = calc.add_vectors(vector_repulsion,
-                                                            grad)
+                        if vector_repulsion:
+                            vector_repulsion = calc.add_vectors(
+                                vector_repulsion, grad)
+                        else:
+                            vector_repulsion = grad
+
+        if not vector_repulsion:
+            return None
 
         # adjust length
         d = calc.vector_length(vector_repulsion)
@@ -296,7 +317,7 @@ class FollowAll(MovementPattern):
         """
 
         pose = self._buffer.get_own_pose()
-        result = Vector3()
+        result = None
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
@@ -334,7 +355,13 @@ class FollowAll(MovementPattern):
                                                               + grdnt.diffusion
                                                           ))
                         else:
-                            result = calc.add_vectors(result, grad)
+                            if result:
+                                result = calc.add_vectors(result, grad)
+                            else:
+                                result = grad
+
+        if not result:
+            return None
 
         # adjust length
         d = calc.vector_length(result)
@@ -371,7 +398,7 @@ class AvoidAll(MovementPattern):
         """
 
         pose = self._buffer.get_own_pose()
-        result = Vector3()
+        result = None
 
         # repulsive gradients
         gradients = self._buffer.gradients(self.frames, self.static,
@@ -400,7 +427,13 @@ class AvoidAll(MovementPattern):
                                                             grdnt.goal_radius
                                                             + grdnt.diffusion))
                     else:
-                        result = calc.add_vectors(result, grad)
+                        if result:
+                            result = calc.add_vectors(result, grad)
+                        else:
+                            result = grad
+
+        if not result:
+            return None
 
         # adjust length
         d = calc.vector_length(result)
@@ -437,7 +470,7 @@ class FollowMax(MovementPattern):
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
-        g = Vector3()
+        g = None
 
         # strongest gradient
         grad = self._buffer.strongest_gradient(self.frames, self.static,
@@ -463,6 +496,9 @@ class FollowMax(MovementPattern):
                         else:
                             g = calc.adjust_length(dv, grad.goal_radius
                                                    + grad.diffusion)
+
+        if not g:
+            return None
 
         # adjust length
         d = calc.vector_length(g)
@@ -498,7 +534,7 @@ class FollowMin(MovementPattern):
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
-        g = Vector3()
+        g = None
 
         # relatively weakest gradient
         grad = self._buffer.min_attractive_gradient(self.frames, self.static,
@@ -506,6 +542,9 @@ class FollowMin(MovementPattern):
 
         if pose and grad:
             g = gradient.calc_attractive_gradient(grad, pose)
+
+        if not g:
+            return None
 
         # adjust length
         d = calc.vector_length(g)
@@ -540,7 +579,7 @@ class FollowMinReach(MovementPattern):
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
-        g = Vector3()
+        g = None
 
         # weakest gradient
         grad = self._buffer.min_reach_attractive_gradient(self.frames,
@@ -549,6 +588,9 @@ class FollowMinReach(MovementPattern):
 
         if pose and grad:
             g = gradient.calc_attractive_gradient(grad, pose)
+
+        if not g:
+            return None
 
         # adjust length
         d = calc.vector_length(g)
@@ -583,7 +625,7 @@ class FollowMaxReach(MovementPattern):
         :return: movement vector
         """
         pose = self._buffer.get_own_pose()
-        g = Vector3()
+        g = None
 
         # strongest gradient
         grad = self._buffer.max_reach_attractive_gradient(self.frames,
@@ -592,6 +634,9 @@ class FollowMaxReach(MovementPattern):
 
         if pose and grad:
             g = gradient.calc_attractive_gradient(grad, pose)
+
+        if not g:
+            return None
 
         # adjust length
         d = calc.vector_length(g)

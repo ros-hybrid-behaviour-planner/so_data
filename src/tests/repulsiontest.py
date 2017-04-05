@@ -30,7 +30,7 @@ class RepulsionTest(unittest.TestCase):
         repulsion = RepulsionGradient(bffr)
 
         # no own position specified
-        self.assertEqual(repulsion.move(), Vector3())
+        self.assertEqual(repulsion.move(), None)
 
         bffr._own_pos = [
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
@@ -42,7 +42,7 @@ class RepulsionTest(unittest.TestCase):
         ]
 
         # no neighbors specified
-        self.assertEqual(repulsion.move(), Vector3())
+        self.assertEqual(repulsion.move(), None)
 
         bffr._moving = {
             'robot': {'robot2': [
@@ -92,7 +92,7 @@ class RepulsionTest(unittest.TestCase):
         repulsion = RepulsionFernandez(bffr)
 
         # no own position specified
-        self.assertEqual(repulsion.move(), Vector3())
+        self.assertEqual(repulsion.move(), None)
 
         bffr._own_pos = [
             SoMessage(Header(None, rospy.Time.now(), 'None'), None,
@@ -104,7 +104,7 @@ class RepulsionTest(unittest.TestCase):
         ]
 
         # no neighbors specified
-        self.assertEqual(repulsion.move(), Vector3())
+        self.assertEqual(repulsion.move(), None)
 
         bffr._moving = {
             'robot':

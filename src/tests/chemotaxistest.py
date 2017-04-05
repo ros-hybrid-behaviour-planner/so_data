@@ -68,11 +68,7 @@ class ChemotaxisTest(unittest.TestCase):
         # only one frameID considered - no gradient within view
         chem.frames = ['None']
         result = chem.move()
-        result.x = round(result.x, 2)
-        result.y = round(result.y, 2)
-        result.z = round(result.z, 2)
-
-        self.assertEqual(result, Vector3())
+        self.assertEqual(result, None)
 
         # two frameIDs
         chem.frames = ['None', 'gradient']
@@ -121,8 +117,11 @@ class ChemotaxisTest(unittest.TestCase):
         result.x = round(result.x, 2)
         result.y = round(result.y, 2)
         result.z = round(result.z, 2)
-
         self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
+
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
 
     def test_chemotaxis_ge(self):
         """
@@ -173,6 +172,10 @@ class ChemotaxisTest(unittest.TestCase):
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(-0.02, 0.98, 0.0))
 
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
+
     def test_follow_all(self):
         """
         test aggregate all method
@@ -215,6 +218,10 @@ class ChemotaxisTest(unittest.TestCase):
         result.z = round(result.z, 2)
 
         self.assertEqual(result, Vector3(0.73, -0.44, 0.14))
+
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
 
     def test_avoid_all(self):
         """
@@ -259,6 +266,10 @@ class ChemotaxisTest(unittest.TestCase):
         result.z = round(result.z, 2)
 
         self.assertEqual(result, Vector3(0.02, -0.44, 0.85))
+
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
 
     def test_collision_avoidance(self):
         """
@@ -307,6 +318,10 @@ class ChemotaxisTest(unittest.TestCase):
 
         self.assertEqual(result, Vector3(0.02, -0.44, 0.85))
 
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
+
     def test_goal_gradient(self):
         """
         test goal gradient method of chemotaxisBalch Behaviour
@@ -335,6 +350,10 @@ class ChemotaxisTest(unittest.TestCase):
 
         self.assertEqual(calc.vector_length(chem.goal_gradient()),
                          np.sqrt(2) - 1)
+
+        chem.frames = ['test']
+        result = chem.move()
+        self.assertEqual(result, None)
 
 
 # run tests - start roscore before running tests

@@ -43,7 +43,7 @@ class RepulsionFernandez(MovementPattern):
         pose = self._buffer.get_own_pose()
         view = self._buffer.agent_list(self.frames)
 
-        mov = Vector3()
+        mov = None
 
         if pose:
             repulsion_radius = pose.diffusion + pose.goal_radius
@@ -53,6 +53,9 @@ class RepulsionFernandez(MovementPattern):
                            - el.goal_radius
 
                 if distance <= self._buffer.view_distance:
+                    if not mov:
+                        mov = Vector3()
+
                     if distance > 0:
                         diff = repulsion_radius - distance
                         mov.x += (pose.p.x - el.p.x) * diff / distance
@@ -69,6 +72,9 @@ class RepulsionFernandez(MovementPattern):
                             mov = calc.add_vectors(mov, calc.adjust_length(
                                 calc.delta_vector(pose.p, el.p),
                                 repulsion_radius))
+
+            if not mov:
+                return None
 
             if calc.vector_length(mov) > repulsion_radius:
                 mov = calc.adjust_length(mov, repulsion_radius)
@@ -102,7 +108,7 @@ class RepulsionGradient(MovementPattern):
         """
         pose = self._buffer.get_own_pose()
         view = self._buffer.agent_list(self.frames)
-        repulsion = Vector3()
+        repulsion = None
 
         if pose:
             repulsion_radius = pose.diffusion + pose.goal_radius
@@ -114,6 +120,9 @@ class RepulsionGradient(MovementPattern):
                                 abs(grad.z) == np.inf:
                     dv = calc.delta_vector(pose.p, el.p)
 
+                    if not repulsion:
+                        repulsion = Vector3()
+
                     if calc.vector_length(dv) == 0:
                         repulsion = calc.add_vectors(repulsion,
                                                      calc.random_vector(
@@ -124,7 +133,13 @@ class RepulsionGradient(MovementPattern):
                                                          dv, repulsion_radius))
 
                 else:
-                    repulsion = calc.add_vectors(repulsion, grad)
+                    if not repulsion:
+                        repulsion = grad
+                    else:
+                        repulsion = calc.add_vectors(repulsion, grad)
+
+            if not repulsion:
+                return None
 
             if calc.vector_length(repulsion) > repulsion_radius:
                 repulsion = calc.adjust_length(repulsion, repulsion_radius)

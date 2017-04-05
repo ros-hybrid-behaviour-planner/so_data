@@ -135,7 +135,7 @@ class FlockingRey(MovementPattern):
         pose = self._buffer.get_own_pose()
         view = self._buffer.agent_list([self.frame])
 
-        mov = Vector3()
+        mov = None
 
         if pose:
             mov = separation(pose, view)
