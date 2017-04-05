@@ -45,16 +45,15 @@ class RepulsionFernandez(MovementPattern):
 
         mov = None
 
-        if pose:
+        if pose and view:
             repulsion_radius = pose.diffusion + pose.goal_radius
+            mov = Vector3()
 
             for el in view:
                 distance = calc.get_gradient_distance(el.p, pose.p) \
                            - el.goal_radius
 
                 if distance <= self._buffer.view_distance:
-                    if not mov:
-                        mov = Vector3()
 
                     if distance > 0:
                         diff = repulsion_radius - distance
@@ -110,8 +109,9 @@ class RepulsionGradient(MovementPattern):
         view = self._buffer.agent_list(self.frames)
         repulsion = None
 
-        if pose:
+        if pose and view:
             repulsion_radius = pose.diffusion + pose.goal_radius
+            repulsion = Vector3()
 
             for el in view:
                 grad = gradient.calc_repulsive_gradient(el, pose)
@@ -133,10 +133,7 @@ class RepulsionGradient(MovementPattern):
                                                          dv, repulsion_radius))
 
                 else:
-                    if not repulsion:
-                        repulsion = grad
-                    else:
-                        repulsion = calc.add_vectors(repulsion, grad)
+                    repulsion = calc.add_vectors(repulsion, grad)
 
             if not repulsion:
                 return None

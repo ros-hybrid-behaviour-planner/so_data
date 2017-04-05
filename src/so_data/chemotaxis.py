@@ -53,6 +53,7 @@ class ChemotaxisGe(MovementPattern):
 
         if pose:
             if gradients_repulsive:
+                vector_repulsion = Vector3()
                 for grdnt in gradients_repulsive:
                     if self.goal:
                         grad = gradient.calc_repulsive_gradient_ge(grdnt,
@@ -78,11 +79,8 @@ class ChemotaxisGe(MovementPattern):
                                 vector_repulsion, calc.adjust_length(dv,
                                         grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        if vector_repulsion:
-                            vector_repulsion = calc.add_vectors(
-                                vector_repulsion, grad)
-                        else:
-                            vector_repulsion = grad
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            grad)
 
         if vector_attraction and vector_repulsion:
             result = calc.add_vectors(vector_attraction, vector_repulsion)
@@ -156,6 +154,7 @@ class ChemotaxisBalch(MovementPattern):
 
         if pose:
             if gradients_repulsive:
+                vector_repulsion = Vector3()
                 for grdnt in gradients_repulsive:
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
@@ -179,11 +178,8 @@ class ChemotaxisBalch(MovementPattern):
                                     dv,
                                     grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        if vector_repulsion:
-                            vector_repulsion = calc.add_vectors(
-                                vector_repulsion, grad)
-                        else:
-                            vector_repulsion = grad
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            grad)
 
         if vector_attraction and vector_repulsion:
             result = calc.add_vectors(vector_attraction, vector_repulsion)
@@ -254,6 +250,7 @@ class CollisionAvoidance(MovementPattern):
 
         if pose:
             if gradients_repulsive:
+                vector_repulsion = Vector3()
                 for grdnt in gradients_repulsive:
 
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
@@ -265,6 +262,9 @@ class CollisionAvoidance(MovementPattern):
                         # gradient.diffusion)
                         dv = calc.delta_vector(pose.p, grdnt.p)
 
+                        if not vector_repulsion:
+                            vector_repulsion = Vector3()
+
                         if calc.vector_length(dv) == 0:
                             vector_repulsion = calc.add_vectors(
                                 vector_repulsion, calc.random_vector(
@@ -274,11 +274,8 @@ class CollisionAvoidance(MovementPattern):
                                 vector_repulsion, calc.adjust_length(dv,
                                         grdnt.goal_radius + grdnt.diffusion))
                     else:
-                        if vector_repulsion:
-                            vector_repulsion = calc.add_vectors(
-                                vector_repulsion, grad)
-                        else:
-                            vector_repulsion = grad
+                        vector_repulsion = calc.add_vectors(vector_repulsion,
+                                                            grad)
 
         if not vector_repulsion:
             return None
@@ -325,6 +322,7 @@ class FollowAll(MovementPattern):
 
         if pose:
             if gradients:
+                result = Vector3()
                 for grdnt in gradients:
 
                     if grdnt.attraction == 1:
@@ -355,10 +353,7 @@ class FollowAll(MovementPattern):
                                                               + grdnt.diffusion
                                                           ))
                         else:
-                            if result:
                                 result = calc.add_vectors(result, grad)
-                            else:
-                                result = grad
 
         if not result:
             return None
@@ -406,6 +401,7 @@ class AvoidAll(MovementPattern):
 
         if pose:
             if gradients:
+                result = Vector3()
                 for grdnt in gradients:
                     grad = gradient.calc_repulsive_gradient(grdnt, pose)
 
@@ -427,10 +423,7 @@ class AvoidAll(MovementPattern):
                                                             grdnt.goal_radius
                                                             + grdnt.diffusion))
                     else:
-                        if result:
-                            result = calc.add_vectors(result, grad)
-                        else:
-                            result = grad
+                        result = calc.add_vectors(result, grad)
 
         if not result:
             return None

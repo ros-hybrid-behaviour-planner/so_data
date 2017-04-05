@@ -162,12 +162,10 @@ class Exploitation(MovementPattern):
 
         if pose:
             if view:
+                result = Vector3()
                 for grdnt in view:
                     grad = gradient.calc_attractive_gradient_ge(grdnt, pose)
-                    if not result:
-                        result = grad
-                    else:
-                        result = calc.add_vectors(result, grad)
+                    result = calc.add_vectors(result, grad)
 
         if not result:
             return None
