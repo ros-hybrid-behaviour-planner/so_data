@@ -62,8 +62,11 @@ class MorphogenesisBarycenter(DecisionPattern):
         values = self._buffer.agent_list([self.frame])
         own_pos = self._buffer.get_own_pose()
 
-        if not values or not own_pos:
-            return [0, 'None']
+        if not own_pos:
+            return None
+
+        if not values:
+            return [self.value, self.state]
 
         # determine summed up distances to neighbors
         dist = 0
@@ -155,7 +158,7 @@ class GossipMax(DecisionPattern):
             if tmpMax < tmp:
                 tmpMax = tmp
 
-        return [tmpMax, None]
+        return [tmpMax, self.state]
 
     def spread(self):
         """
