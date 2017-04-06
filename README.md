@@ -486,7 +486,7 @@ Module chemotaxis includes furthermore the following implementations of chemotax
 * `class CollisionAvoidance(MovementPattern)`: mechanism to avoid all repulsive gradients
 * `class FollowAll(MovementPattern)`: mechanism to follow the overall potential (all gradients within view)
 * `class AvoidAll(MovementPattern)`: mechanism to avoid all gradients within view 
-* `class FollowMax(MovementPattern)`: mechanism to follow the strongest gradient (max potential) 
+* `class FollowStrongest(MovementPattern)`: mechanism to follow the strongest gradient (max potential) 
 * `class FollowMin(MovementPattern)`: mechanism to follow the relatively furthest gradient
 * `class FollowMinReach(MovementPattern)`: mechanism to follow the gradient with minimum reach within view
 * `class FollowMaxReach(MovementPattern)`: mechanism to follow the gradient with maximum reach within view 

@@ -438,10 +438,10 @@ class AvoidAll(MovementPattern):
         return result
 
 
-class FollowMax(MovementPattern):
+class FollowStrongest(MovementPattern):
     """
     movement mechanism to follow relatively strongest gradient
-    (min movement vector length)
+    (min movement vector length, repulsive & attractive gradient)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
                  maxvel=1.0, minvel=0.1):
@@ -454,8 +454,8 @@ class FollowMax(MovementPattern):
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         """
-        super(FollowMax, self).__init__(buffer, frames, moving, static, maxvel,
-                                        minvel)
+        super(FollowStrongest, self).__init__(buffer, frames, moving, static,
+                                              maxvel, minvel)
 
     def move(self):
         """
@@ -505,7 +505,7 @@ class FollowMax(MovementPattern):
 
 class FollowMin(MovementPattern):
     """
-    movement mechanism to follow relatively weakest gradient
+    movement mechanism to follow relatively weakest attractive gradient
     (max movement vector length)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
