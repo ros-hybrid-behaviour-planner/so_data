@@ -142,7 +142,7 @@ class FlockingRey(MovementPattern):
             mov = calc.add_vectors(mov, cohesion(pose, view))
             mov = calc.add_vectors(mov, alignment(pose, view))
 
-        if calc.vector_length(mov) > self.max_velocity:
+        if mov and calc.vector_length(mov) > self.max_velocity:
             mov = calc.adjust_length(mov, self.max_velocity)
 
         return mov

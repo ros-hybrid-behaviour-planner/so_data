@@ -25,7 +25,7 @@ class TopicGradientTf(object):
     def __init__(self, topic, frame, id, message_type=None, p=Vector3(),
                  attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
                  ev_time=0, quaternion=Quaternion(),
-                 moving=True, payload=[], direction=Vector3(1, 0, 0)):
+                 moving=True, payload=None, direction=Vector3(1, 0, 0)):
         """
         subscription to topic and variable initializatoin
         :param topic: topic to subscribe to
@@ -44,12 +44,9 @@ class TopicGradientTf(object):
         :param payload: soMessage payload data
         """
 
-        if message_type is None:
-            message_type = get_topic_type(topic)
-        if message_type is not None:
-            self._sub = rospy.Subscriber(topic, message_type, self.callback)
-        else:
-            rospy.logerr("Could not determine message type of: " + topic)
+        # broadcaster for transformed data
+        self._broadcast = SoBroadcaster()
+        self._current_msg = SoMessage()
 
         self._id = id
         self._frame = frame
@@ -62,11 +59,16 @@ class TopicGradientTf(object):
         self.ev_time = ev_time
         self.direction = direction
         self.moving = moving
+        if payload is None:
+            payload = []
         self.payload = payload
 
-        self._broadcast = SoBroadcaster()
-
-        self._current_msg = SoMessage()
+        if message_type is None:
+            message_type = get_topic_type(topic)
+        if message_type is not None:
+            self._sub = rospy.Subscriber(topic, message_type, self.callback)
+        else:
+            rospy.logerr("Could not determine message type of: " + topic)
 
     @abstractmethod
     def callback(self, topic_message):
