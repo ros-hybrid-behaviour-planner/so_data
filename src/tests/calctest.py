@@ -7,6 +7,7 @@ Module containing unit test for calc.py
 """
 
 import unittest
+import numpy as np
 import so_data.calc
 from geometry_msgs.msg import Point, Vector3
 
@@ -45,11 +46,43 @@ class CalcTest(unittest.TestCase):
 
     def test_adjust_length(self):
         """
-        test calculation
+        test calculation adjust_length()
         """
-
         self.assertEqual(so_data.calc.adjust_length(Vector3(1, 0, 0), 5.0),
                          Vector3(5, 0, 0))
+
+    def test_random(self):
+        """
+        test calculation of random vector with specified length
+        """
+
+        self.assertEqual(so_data.calc.vector_length(
+            so_data.calc.random_vector(5.0)), 5.0)
+
+    def test_unit_vector(self):
+        """
+        test unit vector calculation
+        """
+        new = so_data.calc.unit_vector([3, 4, 0])
+        self.assertEqual(new[0], 0.6)
+        self.assertEqual(new[1], 0.8)
+        self.assertEqual(new[2], 0.0)
+
+    def test_unit_vector3(self):
+        """
+        test unit vector 3 calculation
+        """
+        self.assertEqual(so_data.calc.unit_vector3(Vector3(3, 4, 0)),
+                         Vector3(0.6, 0.8, 0))
+
+    def test_angle_between(self):
+        """
+        test angle_between calculation
+        """
+        self.assertEqual(so_data.calc.angle_between([1,0], [0,1]), np.pi/2)
+        self.assertEqual(so_data.calc.angle_between([0,1], [1,0]), -np.pi/2)
+        self.assertEqual(so_data.calc.angle_between([1,0], [1,0]), 0.0)
+        self.assertEqual(so_data.calc.angle_between([1,0], [-1,0]), np.pi)
 
 
 # run tests - start roscore before running tests
