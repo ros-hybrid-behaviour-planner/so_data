@@ -56,7 +56,7 @@ def calc_repulsive_gradient(gradient, pose):
     d = np.linalg.norm([tmp.x, tmp.y, tmp.z]) - pose.goal_radius \
         - gradient.goal_radius
 
-    if d <= 0:  # infinitely large repulsion
+    if d <= 0 or gradient.diffusion == np.inf:  # infinitely large repulsion
         v = Vector3(np.inf, np.inf, np.inf)
         # calculate norm vector for direction
         tmp = calc.unit_vector3(tmp)
