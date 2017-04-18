@@ -597,7 +597,7 @@ class FollowMinReach(MovementPattern):
 
 class FollowMaxReach(MovementPattern):
     """
-    movement mechanism to follow gradient with maximum reach
+    movement mechanism to follow attractive gradient with maximum reach
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
                  maxvel=1.0, minvel=0.1):
