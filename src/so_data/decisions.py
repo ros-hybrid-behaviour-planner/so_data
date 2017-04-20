@@ -4,7 +4,7 @@ Created on 16.02.2017
 @author: kaiser
 
 Module including sample implementations of decision patterns: morphogenesis,
-gossip
+gossip, quorum
 """
 
 from patterns import DecisionPattern
@@ -16,7 +16,7 @@ from so_data.gradientnode import create_gradient
 
 class MorphogenesisBarycenter(DecisionPattern):
     """
-    Find barycenter of robot group
+    Morphogenesis mechanism to determine barycenter of robot group
     """
     def __init__(self, buffer, frame, key, center_frame='Center', moving=True,
                  static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0,
@@ -27,6 +27,7 @@ class MorphogenesisBarycenter(DecisionPattern):
         :param buffer: SoBuffer
         :param frame: morphogenesis frame id (header frame)
         :param key: payload key
+        :param center_frame: frame ID of spread barycenter frame
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradient in list returned by buffer
         :param goal_radius: morphogenetic gradient goal radius
@@ -34,7 +35,8 @@ class MorphogenesisBarycenter(DecisionPattern):
         :param ev_time: morphogenetic gradient evaporation time
         :param diffusion: morphogenetic gradient diffusion
         :param attraction: morphogenetic gradient attraction
-        :param state: robot state
+        :param state: robot state (Center, None)
+        :param value: sum of distances to morphogentic gradients
         :param goal_center: goal radius barycenter gradient
         :param moving_center: moving attribute barycenter gradient
         :param attraction_center: attraction barycenter gradient
@@ -55,9 +57,9 @@ class MorphogenesisBarycenter(DecisionPattern):
 
     def calc_value(self):
         """
-        sums up distance to all morphogenetic gradients determines and
+        sums up distance to all morphogenetic gradients, determines and
         sets state of robot based on it
-        :return: distance (float)
+        :return: [distance (float), state]
         """
         values = self._buffer.agent_list([self.frame])
         own_pos = self._buffer.get_own_pose()
@@ -118,7 +120,7 @@ class MorphogenesisBarycenter(DecisionPattern):
 
 class GossipMax(DecisionPattern):
     """
-    Gossip mechanism to find maximum value
+    Gossip mechanism to find maximum spread value
     """
     def __init__(self, buffer, frame, key, value=1, state=None, moving=True,
                  static=False, diffusion=np.inf, goal_radius=0,
@@ -128,13 +130,14 @@ class GossipMax(DecisionPattern):
         :param buffer: SoBuffer
         :param frame: gossip frame id (header frame)
         :param key: payload key
+        :param value: initial value
+        :param state: robot state - not changed during mechanism execution
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradient in list returned by buffer
         :param goal_radius: gossip gradient goal radius
         :param ev_factor: gossip gradient evaporation factor
         :param ev_time: gossip gradient evaporation time
         :param diffusion: gossip gradient diffusion
-        :param state: robot state
         """
 
         super(GossipMax, self).__init__(buffer, frame, key, value, state,
@@ -174,7 +177,7 @@ class GossipMax(DecisionPattern):
 # QUORUM
 class Quorum(DecisionPattern):
     """
-    Quorum Sensing
+    Quorum Sensing mechanism
     """
     def __init__(self, buffer, threshold, frame=None, value=0, state=False,
                  moving=True, static=False):
@@ -182,10 +185,11 @@ class Quorum(DecisionPattern):
         initialize behaviour
         :param buffer: SoBuffer
         :param threshold: number of agents which has to be reached
-        :param frame: frame id (header frame) agent data
+        :param frame: frame id (header frame) of agent data
+        :param value: initial value of robot (count of neighbors)
+        :param state: state to indicate whether threshold was passed
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradient in list returned by buffer
-        :param state: robot state
         """
         super(Quorum, self).__init__(buffer, frame, value=value, state=state,
                                      moving=moving, static=static)

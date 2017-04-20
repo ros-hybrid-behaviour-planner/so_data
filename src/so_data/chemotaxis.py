@@ -3,7 +3,7 @@ Created on 15.02.2017
 
 @author: kaiser
 
-Module including chemotaxis implementations
+Module including chemotaxis mechanism implementations
 """
 
 import numpy as np
@@ -17,7 +17,7 @@ from patterns import MovementPattern
 class ChemotaxisGe(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Ge & Cui
-    Tries to reach a goal (attractive gradient) while avoiding obstacles
+    Allows to reach a goal (attractive gradient) while avoiding obstacles
     (repulsive gradients)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
@@ -119,7 +119,7 @@ class ChemotaxisGe(MovementPattern):
 class ChemotaxisBalch(MovementPattern):
     """
     Chemotaxis behaviour based on formulas by Balch & Hybinette
-    Tries to reach a goal (attractive gradient) while avoiding obstacles
+    Allow to reach a goal (attractive gradient) while avoiding obstacles
     (repulsive gradients)
     """
     def __init__(self, buffer, frames=None, moving=True, static=True,
@@ -215,7 +215,7 @@ class ChemotaxisBalch(MovementPattern):
         return grad
 
 
-# Mechanisms to consider specific sets of gradients
+# Mechanisms considering specific sets of gradients
 class CollisionAvoidance(MovementPattern):
     """
     movement mechanism to avoid all repulsive gradients
@@ -225,7 +225,6 @@ class CollisionAvoidance(MovementPattern):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
@@ -372,12 +371,11 @@ class AvoidAll(MovementPattern):
     """
     movement mechanism to avoid all sensed gradients
     """
-    def __init__(self, buffer, frames=None, repulsion=False, moving=True,
-                 static=True, maxvel=1.0, minvel=0.1):
+    def __init__(self, buffer, frames=None, moving=True, static=True,
+                 maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
@@ -448,7 +446,6 @@ class FollowStrongest(MovementPattern):
         """
         :param buffer: soBuffer
         :param frames: frames to be included in list returned by buffer
-        :param repulsion: enable collision avoidance between agents
         :param moving: consider moving gradients in list returned by buffer
         :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent

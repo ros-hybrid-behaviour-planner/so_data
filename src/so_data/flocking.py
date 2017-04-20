@@ -1,22 +1,23 @@
 """
 Created on 20.12.2016
 
-Module contains various methods for the flocking pattern
-based on paper / algorithm 1 by Olfati-Saber
+Module contains methods for the flocking pattern
+based on algorithm 1 by Olfati-Saber
 
 @author: kaiser
 """
-from __future__ import division  # ensures floating point divisions
-from geometry_msgs.msg import Vector3
-import numpy as np
+
+from __future__ import division
 import calc
 import collections
+import numpy as np
+from geometry_msgs.msg import Vector3
 from patterns import MovementPattern
-import rospy
 
 
 def agent_velocity(p1, p2):
     """
+    calculate velocity of agent
     :param p1: gradient 1 (soMessage)
     :param p2: gradient 2 (soMessage)
     :return: current agent velocity
@@ -41,6 +42,7 @@ def agent_velocity(p1, p2):
 def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance,
                    view_distance, h):
     """
+    calculates gradient-based term
     :param neighbors: array of neighbor positions of agent i (tuple position -
     velocity)
     :param agent: agent under consideration
@@ -67,10 +69,10 @@ def gradient_based(neighbors, agent, epsilon, a, b, avoidance_distance,
 
 def velocity_consensus(neighbors, agent, epsilon, r, h):
     """
+    calculates velocity consensus term
     :param neighbors: array of neighbors of agent i (tuple position - velocity)
     :param agent: agent under consideration (position and velocity)
-    :param epsilon_r: sigma norm parameter (0,1) of r
-    :param epsilon_z: sigma norm parameter of z
+    :param epsilon: sigma norm parameter (0,1)
     :param r: view distance / interaction range
     :param h: parameter specifying boundaries of bump function
     :return: velocity consensus term for flocking
@@ -92,6 +94,7 @@ def velocity_consensus(neighbors, agent, epsilon, r, h):
 
 def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
     """
+    calculation of action function
     :param qj: Positin neighbor Vector3
     :param qi: Position agent Vector3
     :param r: view_distance / interaction range
@@ -101,7 +104,7 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
                 0 < a <= b; c = |a-b|/np.sqrt(4ab)
     :param h: parameter (0,1) specifying boundaries of bump function
     :param avoidance_distance: distance between agents
-    :return:
+    :return: action function value
     """
     dq = calc.delta_vector(qj, qi)
     z = sigma_norm(epsilon, dq)
@@ -121,6 +124,7 @@ def action_function(qj, qi, r, epsilon, a, b, avoidance_distance, h):
 
 def sigma_norm(epsilon, z):
     """
+    calculate sigma norm of vector
     :param epsilon: fixed parameter (0, 1)
     :param z: Vector3
     :return: sigma norm of z
@@ -132,6 +136,7 @@ def sigma_norm(epsilon, z):
 
 def sigma_norm_f(epsilon, z):
     """
+    calcualte sigma norm of float value
     :param epsilon: fixed parameter (0, 1)
     :param z: float
     :return: sigma norm of z
@@ -158,10 +163,10 @@ def bump_function(z, h):
 
 def adjacency_matrix(qj, qi, epsilon, r, h):
     """
+    calculate adjacency matrix element
     :param qj: Position neighbor
     :param qi: Position agent
-    :param epsilon_r: parameter of sigma norm (0,1) of r
-    :param epsilon_z: parameter of sigma norm of z
+    :param epsilon: parameter of sigma norm (0,1)
     :param r: view distance / interaction range
     :param h: parameter (0,1) of bump_function
     :return: adjacency matrix element aij
@@ -175,6 +180,7 @@ def adjacency_matrix(qj, qi, epsilon, r, h):
 
 def vector_btw_agents(qi, qj, epsilon):
     """
+    vector between agents
     :param qi: agent under consideration
     :param qj: neighbor
     :param epsilon: fixed parameter (0,1) of sigma_norm
@@ -196,14 +202,15 @@ def vector_btw_agents(qi, qj, epsilon):
 def flocking_vector(neighbors, agent, epsilon, a, b, repulsion_radius,
                     view_distance, h):
     """
-    :param neighbors:
-    :param agent:
-    :param epsilon:
-    :param a:
-    :param b:
-    :param repulsion_radius:
-    :param view_distance:
-    :param h:
+    calculate overall flocking vector
+    :param neighbors: neighbor data
+    :param agent: agent data
+    :param epsilon: fixed parameter (0,1) of sigma_norm
+    :param a: parameter action function
+    :param b: parameter action function
+    :param repulsion_radius: scale (desired distance between agents)
+    :param view_distance: interaction range of robot
+    :param h: parameter (0,1) of bump_function
     :return: vector of steering force
     """
     grad = gradient_based(neighbors, agent, epsilon, a, b, repulsion_radius,
@@ -222,10 +229,16 @@ class Flocking(MovementPattern):
                  moving=True, static=False, maxvel=1.0, minvel=0.1):
         """
         :param buffer: soBuffer returning gradient data
-        :param frame: agent frame ID
+        :param a: parameter action function
+        :param b: parameter action function
+        :param h: parameter (0,1) of bump_function
+        :param epsilon: fixed parameter (0,1) of sigma_norm
+        :param max_acceleration: maximum accelaration of robot
+        :param frame: agent gradient frame ID
         :param moving: consider moving gradients
         :param static: consider static gradients
         :param maxvel: maximum flocking velocity
+        :param minvel: minimum flocking velocity
         """
         # set standard agent frame if no frame is specified
         if not frame:

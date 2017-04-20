@@ -397,6 +397,7 @@ class Flocking(MovementPattern):
 
 Input are an SoBuffer instance and several parameters for flocking. 
 These are `a`, `b`, `h` and `epsilon`. 
+There description can be found in the comments in the code.
 `max_acceleration` sets the maximum acceleration the agent will have. 
 `maxvel` and `minvel` set furthermore the maximum or minimum velocity. 
 `frame` specifies the header frame id which is used for agent data. 
@@ -452,7 +453,6 @@ class ChemotaxisBalch(MovementPattern):
 A buffer has to be handed over to the mechanism.
 Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 Moving and static define whether moving or static gradient will be considered. 
-Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
 The mechanism request the relatively closest attractive gradient from the buffer (minimum attraction value; `get_attractive_gradient()` in SoBuffer) and aims to reach this goal. 
@@ -466,12 +466,12 @@ It is based on the formulas by Ge and Cui (see gradient.py).
 
 ```python
 class ChemotaxisGe(MovementPattern):
-    def __init__(self, buffer, frames=None, moving=True, static=True, maxvel=1.0, minvel=0.1)
+    def __init__(self, buffer, frames=None, moving=True, static=True, 
+                 maxvel=1.0, minvel=0.1)
 ```
 A buffer has to be handed over to the mechanism.
 Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 Moving and static define whether moving or static gradient will be considered. 
-Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
 Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
 The mechanism request the relatively closest attractive gradient from the buffer (minimum attraction value; `get_attractive_gradient()` in SoBuffer) and aims to reach this goal. 
@@ -587,15 +587,16 @@ In case that a received value is larger than the current value, the current valu
 
 ```python
 class GossipMax(DecisionPattern):
-    def __init__(self, buffer, frame, key, state=1, moving=True, static=False, 
+    def __init__(self, buffer, frame, key, value=1, state=None, moving=True, static=False, 
                  diffusion=np.inf, goal_radius=0, ev_factor=1.0, ev_time=0.0)
 ```
-
+                 
 A SoBuffer has to be handed over to the mechanism which will provide the necessary gradients data. 
 In this case the data will be provided by method `agent_list`. 
-Furthermore a frame and a key have to be specified to indicate which gradient frame id is used for the gossip mechanism and which key the payload data to be considered has. 
-Parameter state sets the initial value which will be compared and spread. 
-Moving and static specify whether moving or static gradient data should be returned by the soBuffer.
+Furthermore a `frame` and a `key` have to be specified to indicate which gradient frame id is used for the gossip mechanism and which key the payload data to be considered has. 
+Parameter `state` sets agents state. It is not directly used in this mechanism.
+Parameter `value` sets the initial value which will be compared and spread. 
+`Moving` and `static` specify whether moving or static gradient data should be returned by the soBuffer.
 The other parameters allow to adjust the gradient message which will be spread to fit the application scenario. 
 
 
@@ -609,19 +610,18 @@ The barycenter is the agent which has the smallest sum of distances.
 
 ```python 
 class MorphogenesisBarycenter(DecisionPattern):
-    def __init__(self, buffer, frame, key, moving=True, static=False,
-                 goal_radius=0.5, ev_factor=1.0, ev_time=0.0, diffusion=np.inf,
-                 attraction=-1, state='None', goal_center=2.0,
-                 moving_center=False, attraction_center=1,
-                 diffusion_center=20)
+    def __init__(self, buffer, frame, key,  center_frame='Center', moving=True, 
+                 static=False, goal_radius=0.5, ev_factor=1.0, ev_time=0.0, 
+                 diffusion=np.inf, attraction=-1, value=0, state='None', 
+                 goal_center=2.0, moving_center=False, attraction_center=1)
 ```
 
-In this mechanism a buffer is required too. 
+In this mechanism a `buffer`, in particular a SoBuffer instance, is required. 
 The data used in the calculation will be provided by method `agent_list` of the buffer.
-A frame and a key have to be specified to indicate which gradient frame id is used for the morphogenesis mechanism and which key the payload data under consideration has.
-Moving and static defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 
-The other parameters allow to adjust the gradient message with morphogenetic data that will be spread. 
-All parameters with '_center' define the center gradient message which is spread by the barycenter. 
+A `frame` and a `key` have to be specified to indicate which gradient frame id is used for the morphogenesis mechanism and which key the payload data under consideration has.
+`Moving` and `static` defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 
+All parameters with '_center' define the center gradient message which is spread by the barycenter agent. 
+The other parameters allow to adjust the gradient message with morphogenetic data that will be spread by each agent. 
 
 
 #### Quorum
@@ -639,11 +639,12 @@ class Quorum(DecisionPattern):
 
 An SoBuffer instance has to be handed over to the mechanism.
 It provides a list of neighbors of the agents with method `agent_list()`. 
-threshold defines the number of agents which should be at least within view distance. 
-frame defines the header frame ID of the quorum gradients. 
-value is the initial value of the agent. 
-state is the initial state of the agent. 
-Moving and static defines whether moving or static gradient data will be returned by the buffer. Usually moving gradients are considered in this pattern. 
+`threshold` defines the number of agents which should be at least within view distance. 
+`frame` defines the header frame ID of the quorum gradients (e.g. pose frame of agents). 
+`value` is the initial value of the agent. It resembles to the count of neighbors within view distance. 
+`state` is the initial state of the agent and indicates whether the threshold was passed or not. 
+`Moving` and `static` defines whether moving or static gradient data will be returned by the buffer. 
+Usually moving gradients, and in particular the agent gradient data, are considered in this pattern. 
 
 
 supplements(.py)

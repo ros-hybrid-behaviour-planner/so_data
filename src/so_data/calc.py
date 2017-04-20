@@ -1,7 +1,7 @@
 """
 Created on 01.12.2016
 
-@author: hrabia, kaiser
+@author: kaiser, hrabia
 
 Module offers various methods for vector calculations
 
@@ -14,8 +14,11 @@ import random
 
 def unit_vector(vector):
     """
-    Returns the unit vector of the vector.
+    determines unit vector
+    :param vector: np.array to be transformed
+    :return: unit vector
     """
+
     if np.linalg.norm(vector) == 0.0:
         return [0, 0]
     return vector/np.linalg.norm(vector)
@@ -23,7 +26,9 @@ def unit_vector(vector):
 
 def unit_vector3(vector):
     """
-    Returns the unit vector of a vector3
+    determines unit vector
+    :param vector: Vector3 to be transformed
+    :return: unit vector
     """
     d = vector_length(vector)
     if d > 0:
@@ -46,6 +51,9 @@ def angle_between(v1, v2):
             0.0
             >>> angle_between((1, 0), (-1, 0))
             3.141592653589793
+    :param v1: vector as np.array
+    :param v2: vector as np.array
+    :return: angle in radians
     """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
@@ -64,6 +72,7 @@ def angle_between(v1, v2):
 
 def get_gradient_distance(gradpos, pose):
     """
+    determines distance between two points
     :param gradpos: pose of the gradient to be investigated (Vector)
     :param pose: pose of the robot (Pose)
     :return: euclidian distance robot to last received gradient
@@ -74,6 +83,7 @@ def get_gradient_distance(gradpos, pose):
 
 def vector_length(vector):
     """
+    determines vector length
     :param vector: Vector3
     :return: vector length
     """
@@ -82,9 +92,10 @@ def vector_length(vector):
 
 def delta_vector(q1, q2):
     """
+    calculates vector difference
     :param q1: Vector3
     :param q2: Vector3
-    :return: Vector3 which is q1 - q2
+    :return: q1 - q2
     """
     d = Vector3()
     d.x = q1.x - q2.x
@@ -96,9 +107,10 @@ def delta_vector(q1, q2):
 
 def add_vectors(q1, q2):
     """
+    calculates vector sum
     :param q1: Vector3
     :param q2: Vector3
-    :return: Vector3 which is q1 + q2
+    :return: q1 + q2
     """
     d = Vector3()
     d.x = q1.x + q2.x
@@ -110,9 +122,10 @@ def add_vectors(q1, q2):
 
 def adjust_length(q, length):
     """
+    adjusts vector length
     :param q: Vector3
     :param length: desired vector length
-    :return: Vector3 with lenght = length
+    :return: Vector3 with length = length
     """
     result = unit_vector3(q)
     result.x *= length
@@ -124,6 +137,8 @@ def adjust_length(q, length):
 
 def random_vector(length):
     """
+    creates random vector with specified length
+    :param length: desired vector length
     :return: random vector with length = length
     """
     tmp = unit_vector3(Vector3(random.uniform(-1, 1), random.uniform(-1, 1),

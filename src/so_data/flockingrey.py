@@ -2,7 +2,7 @@
 Created on 24.01.2017
 @author: kaiser
 
-Module contains flocking based on Reynolds Description
+Module contains flocking methods based on Reynolds Description
 www.red3d.com/cwr/steer/gdc99/
 and flocking mechanism
 """
@@ -106,7 +106,7 @@ def cohesion(agent, neighbors):
 
 class FlockingRey(MovementPattern):
     """
-    class to enable flocking based on reynolds formulas
+    class containing flocking mechanism based on Reynold's formulas
     """
     def __init__(self, buffer, frame=None, moving=True, static=False,
                  maxvel=1.0):
