@@ -15,9 +15,10 @@ import numpy as np
 # (doi:10.1109/ROBOT.2000.844042)
 def calc_attractive_gradient(gradient, pose):
     """
-    :param gradient: position of the goal
+    calculate movement vector based on attractive gradient
+    :param gradient: attractive gradient message
     :param pose: position SoMessage of the robot
-    :return: attractive vector / norm vector
+    :return: movement vector
     """
     v = Vector3()
 
@@ -43,9 +44,10 @@ def calc_attractive_gradient(gradient, pose):
 
 def calc_repulsive_gradient(gradient, pose):
     """
-    :param gradient: position of the obstacle
+    calc movement vector based on repulsive gradient
+    :param gradient: repulsive gradient message
     :param pose: position SoMessage of the robot
-    :return: repulsive vector
+    :return: movement vector
     """
     v = Vector3()
 
@@ -84,12 +86,11 @@ def calc_repulsive_gradient(gradient, pose):
 #  Potential field calculations based on Ge and Cui
 def calc_attractive_gradient_ge(gradient, pose):
     """
-    calculate attractive gradient based on Ge & Cui - no normalization of
-    vectors!
+    calculate movement vector based on attractive gradient
     normalized version same as _calc_attractive_gradient
-    :param gradient: position of the goal
+    :param gradient: attractive gradient message
     :param pose: position SoMessage of the robot
-    :return: attractive vector
+    :return: movement vector
     """
     v = Vector3()
 
@@ -115,10 +116,12 @@ def calc_attractive_gradient_ge(gradient, pose):
 
 def calc_repulsive_gradient_ge(gradient, goal, pose):
     """
-    :param gradient: position of the obstacle
-    :param goal: attractive gradient to be followed
+    calculation of movement vector based on repulsive gradient and
+    goal gradient
+    :param gradient: repulsive gradient message
+    :param goal: attractive gradient message (goal)
     :param pose: position SoMessage of the robot
-    :return: repulsive vector
+    :return: movement vector
     distance of influence of obstacle = goal_radius + diffusion
     """
     v = Vector3()

@@ -292,12 +292,14 @@ The second approach is based on "New Potential Functions for Mobile Robot Path P
 The paper of Balch and Hybinette includes formulas to calculate attraction and repulsion of gradients. Attraction values are within `[0,1]` while repulsion values are within `[0, inf.]`. 
 Attraction and repulsion can be combined to generate the movement vector. 
 In some scenarios the attractive gradient might not be reached as its attraction and repulsion lead to a zero potential value at a point not being the attractive gradient source. 
-Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data, `pose` is the current position of the robot 
+
+Parameters: `gradient` is a soMessage with the attractive/repulsive gradient data, 
+`pose` is the current position of the robot represented by a SoMessage  
 
 ```python
-def _calc_attractive_gradient(self, gradient, pose)
+def _calc_attractive_gradient(gradient, pose)
 
-def _calc_repulsive_gradient(self, gradient, pose)
+def _calc_repulsive_gradient(gradient, pose)
 ```
 
 ##### Ge and Cui (1999)
@@ -310,10 +312,15 @@ The formulas in this paper were enhanced with setting the repulsive gradient to 
 The attractive gradient was enhanced with being set to zero in its goal region. 
 
 ```python 
-def _calc_attractive_gradient_ge(self, gradient, pose)
+def _calc_attractive_gradient_ge(gradient, pose)
 
-def _calc_repulsive_gradient_ge(self, gradient, goal, pose)
+def _calc_repulsive_gradient_ge(gradient, goal, pose)
 ```
+
+`gradient` is a soMessage with the attractive/repulsive gradient data.
+`pose` is the current position of the robot represented by a SoMessage.
+In the repulsive gradient calculation, `goal` is an attractive gradient which was chosen to be the goal to be reached. 
+
 
 Decision and Movement Patterns
 -------------------------------
@@ -515,10 +522,9 @@ class ForagingDecision(DecisionPattern):
 A `buffer` can be handed over as a parameter as this is standard for all decision mechanisms. 
 But it is currently not used in the decision or rather `calc_value()` implementation.
 
-`probablity` is the exploration probability. 
+`probablity` is the exploration probability which is stored in the value variable of the DecisionPattern. 
 With this probability, the state will be set to `Exploration`. 
 Otherwise, `Exploitation` will be set as the state.
-`probability` is assigned to the value of the decision mechanism.
 
 ##### Exploration
 
@@ -529,8 +535,8 @@ class Exploration(MovementPattern):
     def __init__(self, buffer=None, maxvel=1.0, minvel=0.1)
 ```
 
-A buffer has to be handed over to the mechanism.
-Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+A `buffer` has to be handed over to the mechanism.
+`Maxvel` and `minvel` specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
 
 ##### Exploitation
@@ -544,11 +550,11 @@ class Exploitation(MovementPattern):
                  minvel=0.5)
 ```
 
-A buffer has to be handed over to the mechanism.
-Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
-angle_xy specifies the view angle in the xy-plane.
-angle_yz specified the view angle in the yz-plane. 
-Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+A `buffer` has to be handed over to the mechanism.
+`Frames` allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+`angle_xy` specifies the view angle in the xy-plane.
+`angle_yz` specified the view angle in the yz-plane. 
+`Maxvel` and `minvel` specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
 
 ##### Return to Nest 
@@ -556,7 +562,7 @@ Maxvel and minvel specify the maximum and respectively minimum velocity of the a
 DepositPheromones is a movement pattern which lets the agent return to the nest and deposit pheromones on the way.
 It is based on the ChemotaxisGe behaviour. 
 
-Before the agent moves, it will deposit a pheromone at the place it currently is posed on. 
+Before the agent moves, it will deposit a pheromone at the place it is currently placed on. 
 The movement vector is calculated using the move() implementation of the ChemotaxisGe behaviour. 
 
 ```python
@@ -565,14 +571,13 @@ class DepositPheromones(ChemotaxisGe):
                  maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=1, 
                  ev_factor=0.9, ev_time=5)
 ```
-A buffer has to be handed over to the mechanism.
-Frames allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
+A `buffer` has to be handed over to the mechanism.
+`Frames` allows to specify a list of gradient frame IDs which will be considered in the movement vector calculation.
 
-Moving and static define whether moving or static gradient will be considered. 
-Only moving gradients with the pose frame specified in SoBuffer will be considered in this case. 
-Maxvel and minvel specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
+`Moving` and `static` define whether moving or static gradient will be considered. 
+`Maxvel` and `minvel` specify the maximum and respectively minimum velocity of the agent / length of the movement vector. 
 
-frame, attraction, ev_factor and ev_time are the paramters for the spread pheromone gradients. 
+`frame`, `attraction`, `ev_factor` and `ev_time` are the paramters for the spread pheromone gradients. 
 
 ### decisions(.py)
 
@@ -710,14 +715,15 @@ Therewith, `soBroadcaster` is the basis for the implementation of spreading beha
 
 gradientnode(.py)
 ------------------
-Node enabling to send artificial gradients in the environment. 
-Gradients can be specified in the list in method get_gradient(index) and set via the gradient launch file. 
-The spreading frequency can be set (`ros.Rate()`) via the launch file too. 
+Class `EnvironmentGradients` stores a list of gradients which should be present in the environment. 
+The list can be updated via ROS service and therewith other nodes can hand over a list of gradients which is required for the application. 
 
-There are two methods included which are purely for convenience. 
-The first one is the `create_gradient(...)` method allowing to create a soMessage by specifying the required parameters and setting defaults for the rest. 
-The second method is `get_gradient(index)` which returns a gradient list based on the index position handed over. 
-New gradient lists can be added to the currently available set and the method can be used in other files, e.g. in main.py of the swarm_behaviour package to draw the gradients in the turtlesim environment. 
+An EnvironmentsGradients object is used in the ROS node included in module gradientnode. 
+It spreads all gradients stored in the gradients variable being a part of class EnvironmentGradients. 
+The spreading frequency can be set via the launch file. 
+
+Method `create_gradient(...)` is icluded for convience. 
+It allows to create a SoMessage by specifying required parameters and using the default ones otherwise. 
 
 
 topicgradienttf(.py), posegradienttf(.py), posestampedgradienttf(.py)

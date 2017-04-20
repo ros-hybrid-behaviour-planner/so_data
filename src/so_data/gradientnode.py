@@ -5,7 +5,7 @@ Created on 09.01.2017
 @author: kaiser
 
 Module contains (sample) node to spread artificial gradients
-(e.g. assumed to be existent in the environment)
+(e.g. gradients which should be existent in the environment)
 """
 
 import rospy
@@ -24,11 +24,14 @@ def create_gradient(position, attraction=0, diffusion=3.0, q=Quaternion(),
     :param position: agent position
     :param attraction: repulsion(-1), attraction(1)
     :param diffusion: diffusion radius
-    :param direction: direction for directed gradient
+    :param q: Quaternion defining rotation
+    :param direction: initial direction to specify current gradient orientation
     :param goal_radius: goal radius of gradient
     :param payload: payload data
     :param ev_time: evaporation time
     :param ev_factor: evaporation factor
+    :param frameid: header frame id of gradient
+    param: parentframe: parent frame id of gradient
     :return: soMessage
     """
     now = rospy.Time.now()

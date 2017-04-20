@@ -3,7 +3,7 @@ Created on 27.02.2017
 
 @author: kaiser
 
-Module including sample implementation of ant foraging
+Module including implementation of ant foraging
 """
 
 import random
@@ -31,15 +31,16 @@ class ForagingDecision(DecisionPattern):
     Decision mechanism for foraging: explore vs exploit
     """
     def __init__(self, buffer=None, probability=0.5):
-        """
-        :param probability: exploration  probability
+        """ initialization
         :param buffer: soBuffer instance
+        :param probability: exploration probability, stored as value
         """
         super(ForagingDecision, self).__init__(buffer, value=probability)
 
     def calc_value(self):
         """
         determines whether agent will explore or exploit
+        :return: [value, state]
         """
         # set state
         if random.random() < self.value:
@@ -85,6 +86,7 @@ class DepositPheromones(ChemotaxisGe):
 
     def move(self):
         """
+        deposit pheromone and move towards nest
         :return: movement vector
         """
         # spread pheromone
@@ -106,7 +108,6 @@ class DepositPheromones(ChemotaxisGe):
         msg.header.stamp = now
         msg.ev_stamp = now
 
-        # important to determine whether gradient is within view
         current_pose = self._buffer.get_own_pose()
         msg.p = current_pose.p
         msg.q = current_pose.q
@@ -153,11 +154,9 @@ class Exploitation(MovementPattern):
         pose = self._buffer.get_own_pose()
 
         # get all gradients within view distance
-
         view = self._buffer.static_list_angle(self.frames, self.angle_xy,
                                               self.angle_yz)
 
-        # attractive gradient
         result = None
 
         if pose:
@@ -192,7 +191,7 @@ class Exploration(MovementPattern):
     movement mechanism to follow random movement
     """
     def __init__(self, buffer, maxvel=1.0, minvel=0.1):
-        """
+        """ initialization
         :param buffer: soBuffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
