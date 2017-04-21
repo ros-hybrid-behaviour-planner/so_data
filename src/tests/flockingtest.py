@@ -2,16 +2,18 @@
 Created on 21.12.2016
 
 @author: kaiser
+
+Unit Test for flocking.py
 """
 
 import unittest
-from so_data.msg import soMessage
-from geometry_msgs.msg import Vector3
 import numpy as np
-from std_msgs.msg import Header
-import so_data.flocking
 import rospy
 import collections
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3, Quaternion
+from std_msgs.msg import Header
+import so_data.flocking
 
 
 class FlockingTest(unittest.TestCase):
@@ -104,48 +106,46 @@ class FlockingTest(unittest.TestCase):
         unit test for agent velocity function
         """
         # no movement at all
-        p1 = soMessage()
-        p2 = soMessage()
+        p1 = SoMessage()
+        p2 = SoMessage()
         self.assertEqual(so_data.flocking.agent_velocity(p1, p2), Vector3())
 
-        p1 = soMessage(Header(None, rospy.Duration(0), ''), Vector3(2, 2, 0),
-                       1, 4.0, 1.0, 0.8, 5, rospy.Duration(0), 0, 0, Vector3(),
-                       True, [])
-        p2 = soMessage(Header(None, rospy.Duration(5), ''), Vector3(2, 2, 0),
-                       1, 4.0, 1.0, 0.8, 5, rospy.Duration(5), 0, 0, Vector3(),
-                       True, [])
+        p1 = SoMessage(Header(None, rospy.Duration(0), ''), None,
+                       Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0), True, [])
+        p2 = SoMessage(Header(None, rospy.Duration(5), ''), None,
+                       Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(5), True, [])
         self.assertEqual(so_data.flocking.agent_velocity(p1, p2),
                          Vector3(0, 0, 0))
 
         # 5 seconds passed
-        p1 = soMessage(Header(None, rospy.Duration(0), ''), Vector3(0, 0, 0),
-                       1, 4.0, 1.0, 0.8, 5, rospy.Duration(0), 0, 0, Vector3(),
-                       True, [])
-        p2 = soMessage(Header(None, rospy.Duration(5), ''), Vector3(2, 2, 0),
-                       1, 4.0, 1.0, 0.8, 5, rospy.Duration(5), 0, 0, Vector3(),
-                       True, [])
+        p1 = SoMessage(Header(None, rospy.Duration(0), ''), None,
+                       Vector3(0, 0, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0), True, [])
+        p2 = SoMessage(Header(None, rospy.Duration(5), ''), None,
+                       Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(5), True, [])
         self.assertEqual(so_data.flocking.agent_velocity(p1, p2),
                          Vector3(0.4, 0.4, 0))
 
         # nanoseconds passed
-        p1 = soMessage(Header(None, rospy.Duration(0, 0), ''),
-                       Vector3(0, 0, 0), 1, 4.0, 1.0, 0.8, 5,
-                       rospy.Duration(0, 0), 0, 0, Vector3(), True, [])
-        p2 = soMessage(Header(None, rospy.Duration(0, 100000), ''),
-                       Vector3(2, 2, 0), 1, 4.0, 1.0, 0.8, 5,
-                       rospy.Duration(0, 100000), 0, 0, Vector3(), True,
-                       [])
+        p1 = SoMessage(Header(None, rospy.Duration(0, 0), ''), None,
+                       Vector3(0, 0, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0, 0), True, [])
+        p2 = SoMessage(Header(None, rospy.Duration(0, 100000), ''), None,
+                       Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0, 100000), True, [])
         self.assertEqual(so_data.flocking.agent_velocity(p1, p2),
                          Vector3(20000.0, 20000.0, 0))
 
         # negative velocity
-        p1 = soMessage(Header(None, rospy.Duration(0, 0), ''),
-                       Vector3(2, 2, 0), 1, 4.0, 1.0, 0.8, 5,
-                       rospy.Duration(0, 0), 0, 0, Vector3(), True, [])
-        p2 = soMessage(Header(None, rospy.Duration(0, 100000), ''),
-                       Vector3(0, 0, 0), 1, 4.0, 1.0, 0.8, 5,
-                       rospy.Duration(0, 100000), 0, 0, Vector3(), True,
-                       [])
+        p1 = SoMessage(Header(None, rospy.Duration(0, 0), ''), None,
+                       Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0, 0), True, [])
+        p2 = SoMessage(Header(None, rospy.Duration(0, 100000), ''), None,
+                       Vector3(0, 0, 0), Quaternion(), Vector3(), 1, 4.0, 1.0,
+                       0.8, 5, rospy.Duration(0, 100000), True, [])
         self.assertEqual(so_data.flocking.agent_velocity(p1, p2),
                          Vector3(-20000.0, -20000.0, 0))
 

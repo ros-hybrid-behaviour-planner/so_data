@@ -2,14 +2,18 @@
 Created on 11.01.2017
 
 @author: kaiser
+
+Module contains abstract base class to transform data of a topic to
+SoMessages
 """
 
 import rospy
-from so_data.soBroadcaster import SoBroadcaster
-from so_data.msg import soMessage
-from geometry_msgs.msg import Vector3
-from abc import ABCMeta, abstractmethod
 import copy
+from abc import ABCMeta, abstractmethod
+from utils.ros_helpers import get_topic_type
+from geometry_msgs.msg import Vector3, Quaternion
+from so_data.sobroadcaster import SoBroadcaster
+from so_data.msg import SoMessage
 
 
 class TopicGradientTf(object):
@@ -18,45 +22,53 @@ class TopicGradientTf(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, topic, message_type, id, p=Vector3(), attraction=-1,
-                 diffusion=1.0, goal_radius=0.5, ev_factor=1, ev_time=0,
-                 angle_x=0, angle_y=0, direction=Vector3(), moving=True,
-                 payload=[]):
+    def __init__(self, topic, frame, id, message_type=None, p=Vector3(),
+                 attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
+                 ev_time=0, quaternion=Quaternion(),
+                 moving=True, payload=None, direction=Vector3(1, 0, 0)):
         """
-        subscription to topic and variable initializatoin
+        subscription to topic and variable initialization
         :param topic: topic to subscribe to
+        :param frame: header frame id used in SoMessage
+        :param id: soMessage id used for parent frame
         :param message_type: message type of topic
-        :param id: soMessage id
         :param p: soMessage pose
         :param attraction: soMessage attraction (1) or repulsion (-1)
         :param diffusion: soMessage diffusion radius
         :param goal_radius: soMessage goal radius
         :param ev_factor: soMessage evaporation factor
         :param ev_time: soMessage evaporation (delta) time
-        :param angle_x: soMessage sphere sector angle
-        :param angle_y: soMessage sphere sector angle
-        :param direction: soMessage sphere sector direction
+        :param quaternion: soMessage orientation
+        :param direction: soMessage initial heading direction
         :param moving: soMessage boolean to specify static / moving gradient
         :param payload: soMessage payload data
         """
-        rospy.Subscriber(topic, message_type, self.callback)
+
+        # broadcaster for transformed data
+        self._broadcast = SoBroadcaster()
+        self._current_msg = SoMessage()
 
         self._id = id
+        self._frame = frame
         self.p = p
+        self.q = quaternion
         self.attraction = attraction
         self.diffusion = diffusion
         self.goal_radius = goal_radius
         self.ev_factor = ev_factor
         self.ev_time = ev_time
-        self.angle_x = angle_x
-        self.angle_y = angle_y
         self.direction = direction
         self.moving = moving
+        if payload is None:
+            payload = []
         self.payload = payload
 
-        self._broadcast = SoBroadcaster()
-
-        self._current_msg = soMessage()
+        if message_type is None:
+            message_type = get_topic_type(topic)
+        if message_type is not None:
+            self._sub = rospy.Subscriber(topic, message_type, self.callback)
+        else:
+            rospy.logerr("Could not determine message type of: " + topic)
 
     @abstractmethod
     def callback(self, topic_message):
@@ -88,24 +100,24 @@ class TopicGradientTf(object):
     def create_msg(self):
         """
         creates soMessage with set parameters
-        :return:
+        :return: gradient message / SoMessage
         """
-        msg = soMessage()
+        msg = SoMessage()
 
         # current time
         now = rospy.Time.now()
 
-        msg.header.frame_id = self._id
+        msg.header.frame_id = self._frame
+        msg.parent_frame = self._id
         msg.header.stamp = now
         msg.p = self.p
+        msg.q = self.q
         msg.attraction = self.attraction
         msg.diffusion = self.diffusion
         msg.goal_radius = self.goal_radius
         msg.ev_factor = self.ev_factor
         msg.ev_time = self.ev_time
         msg.ev_stamp = now
-        msg.angle_x = self.angle_x
-        msg.angle_y = self.angle_y
         msg.direction = self.direction
         msg.moving = self.moving
         msg.payload = self.payload
@@ -113,4 +125,8 @@ class TopicGradientTf(object):
         return msg
 
     def send(self):
+        """
+        spread current gradient
+        :return:
+        """
         self._broadcast.send_data(self._current_msg)
