@@ -20,19 +20,19 @@ class RepulsionFernandez(MovementPattern):
     Repulsion calculation based on formulas presented by Fernandez-Marquez
     in "Description and composition of bio-inspired design patterns"
     """
-    def __init__(self, buffer, frames=None, static=False, moving=True):
+    def __init__(self, buffer, frames=None, **kwargs):
         """
+        initialization, calculation based on agent_list method of SoBuffer
+        (moving gradients)
         :param buffer: soBuffer returning gradient data
-        :param frame: agent frame ID
-        :param static: consider static gradients
-        :param moving: consider moving gradients
+        :param frame: frames to be considered in calculations
+        :param kwargs: keyword arguments to adjust parent class
         """
-        # set standard agent frame if no frame is specified
+        # set standard agent pose frame if no frame is specified
         if not frames:
             frames = [buffer.pose_frame]
 
-        super(RepulsionFernandez, self).__init__(buffer, frames, static=static,
-                                                 moving=moving)
+        super(RepulsionFernandez, self).__init__(buffer, frames, **kwargs)
 
     def move(self):
         """
@@ -61,6 +61,8 @@ class RepulsionFernandez(MovementPattern):
                         mov.y += (pose.p.y - el.p.y) * diff / distance
                         mov.z += (pose.p.z - el.p.z) * diff / distance
 
+                    # enhancement of formulas to cover case when gradients are
+                    # collided (agent is in goal radius of neighbor)
                     elif distance <= 0:
                         # create random vector with length=repulsion radius
                         if distance == - el.goal_radius:
@@ -87,22 +89,23 @@ class RepulsionGradient(MovementPattern):
     Balch & Hybinette (see gradient.py)
     """
 
-    def __init__(self, buffer, frames=None):
+    def __init__(self, buffer, frames=None, **kwargs):
         """
+        initialization, calculation based on agent_list method of SoBuffer
+        (moving gradients)
         :param buffer: soBuffer returning gradient data
-        :param frames: agent frame ID; if no
-        :param static: consider static gradients
-        :param moving: consider moving gradients:
+        :param frames: frames to be considered in calculations
+        :param kwargs: keyword arguments
         """
 
         if not frames:
             frames = [buffer.pose_frame]
 
-        super(RepulsionGradient, self).__init__(buffer, frames)
+        super(RepulsionGradient, self).__init__(buffer, frames, kwargs)
 
     def move(self):
         """
-        calculates repulsion vector based on gradients
+        calculates repulsion vector based on agent gradients
         :return: repulsion movement vector
         """
         pose = self._buffer.get_own_pose()
@@ -116,12 +119,10 @@ class RepulsionGradient(MovementPattern):
             for el in view:
                 grad = gradient.calc_repulsive_gradient(el, pose)
 
+                # case: agents are collided
                 if abs(grad.x) == np.inf or abs(grad.y) == np.inf or \
                                 abs(grad.z) == np.inf:
                     dv = calc.delta_vector(pose.p, el.p)
-
-                    if not repulsion:
-                        repulsion = Vector3()
 
                     if calc.vector_length(dv) == 0:
                         repulsion = calc.add_vectors(repulsion,

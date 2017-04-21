@@ -8,12 +8,12 @@ SoMessages
 """
 
 import rospy
-from so_data.sobroadcaster import SoBroadcaster
-from so_data.msg import SoMessage
-from geometry_msgs.msg import Vector3, Quaternion
+import copy
 from abc import ABCMeta, abstractmethod
 from utils.ros_helpers import get_topic_type
-import copy
+from geometry_msgs.msg import Vector3, Quaternion
+from so_data.sobroadcaster import SoBroadcaster
+from so_data.msg import SoMessage
 
 
 class TopicGradientTf(object):
@@ -27,19 +27,19 @@ class TopicGradientTf(object):
                  ev_time=0, quaternion=Quaternion(),
                  moving=True, payload=None, direction=Vector3(1, 0, 0)):
         """
-        subscription to topic and variable initializatoin
+        subscription to topic and variable initialization
         :param topic: topic to subscribe to
+        :param frame: header frame id used in SoMessage
+        :param id: soMessage id used for parent frame
         :param message_type: message type of topic
-        :param id: soMessage id
         :param p: soMessage pose
         :param attraction: soMessage attraction (1) or repulsion (-1)
         :param diffusion: soMessage diffusion radius
         :param goal_radius: soMessage goal radius
         :param ev_factor: soMessage evaporation factor
         :param ev_time: soMessage evaporation (delta) time
-        :param angle_x: soMessage sphere sector angle
-        :param angle_y: soMessage sphere sector angle
-        :param direction: soMessage sphere sector direction
+        :param quaternion: soMessage orientation
+        :param direction: soMessage initial heading direction
         :param moving: soMessage boolean to specify static / moving gradient
         :param payload: soMessage payload data
         """
@@ -83,6 +83,8 @@ class TopicGradientTf(object):
 
         :return:
         """
+        pass
+
         # create message
         msg = copy.deepcopy(self.create_msg())
 
@@ -98,7 +100,7 @@ class TopicGradientTf(object):
     def create_msg(self):
         """
         creates soMessage with set parameters
-        :return:
+        :return: gradient message / SoMessage
         """
         msg = SoMessage()
 
@@ -123,4 +125,8 @@ class TopicGradientTf(object):
         return msg
 
     def send(self):
+        """
+        spread current gradient
+        :return:
+        """
         self._broadcast.send_data(self._current_msg)

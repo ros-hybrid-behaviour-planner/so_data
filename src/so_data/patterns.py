@@ -3,11 +3,11 @@ Created on 15.02.2017
 
 @author: kaiser
 
-Module including abstract class for patterns
+Module including abstract classes for movement and decision patterns
 """
 
-from abc import ABCMeta, abstractmethod
 import rospy
+from abc import ABCMeta, abstractmethod
 from diagnostic_msgs.msg import KeyValue
 from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
@@ -29,7 +29,6 @@ class MovementPattern(object):
         :param maxvel: maximum velocity / length of movement vector
         :param minvel: minimum velocity / length of movement vector
         """
-
         self._buffer = buffer
         self.max_velocity = maxvel
 
@@ -45,8 +44,8 @@ class MovementPattern(object):
     @abstractmethod
     def move(self):
         """
-        method calculates movement vector based on Gradient List received
-        by buffer
+        method calculates movement vector based on a list of gradients
+        determined by buffer
         :return: movement vector (Vector3)
         """
         pass
@@ -60,7 +59,7 @@ class MovementPattern(object):
 
 class DecisionPattern(object):
     """
-    class for decision patterns
+    abstract class for decision patterns / mechanisms
     """
     __metaclass__ = ABCMeta
 
@@ -82,7 +81,6 @@ class DecisionPattern(object):
         :param diffusion: diffusion radius of gradient to be spread
         :param attraction: attraction value of gradient to be spread
         """
-
         self._broadcaster = SoBroadcaster()
 
         self._buffer = buffer

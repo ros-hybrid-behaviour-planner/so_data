@@ -1,23 +1,23 @@
 """ Created on 07.11.2016
-.. module:: soBuffer
-.. moduleauthor:: kaiser
+
+@author: kaiser
 
 Module for receiving, storing and manipulating gradient data
-offers basic functionalities: receiving (spreading), evaporation, aggregation
+offers basic functionalities: receiving (spreading), evaporation, aggregation,
+                              gradients
 """
 
-from __future__ import \
-    division  # force floating point division when using plain /
+from __future__ import division
 import rospy
-import tf.transformations
-from so_data.msg import SoMessage
-from geometry_msgs.msg import Vector3
 import numpy as np
 import calc
 import random
 import gradient
 import threading
 import copy
+import tf.transformations
+from so_data.msg import SoMessage
+from geometry_msgs.msg import Vector3
 
 
 class AGGREGATION(object):
@@ -61,7 +61,7 @@ class SoBuffer(object):
         :type aggregation_distance: float
 
         :param min_diffusion: threshold, gradients with smaller diffusion
-        radius will be deleted (when goal_radius != 0)
+        radius will be deleted (only if goal_radius == 0)
         :type min_diffusion: float
 
         :param view_distance: radius in which agent can sense gradients;
@@ -95,7 +95,7 @@ class SoBuffer(object):
         :param ev_thread: trigger evaporation by thread
         :type ev_thread: bool
 
-        :param ev_time: delta t in s when evaporation should be triggered
+        :param ev_time: delta t in sec when evaporation should be triggered
         :type ev_time: float
         """
 
@@ -128,9 +128,10 @@ class SoBuffer(object):
         self._id = id  # own ID
         self._moving_storage_size = moving_storage_size
 
-        # RETURN AGGREGATED GRADIENT DATA
+        # view distance of agent
         self._view_distance = view_distance
 
+        # threading
         self.ev_thread = ev_thread
         self.ev_time = ev_time
         if ev_thread:
@@ -306,7 +307,7 @@ class SoBuffer(object):
 
     def aggregation_newparent(self, msg):
         """
-        stores newest message per parent
+        stores newest message per parent frame ID
         :param msg: received gradient message
         """
         found = False
@@ -823,8 +824,8 @@ class SoBuffer(object):
     # Aggregation of data for Decision patterns
     def static_list_angle(self, frameids, view_angle_xy, view_angle_yz=np.pi):
         """
-        function determines all gradients within view distance with a certain
-        frame ID & within a view angle,
+        function determines all static gradients within view distance with a
+        certain frame ID & within a view angle,
         only static gradients as pheromones are deposited in environment,
         :param frameids: frame ID of agent data
         :param view_angle_xy: angle in which agent can see pheromones on
@@ -877,8 +878,8 @@ class SoBuffer(object):
     # Aggregation of data for Decision patterns
     def agent_set(self, frameids=None):
         """
-        function determines all gradients within view distance with a certain
-        frame ID, excluding all gradients from agent itself
+        function determines all moving gradients within view distance with a
+        certain frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
         :return: list of gradients
         """
@@ -915,8 +916,7 @@ class SoBuffer(object):
     # EVAPORATION
     def _evaporate_buffer(self, msg=None):
         """
-        evaporate buffer data stored in self._static
-        neighbor data is not evaporated as it is considered being fixed
+        evaporate buffer data
         :return:
         """
         if self.ev_thread:

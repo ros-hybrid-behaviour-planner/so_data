@@ -48,6 +48,7 @@ class DepositPheromonesMin(FollowMinReach):
 
     def move(self):
         """
+        deposit pheromone and determine movement vector
         :return: movement vector
         """
         # spread pheromone
@@ -89,16 +90,13 @@ class DepositPheromonesMin(FollowMinReach):
 
 class DepositPheromonesRandom(Exploration):
     """
-    depositing pheromones while walking random
+    depositing pheromones while moving randomly
     """
     def __init__(self, buffer, maxvel=1.0, minvel=0.5, frame='Pheromone',
                  attraction=1, ev_factor=0.9, ev_time=5):
         """
         initialize behaviour
         :param buffer: soBuffer
-        :param frames: frames to be included in list returned by buffer
-        :param moving: consider moving gradients in list returned by buffer
-        :param static: consider static gradients in list returned by buffer
         :param maxvel: maximum velocity of agent
         :param minvel: minimum velocity of agent
         :param frame: pheromone frame
@@ -118,6 +116,7 @@ class DepositPheromonesRandom(Exploration):
 
     def move(self):
         """
+        deposit pheromone and return random movement vector
         :return: movement vector
         """
         # spread pheromone
@@ -168,12 +167,12 @@ class SpreadGradient(object):
         initialization of decision patterns
         :param buffer: SoBuffer
         :param frame: gradient frame ID
-        :param moving: mark spread gradient as moving/static
         :param goal_radius: goal radius of gradient to be spread
         :param ev_factor: evaporation factor of gradient to be spread
         :param ev_time: evaporation time of gradient to be spread
         :param diffusion: diffusion radius of gradient to be spread
         :param attraction: attraction value of gradient to be spread
+        :param moving: mark spread gradient as moving/static
         """
 
         self._broadcaster = SoBroadcaster()
@@ -191,7 +190,7 @@ class SpreadGradient(object):
 
     def spread(self):
         """
-        method to spread calculated values (determined by calc_value)
+        method to spread gradient
         :return:
         """
         # create gossip message

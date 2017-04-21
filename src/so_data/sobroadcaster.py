@@ -7,24 +7,26 @@ Module allows to broadcast SoMessage data to topic so_data
 """
 
 import rospy 
-from so_data.msg import * 
+from so_data.msg import SoMessage
 
 
-class SoBroadcaster():
+class SoBroadcaster(object):
     """
-    This class is the broadcaster to send data from one robot to the data space
+    This class is a broadcaster to send data from one robot to the gradient
+    topic so_data
     """
     def __init__(self):
         """
         Constructor
-        Creates publisher to broadcast data to soData as an soMessage 
+        Creates publisher to broadcast data to so_data as a soMessage
         """
         self._pub = rospy.Publisher('so_data', SoMessage, queue_size=10,
                                     latch=True)
 
     def send_data(self, message):
         """
-        :param message: msg to be send or list of messages
+        method to spread gradient data
+        :param message: msg or list of messages to be send
         :return:
         """
         if isinstance(message, SoMessage):

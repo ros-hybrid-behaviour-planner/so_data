@@ -8,10 +8,10 @@ Module to transform pose topic messages (geometry.msgs.poseStamped) to
 SoMessages
 """
 
-from so_data.topicgradienttf import TopicGradientTf
 import copy
 import rospy
 import geometry_msgs.msg
+from so_data.topicgradienttf import TopicGradientTf
 
 
 class PoseStampedTopicGradientTf(TopicGradientTf):
@@ -21,6 +21,13 @@ class PoseStampedTopicGradientTf(TopicGradientTf):
     """
     def __init__(self, topic, id, message_type=geometry_msgs.msg.PoseStamped,
                  **kwargs):
+        """
+        initialization
+        :param topic: topic to subscribe to
+        :param id: soMessage id used for parent frame
+        :param message_type: message type of topic
+        :param kwargs: keyword arguments to specify other params of SoMessage
+        """
         super(PoseStampedTopicGradientTf, self).__init__(topic, id,
                                                          message_type,
                                                          **kwargs)
@@ -28,6 +35,7 @@ class PoseStampedTopicGradientTf(TopicGradientTf):
     def callback(self, pose):
         """
         implementation of callback, assigns pose msg to gradient center
+        sets current_msg variable
         :param pose:geometry pose message of pose topic
         :return:
         """
@@ -50,6 +58,12 @@ class CallbackPoseStampedTopicGradientTf(PoseStampedTopicGradientTf):
     class to transform poseStamped topic to soMessage & send it within callback
     """
     def __init__(self, topic, id, **kwargs):
+        """
+        initialization
+        :param topic: topic to subscribe to
+        :param id: soMessage id used for parent frame
+        :param kwargs: keyword arguments to specify other params of SoMessage
+        """
         super(CallbackPoseStampedTopicGradientTf, self).__init__(topic,
                                                                  id, **kwargs)
 
@@ -73,12 +87,12 @@ if __name__ == '__main__':
     """
     Node to convert topics to gradients
     """
-    rospy.init_node("transform_")
+    rospy.init_node("transform_poseStamped")
 
     rate = rospy.Rate(rospy.get_param("~frequency", 1))
 
     tf = PoseStampedTopicGradientTf(rospy.get_param("~topic", 'turtle_1_pose'),
-                             rospy.get_param("~id", 'robot1'))
+                                    rospy.get_param("~id", 'robot1'))
 
     while not rospy.is_shutdown():
         # send message
