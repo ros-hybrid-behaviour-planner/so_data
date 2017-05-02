@@ -733,3 +733,11 @@ Sample implementations can be found in poseGradientTf and poseStrampedGradientTf
 Both subscribe to a pose topic (geometry_msgs/pose or poseStamped) and the received data is transformed into a soMessage and buffered in `self._current_msg`. 
 The message can either be spread right away (as part of the subscription callback) or the sending is done in a ROS node with a specific frequency. 
 Using the class within a ROS node leads to sending the last buffered soMessage. 
+
+
+Branches
+--------
+There exist two different branches: 
+
+* **master**: includes all the functionality described above and is the current stable version to use
+* **buffer_speedtest**: includes several tests to test the speed of the SoBuffer instance 
