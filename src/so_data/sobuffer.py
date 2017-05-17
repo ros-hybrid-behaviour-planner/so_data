@@ -406,7 +406,7 @@ class SoBuffer(object):
     def gradients(self, frameids=None, static=True, moving=True):
         """
         function determines all gradients within view distance
-        :param frameids: frame IDs to be considered looking for gradients
+        :param frameids: frame IDs to be considered looking for gradients, None considers all frameids.
         :param static: consider static gradients
         :param moving: consider moving gradients
         :return: list of gradients []

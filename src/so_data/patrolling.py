@@ -7,9 +7,11 @@ Module includes implementation of patrolling mechanism
 """
 
 import random
+import rospy
+import numpy as np
 import gradient
 import calc
-import rospy
+from geometry_msgs.msg import Vector3
 from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from chemotaxis import AvoidAll
@@ -31,8 +33,8 @@ class Patrol(AvoidAll):
     # Current approach use collision avoidance from pheromones as well
 
     def __init__(self, buffer, frames=None, moving=True, static=True,
-                 maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=1,
-                 ev_factor=0.9, ev_time=5):
+                 maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=-1,
+                 ev_factor=0.9, ev_time=10):
         """
         initialize behaviour
         :param buffer: soBuffer
@@ -84,6 +86,70 @@ class Patrol(AvoidAll):
     #         g = calc.adjust_length(g, self.minvel)
     #
     #     return g
+
+    def patrol_move(self):
+        """
+        calculates movement vector handling all gradients as repulsive
+        :return: movement vector
+        """
+
+        pose = self._buffer.get_own_pose()
+        result = None
+
+        # repulsive gradients
+        gradients = self._buffer.gradients(self.frames, self.static,
+                                           self.moving)
+
+        if pose:
+            if gradients:
+                result = Vector3()
+
+                if len(gradients) > 1:
+
+                    for grdnt in gradients:
+                        grad = gradient.calc_repulsive_gradient(grdnt, pose)
+
+                        # robot position is within obstacle goal radius
+                        # handle infinite repulsion
+                        if grad.x == np.inf or grad.x == -1 * np.inf:
+                            # create random vector with length (goal_radius +
+                            # gradient.diffusion)
+                            dv = calc.delta_vector(pose.p, grdnt.p)
+
+                            # ignore zero length vectors (gradients we are directly on top of)
+                            if calc.vector_length(dv) != 0:
+
+                                result = calc.add_vectors(result,
+                                                          calc.adjust_length(dv,
+                                                                grdnt.goal_radius
+                                                                + grdnt.diffusion))
+                        else:
+                            result = calc.add_vectors(result, grad)
+                else:
+                    grdnt = gradients[0]
+                    result = calc.random_vector(grdnt.goal_radius + grdnt.diffusion)
+
+        if not result:
+            return None
+
+        # adjust length
+        d = calc.vector_length(result)
+        if d > self.maxvel:
+            result = calc.adjust_length(result, self.maxvel)
+        elif 0 < d < self.minvel:
+            result = calc.adjust_length(result, self.minvel)
+
+        return result
+
+    def move(self):
+        """
+        deposit pheromone and move towards nest
+        :return: movement vector
+        """
+        # spread pheromone
+        self.spread()
+
+        return self.patrol_move()
 
     def spread(self):
         """
