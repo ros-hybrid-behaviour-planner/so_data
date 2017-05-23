@@ -16,25 +16,16 @@ from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from chemotaxis import AvoidAll
 
-
-
-
-
 # Movement Behaviour
 class Patrol(AvoidAll):
     """
-    Patrol: environment following weakest pheromones while depositing new pheromones
+    Patrol: Patrolling or exploring environment by avoiding deposited pheromones, hence the agent will move in the
+            space without pheromones
     """
 
-    # TODO Idea use a certain timeout for the pheromones after which time they are considered!? If not move into random direction
-    # Use two different types of pheromones!?
-    # Use a threshold density of gradients!?
-    # Get lowest gradient density in sensing range!?
-    # Current approach use collision avoidance from pheromones as well
-
     def __init__(self, buffer, frames=None, moving=True, static=True,
-                 maxvel=1.0, minvel=0.5, frame='Pheromone', attraction=-1,
-                 ev_factor=0.9, ev_time=10):
+                 maxvel=1.0, minvel=0.7, frame='Pheromone', attraction=-1,
+                 ev_factor=0.9, ev_time=30):
         """
         initialize behaviour
         :param buffer: soBuffer
@@ -58,34 +49,6 @@ class Patrol(AvoidAll):
         self.diffusion = maxvel
 
         self._broadcaster = SoBroadcaster()
-
-    # def move(self):
-    #     """
-    #     calculates movement vector
-    #     :return: movement vector
-    #     """
-    #     pose = self._buffer.get_own_pose()
-    #     g = None
-    #
-    #     # weakest gradient
-    #     grad = self._buffer.min_reach_attractive_gradient(self.frames,
-    #                                                       self.static,
-    #                                                       self.moving)
-    #
-    #     if pose and grad:
-    #         g = gradient.calc_attractive_gradient(grad, pose)
-    #
-    #     if not g:
-    #         return None
-    #
-    #     # adjust length
-    #     d = calc.vector_length(g)
-    #     if d > self.maxvel:
-    #         g = calc.adjust_length(g, self.maxvel)
-    #     elif 0 < d < self.minvel:
-    #         g = calc.adjust_length(g, self.minvel)
-    #
-    #     return g
 
     def patrol_move(self):
         """
@@ -116,13 +79,9 @@ class Patrol(AvoidAll):
                             # gradient.diffusion)
                             dv = calc.delta_vector(pose.p, grdnt.p)
 
-                            # ignore zero length vectors (gradients we are directly on top of)
-                            if calc.vector_length(dv) != 0:
+                            dv = calc.adjust_length(dv, grdnt.goal_radius + grdnt.diffusion)
 
-                                result = calc.add_vectors(result,
-                                                          calc.adjust_length(dv,
-                                                                grdnt.goal_radius
-                                                                + grdnt.diffusion))
+                            result = calc.add_vectors(result, dv)
                         else:
                             result = calc.add_vectors(result, grad)
                 else:
@@ -138,6 +97,8 @@ class Patrol(AvoidAll):
             result = calc.adjust_length(result, self.maxvel)
         elif 0 < d < self.minvel:
             result = calc.adjust_length(result, self.minvel)
+        else:
+            result = calc.random_vector(grdnt.goal_radius + grdnt.diffusion)
 
         return result
 
