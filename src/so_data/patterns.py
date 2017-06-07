@@ -50,6 +50,12 @@ class MovementPattern(object):
         """
         pass
 
+    def execute(self):
+        """
+        Optional hook that is triggered by behaviours applying the pattern during execution, e.g. in do_step()
+        """
+        pass
+
     def get_pos(self):
         """
         :return: current position of robot

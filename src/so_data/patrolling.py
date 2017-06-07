@@ -50,9 +50,9 @@ class Patrol(MovementPattern):
 
         self._broadcaster = SoBroadcaster()
 
-    def patrol_move(self):
+    def move(self):
         """
-        calculates movement vector handling all gradients as repulsive
+        calculates movement vector, handling all gradients as repulsive
         :return: movement vector
         """
 
@@ -102,15 +102,12 @@ class Patrol(MovementPattern):
 
         return result
 
-    def move(self):
+    def execute(self):
         """
-        deposit pheromone and move towards nest
-        :return: movement vector
+        deposit pheromone during execution
         """
         # spread pheromone
         self.spread()
-
-        return self.patrol_move()
 
     def spread(self):
         """
