@@ -14,10 +14,10 @@ import calc
 from geometry_msgs.msg import Vector3
 from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
-from chemotaxis import AvoidAll
+from patterns import MovementPattern
 
 # Movement Behaviour
-class Patrol(AvoidAll):
+class Patrol(MovementPattern):
     """
     Patrol: Patrolling or exploring environment by avoiding deposited pheromones, hence the agent will move in the
             space without pheromones
@@ -25,7 +25,7 @@ class Patrol(AvoidAll):
 
     def __init__(self, buffer, frames=None, moving=True, static=True,
                  maxvel=1.0, minvel=0.7, frame='Pheromone', attraction=-1,
-                 ev_factor=0.9, ev_time=30):
+                 ev_factor=0.9, ev_time=30, ev_diffusion=1.0):
         """
         initialize behaviour
         :param buffer: soBuffer
@@ -46,7 +46,7 @@ class Patrol(AvoidAll):
         self.attraction = attraction
         self.ev_factor = ev_factor
         self.ev_time = ev_time
-        self.diffusion = maxvel
+        self.diffusion = ev_diffusion
 
         self._broadcaster = SoBroadcaster()
 
