@@ -168,8 +168,6 @@ class SoBuffer(object):
 
         # evaporate received data
         msg = self._evaporate_msg(msg)
-        if not msg:  # evaporation let to disappearance of the message
-            return
 
         with self.lock:
             # store own position and neighbor / moving agents data
@@ -925,7 +923,7 @@ class SoBuffer(object):
             t.start()
 
         with self.lock:
-            # interate through keys
+            # iterate through keys
             for fid in self._static.keys():
                 if self._static[fid]:  # array not empty
                     # go in reverse order
@@ -1002,8 +1000,7 @@ class SoBuffer(object):
             if msg.ev_factor < 1.0:
                 msg.diffusion = 0
 
-        if msg.diffusion >= self._min_diffusion or msg.goal_radius != 0.0:
-            return msg
+        return msg
 
     @property
     def id(self):
