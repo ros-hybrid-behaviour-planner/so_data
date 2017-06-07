@@ -17,7 +17,7 @@ from so_data.srv import EnvGradient, EnvGradientResponse
 
 def create_gradient(position, attraction=0, diffusion=3.0, q=Quaternion(),
                     moving=False, direction=Vector3(1,0,0), goal_radius=1.0,
-                    payload=[], ev_time=0, ev_factor=1.0, frameid='',
+                    payload=None, ev_time=0, ev_factor=1.0, frameid='',
                     parentframe=''):
     """
     creates a soMessage to specify a gradient
@@ -34,6 +34,9 @@ def create_gradient(position, attraction=0, diffusion=3.0, q=Quaternion(),
     param: parentframe: parent frame id of gradient
     :return: soMessage
     """
+    if payload is None: #avoid reuse of mutable type
+        payload = []
+
     now = rospy.Time.now()
 
     msg = SoMessage()
