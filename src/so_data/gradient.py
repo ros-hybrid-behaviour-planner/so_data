@@ -37,7 +37,8 @@ def calc_attractive_gradient(gradient, pose):
         v = calc.adjust_length(tmp, magnitude)
     elif d > gradient.diffusion:
         # calculate attraction vector
-        v = calc.adjust_length(tmp, 1.0)
+        #v = calc.adjust_length(tmp, 1.0)#TODO Why this?
+        v =tmp
 
     return v
 
