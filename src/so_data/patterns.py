@@ -6,9 +6,11 @@ Created on 15.02.2017
 Module including abstract classes for movement and decision patterns
 """
 
-import rospy
 from abc import ABCMeta, abstractmethod
+
+import rospy
 from diagnostic_msgs.msg import KeyValue
+
 from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 
@@ -65,11 +67,11 @@ class DecisionPattern(object):
 
     def __init__(self, buffer, frame=None, key=None, value=None, state=None,
                  moving=True, static=False, goal_radius=0, ev_factor=1.0,
-                 ev_time=0.0, diffusion=20, attraction=0):
+                 ev_time=0.0, diffusion=20, attraction=0, requres_pos = True):
         """
         initialization of decision patterns
         :param buffer: SoBuffer
-        :param frame: gradient frame to be used in decision pattern
+        :param frame: frame that is used for the SoMessage describing the result of the decision
         :param key: payload key with values required in decision pattern
         :param value: initial value for decision pattern
         :param state: initial state for decision pattern
@@ -81,6 +83,7 @@ class DecisionPattern(object):
         :param diffusion: diffusion radius of gradient to be spread
         :param attraction: attraction value of gradient to be spread
         """
+        self._requires_pos = requres_pos
         self._broadcaster = SoBroadcaster()
 
         self._buffer = buffer
@@ -117,7 +120,38 @@ class DecisionPattern(object):
         method to spread calculated values (determined by calc_value)
         :return:
         """
-        # create gossip message
+
+        if not self._requires_pos or self.get_pos():
+            # set value and state
+            val = self.calc_value()
+            self.value = val[0]
+            self.state = val[1]
+
+            if val:
+                if self.frame is not None:
+                    # create gossip message
+                    msg = self.create_message(val)
+
+                    # spread gradient (only if data is available)
+                    self.send_message(msg)
+
+            else:
+                rospy.logerr("DecisionPattern(%s):: Spread not possible. Calculation failed ...", str(type(self)))
+
+        else:
+            rospy.logerr("DecisionPattern(%s):: Spread not possible. Own position unknown ...",  str(type(self)))
+
+    def send_message(self, msg):
+        self._broadcaster.send_data(msg)
+
+    def get_pos(self):
+        """
+        :return: Header
+        """
+        return self._buffer.get_own_pose()
+
+    def create_message(self, val):
+
         msg = SoMessage()
         msg.header.frame_id = self.frame
         msg.parent_frame = self._buffer.id
@@ -127,7 +161,10 @@ class DecisionPattern(object):
         msg.ev_stamp = now
 
         # important to determine whether gradient is within view
-        current_pose = self._buffer.get_own_pose()
+        current_pose = self.get_pos()
+        if current_pose == None:
+            rospy.logerr("Self organisation stopped. Last position not available")
+            return None
         msg.p = current_pose.p
         msg.q = current_pose.q
         msg.attraction = self.attraction
@@ -140,19 +177,6 @@ class DecisionPattern(object):
 
         msg.moving = True  # set to moving as gradient is tied to agent
 
-        # set value and state
-        tmp = self.calc_value()
+        msg.payload.append(KeyValue(self.key, val[0]))
 
-        if tmp:
-            self.value = tmp[0]
-            self.state = tmp[1]
-            msg.payload.append(KeyValue(self.key, "%.16f" % self.value))
-
-            # spread gradient (only if data is available)
-            self._broadcaster.send_data(msg)
-
-    def get_pos(self):
-        """
-        :return: current position of robot
-        """
-        return self._buffer.get_own_pose()
+        return msg
