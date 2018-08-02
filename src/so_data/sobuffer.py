@@ -1030,3 +1030,8 @@ class SoBuffer(object):
     @property
     def own_pos(self):
         return self._own_pos
+
+    def reset_buffer(self):
+        self._static = {}
+        self._own_pos = []
+        self._moving = {}
