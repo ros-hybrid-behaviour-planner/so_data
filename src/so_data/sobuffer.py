@@ -140,6 +140,9 @@ class SoBuffer(object):
         if ev_thread:
             self._evaporate_buffer()
 
+        self.init_subscriber()
+
+    def init_subscriber(self):
         rospy.Subscriber('so_data', SoMessage, self.store_data)
 
     def store_data(self, msg):
