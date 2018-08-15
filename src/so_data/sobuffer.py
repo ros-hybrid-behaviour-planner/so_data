@@ -103,6 +103,7 @@ class SoBuffer(object):
         """
 
         # lock for evaporation
+        self.last_id = 0
         self.lock = threading.Lock()
 
         # STORE DATA
@@ -178,6 +179,8 @@ class SoBuffer(object):
             return
 
         with self.lock:
+            msg.p.z = self.last_id
+            self.last_id += 1
             # store own position and neighbor / moving agents data
             if msg.moving:
                 self.store_moving(msg)
@@ -905,23 +908,25 @@ class SoBuffer(object):
         if self.get_last_position() is None:
             return gradients
 
-        pose = copy.deepcopy(self.get_last_position())
+        pose = self.get_last_position()
 
         # determine frames to consider
         if not frameids:
             frameids = self._moving.keys()
 
-        moving = copy.deepcopy(self._moving)
+        moving = self._moving
+        moving_keys = moving.keys()
 
         for frame in frameids:
-            if frame in moving.keys() and moving[frame]:
-                for pid in moving[frame].keys():
+            if frame in moving_keys and moving[frame]:
+                moving_frame_keys = moving[frame].keys()
+                for pid in moving_frame_keys:
                     if (include_own or pid != self._id) and moving[frame][pid]:
                         if calc.get_gradient_distance(moving[frame][pid][-1].p,
                                                       pose.p) \
                                 <= moving[frame][pid][-1].diffusion + \
-                                        moving[frame][pid][-1].goal_radius + \
-                                        self._view_distance:
+                                moving[frame][pid][-1].goal_radius + \
+                                self._view_distance:
                             gradients += moving[frame][pid]
 
         return gradients
