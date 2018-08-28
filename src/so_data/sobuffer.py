@@ -103,6 +103,7 @@ class SoBuffer(object):
         """
 
         # lock for evaporation
+        self._listeners = []
         self.last_id = 0
         self.lock = threading.Lock()
 
@@ -179,14 +180,16 @@ class SoBuffer(object):
             return
 
         with self.lock:
-            msg.p.z = self.last_id
-            self.last_id += 1
             # store own position and neighbor / moving agents data
             if msg.moving:
                 self.store_moving(msg)
             # aggregate and store static gradient data
             else:
                 self.store_static(msg)
+
+        for frames, callback in self._listeners:
+            if msg.header.frame_id in frames:
+                callback(msg)
 
     def store_moving(self, msg):
         """
@@ -904,11 +907,12 @@ class SoBuffer(object):
 
         gradients = []
 
+        pose = self.get_last_position()
+
         # no own position available
-        if self.get_last_position() is None:
+        if pose is None:
             return gradients
 
-        pose = self.get_last_position()
 
         # determine frames to consider
         if not frameids:
@@ -1003,6 +1007,11 @@ class SoBuffer(object):
                                     and self._moving[fid][pid][i].diffusion < \
                                         self._min_diffusion:
                                 del self._moving[fid][pid][i]  # remove element
+
+    def register_listener(self, frames, callback):
+        tuple = (frames, callback)
+        self._listeners.append(tuple)
+
 
     def get_current_time(self):
         return rospy.Time.now()
