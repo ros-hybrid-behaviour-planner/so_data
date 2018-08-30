@@ -165,6 +165,10 @@ class SoBuffer(object):
         if not msg:  # evaporation let to disappearance of the message
             return
 
+        with self.lock:
+            # store own position and neighbor / moving agents data
+            if msg.moving:
+                self.store_moving(msg)
 
         for frames, callback in self._listeners:
             if msg.header.frame_id in frames:
@@ -186,24 +190,6 @@ class SoBuffer(object):
                 # maximum length of stored own gradients exceeded
                 if len(self._own_pos) > self._moving_storage_size:
                     del self._own_pos[0]
-            # neighbor data
-            if msg.header.frame_id in self._moving:
-                if msg.parent_frame in self._moving[msg.header.frame_id]:
-                    # check if data is newer
-                    if msg.header.stamp > \
-                            self._moving[msg.header.frame_id]\
-                                        [msg.parent_frame][-1].header.stamp:
-                        self._moving[msg.header.frame_id][msg.parent_frame].\
-                            append(msg)
-                    # maximum length of stored neighbor gradients exceeded
-                    if len(self._moving[msg.header.frame_id][msg.parent_frame])\
-                            > self._moving_storage_size:
-                        del self._moving[msg.header.frame_id][msg.parent_frame][0]
-                else:
-                    self._moving[msg.header.frame_id][msg.parent_frame] = [msg]
-            else:
-                self._moving[msg.header.frame_id] = {}
-                self._moving[msg.header.frame_id][msg.parent_frame] = [msg]
 
     def get_last_position(self):
         if len(self.own_pos) == 0:
