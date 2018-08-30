@@ -161,31 +161,10 @@ class SoBuffer(object):
         if not msg.parent_frame:
             msg.parent_frame = 'None'
 
-        # check if received msg should be stored
-        if not self._store_all:
-            if msg.header.frame_id not in self._frames:
-                if msg.header.frame_id != self.pose_frame:
-                    return
-                elif msg.parent_frame != self.id:
-                    return
 
-        # Evaporation
-        # evaporate stored data
-        if not self.ev_thread:
-            self._evaporate_buffer()
-
-        # evaporate received data
-        msg = self._evaporate_msg(msg)
         if not msg:  # evaporation let to disappearance of the message
             return
 
-        with self.lock:
-            # store own position and neighbor / moving agents data
-            if msg.moving:
-                self.store_moving(msg)
-            # aggregate and store static gradient data
-            else:
-                self.store_static(msg)
 
         for frames, callback in self._listeners:
             if msg.header.frame_id in frames:
