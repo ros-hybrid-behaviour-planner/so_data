@@ -656,7 +656,7 @@ class SoBufferTest(unittest.TestCase):
         msg = SoMessage(Header(None, now, 'None'), 'None', Vector3(2, 2, 0),
                         Quaternion(), Vector3(), 1, 4.0, 1.0, 1.0, 0, None,
                         False, [])
-        bffr.store_data(msg, now)
+        bffr.store_data(msg=msg, time=now)
 
         msg = SoMessage(Header(None, now, 'grad'), 'None', Vector3(4, 5, 0),
                         Quaternion(), Vector3(), 1, 4.0, 1.0, 1.0, 0, None,
@@ -1029,14 +1029,17 @@ class SoBufferTest(unittest.TestCase):
                       1.0, 1.0, 1.0, 0, None, False, [])]
 
         result = [
-            [SoMessage(None, None, Vector3(1, 2, 0), Quaternion(), Vector3(),
-                       1, 4.0, 1.0, 1.0, 0, None, True, [])],
-            [SoMessage(None, None, Vector3(0, 2, 0), Quaternion(), Vector3(),
+            SoMessage(None, None, Vector3(1, 2, 0), Quaternion(), Vector3(),
+                       1, 4.0, 1.0, 1.0, 0, None, True, []),
+            SoMessage(None, None, Vector3(0, 2, 0), Quaternion(), Vector3(),
                        1, 1.0, 1.0, 1.0, 0, None, True, []),
-             SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(),
-                       1, 1.0, 1.0, 1.0, 0, None, True, [])]]
+            SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(),
+                       1, 1.0, 1.0, 1.0, 0, None, True, [])
+        ]
 
-        self.assertEqual(bffr.agent_set([bffr.pose_frame], time=self.now), result)
+        agent_set = bffr.agent_set([bffr.pose_frame], time=self.now)
+
+        self.assertEqual(agent_set, result)
 
     def test_static_list_angle(self):
         """

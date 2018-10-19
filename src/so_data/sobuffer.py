@@ -169,10 +169,18 @@ class SoBuffer(object):
         if not msg.parent_frame:
             msg.parent_frame = 'None'
 
+        # check if received msg should be stored
+        if not self._store_all:
+            if msg.header.frame_id not in self._frames:
+                if msg.header.frame_id != self.pose_frame:
+                    return
+                elif msg.parent_frame != self.id:
+                    return
+
         # Evaporation
         # evaporate stored data
         if not self.ev_thread:
-            self._evaporate_buffer(time)
+            self._evaporate_buffer(time=time)
 
         # evaporate received data
         msg = self._evaporate_msg(msg, time)
@@ -184,6 +192,9 @@ class SoBuffer(object):
             # store own position and neighbor / moving agents data
             if msg.moving:
                 self.store_moving(msg)
+            # aggregate and store static gradient data
+            else:
+                self.store_static(msg)
 
         for frames, callback in self._listeners:
             if msg.header.frame_id in frames:
@@ -205,6 +216,25 @@ class SoBuffer(object):
                 # maximum length of stored own gradients exceeded
                 if len(self._own_pos) > self._moving_storage_size:
                     del self._own_pos[0]
+
+            # neighbor data
+            elif msg.header.frame_id in self._moving:
+                if msg.parent_frame in self._moving[msg.header.frame_id]:
+                    # check if data is newer
+                    if msg.header.stamp > \
+                            self._moving[msg.header.frame_id] \
+                                    [msg.parent_frame][-1].header.stamp:
+                        self._moving[msg.header.frame_id][msg.parent_frame]. \
+                            append(msg)
+                    # maximum length of stored neighbor gradients exceeded
+                    if len(self._moving[msg.header.frame_id][msg.parent_frame]) \
+                            > self._moving_storage_size:
+                        del self._moving[msg.header.frame_id][msg.parent_frame][0]
+                else:
+                    self._moving[msg.header.frame_id][msg.parent_frame] = [msg]
+            else:
+                self._moving[msg.header.frame_id] = {}
+                self._moving[msg.header.frame_id][msg.parent_frame] = [msg]
 
     def get_last_position(self):
         if len(self.own_pos) == 0:
@@ -883,6 +913,54 @@ class SoBuffer(object):
 
         return gradients
 
+    # Aggregation of data for Decision patterns
+    def agent_set(self, frameids=None, include_own=True, time=None):
+        """
+        function determines all moving gradients within view distance with a
+        certain frame ID, excluding all gradients from agent itself
+        :param frame: frame ID of agent data
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
+        :return: list of gradients
+        """
+        if not self.ev_thread:
+            self._evaporate_buffer(time=time)
+
+        gradients = []
+
+        pose = self.get_last_position()
+
+        # no own position available
+        if pose is None:
+            return gradients
+
+        # determine frames to consider
+        if not frameids:
+            frameids = self._moving.keys()
+
+        moving = self._moving
+        moving_keys = moving.keys()
+
+        for frame in frameids:
+
+            if frame in moving_keys and moving[frame]:
+
+                moving_frame_keys = moving[frame].keys()
+                for pid in moving_frame_keys:
+
+                    if (include_own or pid != self._id) and moving[frame][pid]:
+
+                        for g in moving[frame][pid]:
+
+                            if calc.get_gradient_distance(g.p, pose.p) <= \
+                                    g.diffusion + g.goal_radius + self._view_distance:
+
+                                gradients.append(g)
+
+        return gradients
+
+    def register_listener(self, frames, callback):
+        tuple = (frames, callback)
+        self._listeners.append(tuple)
     # EVAPORATION
     def _evaporate_buffer(self, msg=None, time=None):
         """
@@ -959,50 +1037,7 @@ class SoBuffer(object):
                                         self._min_diffusion:
                                 del self._moving[fid][pid][i]  # remove element
 
-    # Aggregation of data for Decision patterns
-    def agent_set(self, frameids=None, include_own=True, time=None):
-        """
-        function determines all moving gradients within view distance with a
-        certain frame ID, excluding all gradients from agent itself
-        :param frame: frame ID of agent data
-        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
-        :return: list of gradients
-        """
-        if not self.ev_thread:
-            self._evaporate_buffer(time=time)
 
-        gradients = []
-
-        pose = self.get_last_position()
-
-        # no own position available
-        if pose is None:
-            return gradients
-
-        # determine frames to consider
-        if not frameids:
-            frameids = self._moving.keys()
-
-        moving = self._moving
-        moving_keys = moving.keys()
-
-        for frame in frameids:
-            if frame in moving_keys and moving[frame]:
-                moving_frame_keys = moving[frame].keys()
-                for pid in moving_frame_keys:
-                    if (include_own or pid != self._id) and moving[frame][pid]:
-                        if calc.get_gradient_distance(moving[frame][pid][-1].p,
-                                                      pose.p) \
-                                <= moving[frame][pid][-1].diffusion + \
-                                moving[frame][pid][-1].goal_radius + \
-                                self._view_distance:
-                            gradients += moving[frame][pid]
-
-        return gradients
-
-    def register_listener(self, frames, callback):
-        tuple = (frames, callback)
-        self._listeners.append(tuple)
 
     def _evaporate_msg(self, msg, time):
         """
