@@ -63,8 +63,7 @@ class CallbackPoseTopicGradientTf(PoseTopicGradientTf):
         :param id: soMessage id used for parent frame
         :param kwargs: keyword arguments to set other params of TopicGradientTf
         """
-        super(CallbackPoseTopicGradientTf, self).__init__(topic,frame, id,
-                                                          **kwargs)
+        super(CallbackPoseTopicGradientTf, self).__init__(topic, frame, id, **kwargs)
 
     def callback(self, pose):
         """
