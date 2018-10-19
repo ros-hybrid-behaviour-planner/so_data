@@ -56,8 +56,7 @@ class CalcTest(unittest.TestCase):
         test calculation of random vector with specified length
         """
 
-        self.assertEqual(so_data.calc.vector_length(
-            so_data.calc.random_vector(5.0)), 5.0)
+        self.assertAlmostEqual(so_data.calc.vector_length(so_data.calc.random_vector(5.0)), 5.0, 5)
 
     def test_unit_vector(self):
         """

@@ -35,7 +35,8 @@ class GradientTest(unittest.TestCase):
         grad = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), Vector3(),
                          1, 2.0, 1.0, 1.0, 0, None, False, [])
         self.assertEqual(gradient.calc_attractive_gradient(grad, pose),
-                         Vector3(0.6, 0.8, 0))
+                         # Vector3(0.6, 0.8, 0)) # former version was normalizing to a unit vector
+                         Vector3(3, 4, 0))
 
         # 2D - r <= D
         grad = SoMessage(None, None, Vector3(3, 4, 0), Quaternion(), Vector3(),
@@ -49,7 +50,8 @@ class GradientTest(unittest.TestCase):
         pose = SoMessage(None, None, Vector3(1, 1, 0), Quaternion(), Vector3(),
                          -1, 3.0, 0.0, 1.0, 0, None, False, [])
         self.assertEqual(gradient.calc_attractive_gradient(grad, pose),
-                         Vector3(0.6, 0.8, 0))
+                         # Vector3(0.6, 0.8, 0)) # former version was normalizing to a unit vector
+                         Vector3(3, 4, 0))
 
         # 3D - D < r <= C
         grad = SoMessage(None, None, Vector3(3, 5, 10), Quaternion(),
@@ -192,6 +194,5 @@ class GradientTest(unittest.TestCase):
 
 # run tests - start roscore before running tests
 if __name__ == "__main__":
-    rospy.init_node('test')
     unittest.main()
 

@@ -1,12 +1,14 @@
+#! /usr/bin/env python2
 """
 Created on 20.02.2017
 
-@author: kaiser
+@author: kaiser, hrabia
 
 Module with unit test for repulsion.py
 """
 
 import unittest
+import rostest
 import rospy
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
@@ -20,6 +22,11 @@ class RepulsionTest(unittest.TestCase):
     """
     class to test repulsion py module / calculations
     """
+
+    @classmethod
+    def setUpClass(cls):
+        rospy.init_node('test')
+
     def test_gradient_repulsion(self):
         """
         test gradient repulsion method based on gradients
@@ -149,5 +156,4 @@ class RepulsionTest(unittest.TestCase):
 
 # run tests
 if __name__ == "__main__":
-    rospy.init_node('test')
-    unittest.main()
+    rostest.rosrun("so_data", 'repulsion_test_node', RepulsionTest)

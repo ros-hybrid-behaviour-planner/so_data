@@ -137,12 +137,20 @@ class SoBuffer(object):
         if ev_thread:
             self._evaporate_buffer()
 
-        rospy.Subscriber('so_data', SoMessage, self.store_data)
+        rospy.Subscriber('so_data', SoMessage, self.store_data_callback)
 
-    def store_data(self, msg):
+    def store_data_callback(self, msg):
         """
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
+        """
+        self.store_data(msg, rospy.Time.now())
+
+    def store_data(self, msg, time):
+        """
+        store received soMessage using evaporation and aggregation
+        :param msg: received gradient (soMessage)
+        :param time: ros time stamp when the msg was received
         :return:
         """
 
@@ -164,10 +172,10 @@ class SoBuffer(object):
         # Evaporation
         # evaporate stored data
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time)
 
         # evaporate received data
-        msg = self._evaporate_msg(msg)
+        msg = self._evaporate_msg(msg, time)
 
         with self.lock:
             # store own position and neighbor / moving agents data
@@ -401,16 +409,17 @@ class SoBuffer(object):
         else:
             return
 
-    def gradients(self, frameids=None, static=True, moving=True):
+    def gradients(self, frameids=None, static=True, moving=True, time=None):
         """
         function determines all gradients within view distance
         :param frameids: frame IDs to be considered looking for gradients, None considers all frameids.
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of gradients []
         """
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients = []
 
@@ -460,12 +469,13 @@ class SoBuffer(object):
 
         return gradients
 
-    def all_gradients(self, frameids=None, static=True, moving=True):
+    def all_gradients(self, frameids=None, static=True, moving=True, time=None):
         """
         function returns all gradients as a list
         :param frameids: frame IDs to be considered looking for gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of gradients
         """
         # determine frames to consider
@@ -477,7 +487,7 @@ class SoBuffer(object):
                 frameids += self._moving.keys()
 
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients = []
 
@@ -500,7 +510,7 @@ class SoBuffer(object):
 
         return gradients
 
-    def repulsive_gradients(self, frameids=None, static=True, moving=True):
+    def repulsive_gradients(self, frameids=None, static=True, moving=True, time=None):
         """
         function determines which repulsive gradients are currently within
          view distance
@@ -508,13 +518,14 @@ class SoBuffer(object):
         gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of repulsive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
         # within view distance
 
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients_repulsive = []
 
@@ -562,7 +573,7 @@ class SoBuffer(object):
 
         return gradients_repulsive
 
-    def attractive_gradients(self, frameids=None, static=True, moving=True):
+    def attractive_gradients(self, frameids=None, static=True, moving=True, time=None):
         """
         function determines which attractive gradients are currently within
          view distance
@@ -570,12 +581,13 @@ class SoBuffer(object):
                          gradients
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of attractive gradients within view distance
         """
         # check if moving and / or static attractive gradients are
         # within view distance
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients_attractive = []
 
@@ -621,7 +633,7 @@ class SoBuffer(object):
 
         return gradients_attractive
 
-    def max_attractive_gradient(self, frameids=None, static=True, moving=True):
+    def max_attractive_gradient(self, frameids=None, static=True, moving=True, time=None):
         """
         Method to return relatively nearest attractive gradient
         (= min movement vector length)
@@ -629,6 +641,7 @@ class SoBuffer(object):
         :param frameids: frames to consider
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: relatively nearest attractive gradient (Vector3)
         """
 
@@ -637,7 +650,7 @@ class SoBuffer(object):
 
         pose = copy.deepcopy(self._own_pos[-1])
 
-        gradients = self.attractive_gradients(frameids, static, moving)
+        gradients = self.attractive_gradients(frameids, static, moving, time=time)
         tmp_grad = None
         tmp_att = np.inf
 
@@ -653,7 +666,7 @@ class SoBuffer(object):
 
         return tmp_grad
 
-    def min_attractive_gradient(self, frameids=None, static=True, moving=True):
+    def min_attractive_gradient(self, frameids=None, static=True, moving=True, time=None):
         """
         Method to return relatively furthest gradient
         (= maximum attraction value length)
@@ -661,6 +674,7 @@ class SoBuffer(object):
         :param frameids: frames to consider
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: gradient (Vector3)
         """
 
@@ -669,7 +683,7 @@ class SoBuffer(object):
 
         pose = copy.deepcopy(self._own_pos[-1])
 
-        gradients = self.attractive_gradients(frameids, static, moving)
+        gradients = self.attractive_gradients(frameids, static, moving, time=time)
         tmp_grad = None
         tmp_att = 0
 
@@ -684,20 +698,20 @@ class SoBuffer(object):
 
         return tmp_grad
 
-    def min_reach_attractive_gradient(self, frameids=None, static=True,
-                                      moving=True):
+    def min_reach_attractive_gradient(self, frameids=None, static=True, moving=True, time= None):
         """
         Method to return gradient with minimum gradient reach
         :param frameids: frames to consider
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: gradient (Vector3)
         """
 
         if not self._own_pos:
             return []
 
-        gradients = self.attractive_gradients(frameids, static, moving)
+        gradients = self.attractive_gradients(frameids, static, moving, time=time)
         tmp_grad = None
         tmp_att = np.inf
 
@@ -711,20 +725,20 @@ class SoBuffer(object):
 
         return tmp_grad
 
-    def max_reach_attractive_gradient(self, frameids=None, static=True,
-                                      moving=True):
+    def max_reach_attractive_gradient(self, frameids=None, static=True, moving=True, time=None):
         """
         Method to return gradient with maximum gradient reach
         :param frameids: frames to consider
         :param static: consider static gradients
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: gradient (Vector3)
         """
 
         if not self._own_pos:
             return []
 
-        gradients = self.attractive_gradients(frameids, static, moving)
+        gradients = self.attractive_gradients(frameids, static, moving, time)
         tmp_grad = None
         tmp_att = 0
 
@@ -738,12 +752,13 @@ class SoBuffer(object):
 
         return tmp_grad
 
-    def strongest_gradient(self, frameids=None, static=True, moving=True):
+    def strongest_gradient(self, frameids=None, static=True, moving=True, time=None):
         """
         return gradient with strongest potential on robot
         :param frameids: frames to consider
         :param static: bool, consider static gradients
         :param moving: bool, consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: soMessage gradient
         """
         tmp_grad = None
@@ -752,7 +767,7 @@ class SoBuffer(object):
             return tmp_grad
 
         # all gradients within view distance
-        gradients = self.gradients(frameids, static, moving)
+        gradients = self.gradients(frameids, static, moving, time=time)
         tmp_att = -1
 
         if gradients:
@@ -781,16 +796,17 @@ class SoBuffer(object):
         return tmp_grad
 
     # Aggregation of data for Decision patterns
-    def agent_list(self, frameids=None):
+    def agent_list(self, frameids=None, time=None):
         """
         function determines all moving gradients within view distance with a
         certain frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
         :param moving: consider moving gradients
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of gradients
         """
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients = []
 
@@ -820,7 +836,7 @@ class SoBuffer(object):
         return gradients
 
     # Aggregation of data for Decision patterns
-    def static_list_angle(self, frameids, view_angle_xy, view_angle_yz=np.pi):
+    def static_list_angle(self, frameids, view_angle_xy, view_angle_yz=np.pi, time=None):
         """
         function determines all static gradients within view distance with a
         certain frame ID & within a view angle,
@@ -830,10 +846,11 @@ class SoBuffer(object):
         x-y-plane (+/- from heading)
         :param view_angle_yz: angle in which agent can see pheromones on
         y-z-plane (+/- from heading)
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of gradients
         """
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients = []
 
@@ -874,15 +891,92 @@ class SoBuffer(object):
         return gradients
 
     # Aggregation of data for Decision patterns
-    def agent_set(self, frameids=None):
+    def _evaporate_buffer(self, time=None):
+        """
+        evaporate buffer data
+        :param time: time stamp that is used as current time for the evaporation, if None rospy.Time.now() is used.
+        :return:
+        """
+        if time is None:
+            time = rospy.Time.now()
+
+        if self.ev_thread:
+            t = threading.Timer(self.ev_time, self._evaporate_buffer)
+            t.daemon = True
+            t.start()
+
+        with self.lock:
+            # iterate through keys
+            for fid in self._static.keys():
+                if self._static[fid]:  # array not empty
+                    # go in reverse order
+                    for i in xrange(len(self._static[fid]) - 1, -1, -1):
+                        if self._static[fid][i].ev_time > 0 and \
+                                        self._static[fid][i].ev_factor != 1.0:
+                            diff = time - self._static[fid][
+                                i].ev_stamp
+                            if diff >= rospy.Duration(
+                                    self._static[fid][i].ev_time):
+                                n = diff.secs // self._static[fid][i].ev_time
+                                self._static[fid][i].diffusion *= \
+                                    self._static[fid][i].ev_factor ** n
+                                self._static[fid][i].ev_stamp += rospy.\
+                                    Duration(n * self._static[fid][i].ev_time)
+                        else:  # delta t for evaporation = 0 and evaporation
+                            # applies, set diffusion immediately to 0
+                            if self._static[fid][i].ev_factor < 1.0:
+                                self._static[fid][i].diffusion = 0.0
+
+                        # in case that gradient concentration is lower than
+                        # minimum and no goal_radius exists, delete data
+                        if self._static[fid][i].goal_radius == 0.0 and \
+                                        self._static[fid][i].diffusion < \
+                                        self._min_diffusion:
+                            del self._static[fid][i]  # remove element
+
+            for fid in self._moving.keys():
+                if self._moving[fid]:
+                    for pid in self._moving[fid].keys():
+                        for i in xrange(len(self._moving[fid][pid]) - 1,
+                                        -1, -1):
+                            if self._moving[fid][pid][i].ev_time > 0 and \
+                                    self._moving[fid][pid][i].ev_factor != 1.0:
+                                diff = time - self._moving[fid][
+                                    pid][i].ev_stamp
+                                if diff >= rospy.Duration(
+                                        self._moving[fid][pid][i].ev_time):
+                                    n = diff.secs // self._moving[fid][pid][
+                                        i].ev_time
+                                    self._moving[fid][pid][i].diffusion *= \
+                                        self._moving[fid][pid][i].ev_factor \
+                                        ** n
+                                    self._moving[fid][pid][i].ev_stamp += \
+                                        rospy.Duration(n * self._moving[fid][
+                                            pid][i].ev_time)
+                            else:  # delta t for evaporation = 0 and evaporation
+                                # applies, set diffusion immediately to 0
+                                if self._moving[fid][pid][i].ev_factor < 1.0:
+                                    self._moving[fid][pid][i].diffusion = 0.0
+
+                                # in case that gradient concentration is lower
+                                    # than minimum and no goal_radius exists,
+                                    # delete data
+                            if self._moving[fid][pid][i].goal_radius == 0.0 \
+                                    and self._moving[fid][pid][i].diffusion < \
+                                        self._min_diffusion:
+                                del self._moving[fid][pid][i]  # remove element
+
+    # EVAPORATION
+    def agent_set(self, frameids=None, time=None):
         """
         function determines all moving gradients within view distance with a
         certain frame ID, excluding all gradients from agent itself
         :param frame: frame ID of agent data
+        :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
         :return: list of gradients
         """
         if not self.ev_thread:
-            self._evaporate_buffer()
+            self._evaporate_buffer(time=time)
 
         gradients = []
 
@@ -911,86 +1005,15 @@ class SoBuffer(object):
 
         return gradients
 
-    # EVAPORATION
-    def _evaporate_buffer(self, msg=None):
-        """
-        evaporate buffer data
-        :return:
-        """
-        if self.ev_thread:
-            t = threading.Timer(self.ev_time, self._evaporate_buffer)
-            t.daemon = True
-            t.start()
-
-        with self.lock:
-            # iterate through keys
-            for fid in self._static.keys():
-                if self._static[fid]:  # array not empty
-                    # go in reverse order
-                    for i in xrange(len(self._static[fid]) - 1, -1, -1):
-                        if self._static[fid][i].ev_time > 0 and \
-                                        self._static[fid][i].ev_factor != 1.0:
-                            diff = rospy.Time.now() - self._static[fid][
-                                i].ev_stamp
-                            if diff >= rospy.Duration(
-                                    self._static[fid][i].ev_time):
-                                n = diff.secs // self._static[fid][i].ev_time
-                                self._static[fid][i].diffusion *= \
-                                    self._static[fid][i].ev_factor ** n
-                                self._static[fid][i].ev_stamp += rospy.\
-                                    Duration(n * self._static[fid][i].ev_time)
-                        else:  # delta t for evaporation = 0 and evaporation
-                            # applies, set diffusion immediately to 0
-                            if self._static[fid][i].ev_factor < 1.0:
-                                self._static[fid][i].diffusion = 0.0
-
-                        # in case that gradient concentration is lower than
-                        # minimum and no goal_radius exists, delete data
-                        if self._static[fid][i].goal_radius == 0.0 and \
-                                        self._static[fid][i].diffusion < \
-                                        self._min_diffusion:
-                            del self._static[fid][i]  # remove element
-
-            for fid in self._moving.keys():
-                if self._moving[fid]:
-                    for pid in self._moving[fid].keys():
-                        for i in xrange(len(self._moving[fid][pid]) - 1,
-                                        -1, -1):
-                            if self._moving[fid][pid][i].ev_time > 0 and \
-                                    self._moving[fid][pid][i].ev_factor != 1.0:
-                                diff = rospy.Time.now() - self._moving[fid][
-                                    pid][i].ev_stamp
-                                if diff >= rospy.Duration(
-                                        self._moving[fid][pid][i].ev_time):
-                                    n = diff.secs // self._moving[fid][pid][
-                                        i].ev_time
-                                    self._moving[fid][pid][i].diffusion *= \
-                                        self._moving[fid][pid][i].ev_factor \
-                                        ** n
-                                    self._moving[fid][pid][i].ev_stamp += \
-                                        rospy.Duration(n * self._moving[fid][
-                                            pid][i].ev_time)
-                            else:  # delta t for evaporation = 0 and evaporation
-                                # applies, set diffusion immediately to 0
-                                if self._moving[fid][pid][i].ev_factor < 1.0:
-                                    self._moving[fid][pid][i].diffusion = 0.0
-
-                                # in case that gradient concentration is lower
-                                    # than minimum and no goal_radius exists,
-                                    # delete data
-                            if self._moving[fid][pid][i].goal_radius == 0.0 \
-                                    and self._moving[fid][pid][i].diffusion < \
-                                        self._min_diffusion:
-                                del self._moving[fid][pid][i]  # remove element
-
-    def _evaporate_msg(self, msg):
+    def _evaporate_msg(self, msg, time):
         """
         evaporate a single message
         :param msg: gradient message
+        :param time: time stamp that is used to determine the evaporation in respect to the msg ev_stamps
         :return: evaporated message
         """
         if msg.ev_time > 0:
-            diff = rospy.Time.now() - msg.ev_stamp
+            diff = time - msg.ev_stamp
             if diff >= rospy.Duration(msg.ev_time):
                 n = diff.secs // msg.ev_time
                 msg.diffusion *= msg.ev_factor ** n

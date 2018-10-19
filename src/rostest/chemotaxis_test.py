@@ -1,11 +1,13 @@
+#! /usr/bin/env python2
 """
 Created on 20.02.2017
 
-@author: kaiser
+@author: kaiser, hrabia
 
 Unit test for chemotaxis.py
 """
 import unittest
+import rostest
 import rospy
 import numpy as np
 from so_data.msg import SoMessage
@@ -16,6 +18,10 @@ from so_data.chemotaxis import *
 
 
 class ChemotaxisTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        rospy.init_node('test')
 
     # Aggregation return vectors
     def test_follow_strongest(self):
@@ -597,7 +603,6 @@ class ChemotaxisTest(unittest.TestCase):
         result.z = round(result.z, 2)
         self.assertEqual(result, Vector3(0.29, 0.0, -0.29))
 
-# run tests - start roscore before running tests
+
 if __name__ == "__main__":
-    rospy.init_node('test')
-    unittest.main()
+    rostest.rosrun("so_data", 'chemotaxis_test_node', ChemotaxisTest)

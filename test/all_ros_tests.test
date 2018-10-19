@@ -1,0 +1,5 @@
+<launch>
+    <test pkg="so_data" type="chemotaxis_test.py" test-name="chemotaxis_test"/>
+    <test pkg="so_data" type="decisions_test.py" test-name="decisions_test"/>
+    <test pkg="so_data" type="repulsion_test.py" test-name="repulsion_test"/>
+</launch>

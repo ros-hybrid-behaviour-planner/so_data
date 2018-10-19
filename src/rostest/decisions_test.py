@@ -1,11 +1,13 @@
+#! /usr/bin/env python2
 """
 Created on 20.02.2017
 
-@author: kaiser
+@author: kaiser, hrabia
 
 Unit test for decisions.py
 """
 import unittest
+import rostest
 import rospy
 import numpy as np
 from so_data.msg import SoMessage
@@ -19,6 +21,9 @@ class DecisionsTest(unittest.TestCase):
     """
     class to test decisions.py
     """
+    @classmethod
+    def setUpClass(cls):
+        rospy.init_node('test')
 
     def test_morphogenesis(self):
         """
@@ -122,5 +127,4 @@ class DecisionsTest(unittest.TestCase):
 
 # run tests - start roscore before running tests
 if __name__ == "__main__":
-    rospy.init_node('test')
-    unittest.main()
+    rostest.rosrun("so_data", 'decision_test_node', DecisionsTest)
