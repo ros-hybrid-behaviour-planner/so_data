@@ -45,7 +45,7 @@ class TopicGradientTf(object):
         """
 
         # broadcaster for transformed data
-        self._broadcast = SoBroadcaster()
+        self._broadcast = self.init_so_broadcaster()
         self._current_msg = SoMessage()
 
         self._id = id
@@ -69,6 +69,9 @@ class TopicGradientTf(object):
             self._sub = rospy.Subscriber(topic, message_type, self.callback)
         else:
             rospy.logerr("Could not determine message type of: " + topic)
+
+    def init_so_broadcaster(self):
+        return SoBroadcaster()
 
     @abstractmethod
     def callback(self, topic_message):
