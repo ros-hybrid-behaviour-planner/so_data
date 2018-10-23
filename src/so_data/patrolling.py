@@ -6,7 +6,6 @@ Created on 10.05.2017
 Module includes implementation of patrolling mechanism
 """
 
-import random
 import rospy
 import numpy as np
 import gradient
@@ -16,7 +15,7 @@ from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 from patterns import MovementPattern
 
-# Movement Behaviour
+
 class Patrol(MovementPattern):
     """
     Patrol: Patrolling or exploring environment by avoiding deposited pheromones, hence the agent will move in the
@@ -40,8 +39,8 @@ class Patrol(MovementPattern):
         :param ev_time: pheromone evaporation time
         """
 
-        super(Patrol, self).__init__(buffer=buffer, frames=frames, moving=moving, static=static,
-                                                maxvel=maxvel, minvel=minvel)
+        super(Patrol, self).__init__(buffer=buffer, frames=frames, moving=moving, static=static, maxvel=maxvel,
+                                     minvel=minvel)
         self.frame = frame
         self.attraction = attraction
         self.ev_factor = ev_factor
@@ -56,12 +55,14 @@ class Patrol(MovementPattern):
         :return: movement vector
         """
 
+        # spread pheromone
+        self.spread()
+
         pose = self._buffer.get_own_pose()
         result = None
 
         # repulsive gradients
-        gradients = self._buffer.gradients(self.frames, self.static,
-                                           self.moving)
+        gradients = self._buffer.gradients(self.frames, self.static, self.moving)
 
         if pose:
             if gradients:
@@ -87,8 +88,13 @@ class Patrol(MovementPattern):
                 else:
                     grdnt = gradients[0]
                     result = calc.random_vector(grdnt.goal_radius + grdnt.diffusion)
+            else:
+                rospy.logwarn("No gradients of frames '%s' available", self.frames)
+        else:
+            rospy.logwarn("No own pose available!")
 
         if not result:
+            rospy.logwarn("No gradient vector available!")
             return None
 
         # adjust length
@@ -101,13 +107,6 @@ class Patrol(MovementPattern):
             result = calc.random_vector(grdnt.goal_radius + grdnt.diffusion)
 
         return result
-
-    def execute(self):
-        """
-        deposit pheromone during execution
-        """
-        # spread pheromone
-        self.spread()
 
     def spread(self):
         """

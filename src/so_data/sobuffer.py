@@ -241,7 +241,7 @@ class SoBuffer(object):
             return None
 
         pos_ = self.own_pos[-1]
-        return pos_
+        return copy.deepcopy(pos_)
 
     def store_static(self, msg):
         """
@@ -268,8 +268,7 @@ class SoBuffer(object):
                 view = {}
 
                 # find all points which are in aggregation range of message
-                for i in xrange(len(self._static[msg.header.frame_id])
-                                        - 1, -1, -1):
+                for i in xrange(len(self._static[msg.header.frame_id]) - 1, -1, -1):
                     distance = calc.get_gradient_distance(
                      self._static[msg.header.frame_id][i].p, msg.p)
                     # data point lies within aggregation distance
@@ -426,7 +425,7 @@ class SoBuffer(object):
         :return: robots last position
         """
         if self._own_pos:
-            return copy.deepcopy(self.get_last_position())
+            return self.get_last_position()
         else:
             return
 
@@ -456,11 +455,11 @@ class SoBuffer(object):
             if moving:
                 frameids += self._moving.keys()
 
-        # no own position available
-        if self.get_last_position() is None:
-            return gradients
+        pose = self.get_last_position()
 
-        pose = copy.deepcopy(self.get_last_position())
+        # no own position available
+        if pose is None:
+            return gradients
 
         if static:
             staticbuffer = copy.deepcopy(self._static)
@@ -550,13 +549,12 @@ class SoBuffer(object):
 
         gradients_repulsive = []
 
+        pose = self.get_last_position()
+
         # no own position available
-        if self.get_last_position() is None:
+        if pose is None:
             return []
 
-        pose = copy.deepcopy(self.get_last_position())
-
-        # determine frames to consider
         if not frameids:
             frameids = []
             if static:
@@ -612,10 +610,10 @@ class SoBuffer(object):
 
         gradients_attractive = []
 
-        if self.get_last_position() is None:
-            return gradients_attractive
+        pose = self.get_last_position()
 
-        pose = copy.deepcopy(self.get_last_position())
+        if pose is None:
+            return gradients_attractive
 
         # determine frames to consider
         if not frameids:
@@ -666,10 +664,10 @@ class SoBuffer(object):
         :return: relatively nearest attractive gradient (Vector3)
         """
 
-        if self.get_last_position() is None:
-            return []
+        pose = self.get_last_position()
 
-        pose = copy.deepcopy(self.get_last_position())
+        if pose is None:
+            return []
 
         gradients = self.attractive_gradients(frameids, static, moving, time=time)
         tmp_grad = None
@@ -699,10 +697,10 @@ class SoBuffer(object):
         :return: gradient (Vector3)
         """
 
-        if self.get_last_position() is None:
-            return []
+        pose = self.get_last_position()
 
-        pose = copy.deepcopy(self.get_last_position())
+        if pose is None:
+            return []
 
         gradients = self.attractive_gradients(frameids, static, moving, time=time)
         tmp_grad = None
@@ -794,11 +792,9 @@ class SoBuffer(object):
         if gradients:
             for grad in gradients:
                 if grad.attraction == 1:
-                    g = gradient.calc_attractive_gradient(grad,
-                                                          self.get_last_position())
+                    g = gradient.calc_attractive_gradient(grad, self.get_last_position())
                 else:
-                    g = gradient.calc_repulsive_gradient(grad,
-                                                         self.get_last_position())
+                    g = gradient.calc_repulsive_gradient(grad, self.get_last_position())
 
                 if abs(g.x) == np.inf or abs(g.y) == np.inf or \
                                 abs(g.z) == np.inf:
@@ -831,11 +827,11 @@ class SoBuffer(object):
 
         gradients = []
 
-        # no own position available
-        if self.get_last_position() is None:
-            return gradients
+        pose = self.get_last_position()
 
-        pose = copy.deepcopy(self.get_last_position())
+        # no own position available
+        if pose is None:
+            return gradients
 
         # determine frames to consider
         if not frameids:
@@ -876,13 +872,11 @@ class SoBuffer(object):
         gradients = []
 
         # no own position available
-        last_position = self.get_last_position()
+        pose = self.get_last_position()
 
-        if last_position is None:
+        if pose is None:
             rospy.logerr("No own positions available")
             return gradients
-
-        pose = copy.deepcopy(last_position)
 
         # determine frames to consider
         if not frameids:

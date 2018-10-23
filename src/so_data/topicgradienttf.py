@@ -9,6 +9,7 @@ SoMessages
 
 import rospy
 import copy
+import traceback
 from abc import ABCMeta, abstractmethod
 from utils.ros_helpers import get_topic_type
 from geometry_msgs.msg import Vector3, Quaternion
@@ -68,7 +69,7 @@ class TopicGradientTf(object):
         if message_type is not None:
             self._sub = rospy.Subscriber(topic, message_type, self.callback)
         else:
-            rospy.logerr("Could not determine message type of: " + topic)
+            rospy.logerr("Could not determine message type of: %s. %s", topic, traceback.format_stack())
 
     def init_so_broadcaster(self):
         return SoBroadcaster()
