@@ -15,6 +15,10 @@ from so_data.msg import SoMessage
 from so_data.sobroadcaster import SoBroadcaster
 
 
+# TODO missing an AbstractPattern, maybe reintroduce extecute as abstract method?! supplements.SpreadGradient is also
+# missing a super class.
+
+
 class MovementPattern(object):
     """
     abstract class for movement patterns / mechanisms
