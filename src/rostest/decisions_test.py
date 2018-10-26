@@ -14,7 +14,9 @@ from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from diagnostic_msgs.msg import KeyValue
 from so_data.decisions import MorphogenesisBarycenter, GossipMax, Quorum
-from so_data.sobuffer import SoBuffer, AGGREGATION
+from so_data.sobuffer import SoBuffer
+from so_data.sobroadcaster import SoBroadcaster
+from copy import deepcopy
 
 
 class DecisionsTest(unittest.TestCase):
@@ -66,13 +68,13 @@ class DecisionsTest(unittest.TestCase):
             'gossip': {
                 'robot1': [SoMessage(None, None, Vector3(2, 2, 0),
                                      Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', '1.0')])],
+                                     0, None, True, [KeyValue('max', 1.0)])],
                 'robot2': [SoMessage(None, None, Vector3(1, 2, 0),
                                      Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', '4.0')])],
+                                     0, None, True, [KeyValue('max', 4.0)])],
                 'robot4': [SoMessage(None, None, Vector3(5, 6, 0),
                                      Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', '8.9')])]
+                                     0, None, True, [KeyValue('max', 8.9)])]
             }
         }
 
@@ -123,6 +125,49 @@ class DecisionsTest(unittest.TestCase):
 
         quorum.threshold = 3
         self.assertEqual(quorum.calc_value()[1], False)
+
+    def test_de_serialization(self):
+
+        test_str = "FoooBArr\n"
+
+        test_float = np.pi
+
+        test_dict = {'bla': test_str, 'foo': test_float}
+
+        msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1,
+                        1.0, 1.0, 1.0, 0, None, True, [])
+        msg.payload.append(KeyValue("test", test_dict))
+
+        original_msg = deepcopy(msg)
+
+        bffr = SoBuffer()
+
+        broadcaster = SoBroadcaster()
+
+        rospy.sleep(0.5)
+
+        broadcaster.send_data(msg)
+
+        rospy.sleep(0.5)
+
+        gradients = bffr.all_gradients()
+
+        self.assertEqual(gradients[0].payload[0].value, original_msg.payload[0].value)
+
+        # other simple payload
+
+        msg.payload[0].value = np.pi
+        msg.parent_frame = 'float_msg'
+
+        original_msg = deepcopy(msg)
+
+        broadcaster.send_data(msg)
+
+        rospy.sleep(0.5)
+
+        gradients = bffr.all_gradients()
+
+        self.assertEqual(gradients[0].payload[0].value, original_msg.payload[0].value)
 
 
 # run tests - start roscore before running tests

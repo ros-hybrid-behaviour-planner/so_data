@@ -13,6 +13,7 @@ import copy
 import numpy as np
 import random
 import threading
+import yaml
 
 import rospy
 import tf.transformations
@@ -145,13 +146,19 @@ class SoBuffer(object):
         self.init_subscriber()
 
     def init_subscriber(self):
-        rospy.Subscriber('so_data', SoMessage, self.store_data_callback)
+        rospy.Subscriber('so_data', SoMessage, self._store_data_callback)
 
-    def store_data_callback(self, msg):
+    def _store_data_callback(self, msg):
         """
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
         """
+        try:
+            deserialize_msg_payload(msg)
+        except Exception as e:
+            rospy.logwarn("_store_data_callback:%s", str(msg))
+            rospy.logerr(e)
+
         self.store_data(msg, rospy.Time.now())
 
     def store_data(self, msg, time):
@@ -492,7 +499,8 @@ class SoBuffer(object):
     def all_gradients(self, frameids=None, static=True, moving=True, time=None):
         """
         function returns all gradients as a list
-        :param frameids: frame IDs to be considered looking for gradients
+        :param frameids: frame IDs to be considered looking for gradients, if None all static and moving are considered
+                         if static and/or moving are True
         :param static: consider static gradients
         :param moving: consider moving gradients
         :param time: optional time stamp for evaporation calculations, if None time=rospy.Time.now()
@@ -1069,3 +1077,30 @@ class SoBuffer(object):
         self._static = {}
         self._own_pos = []
         self._moving = {}
+
+
+def deserialize_msg_payload(msg):
+    """
+    This method deserializes the payload values of the payload KeyValue elements and returns the converted msg
+    Attention the msg is altered in this method
+    :param msg: so message with not yet deserialized values in the payload
+    :type msg: SoMessage
+    :return: altered msg with deserialized payload
+    """
+
+    for key_value in msg.payload:
+        key_value.value = yaml.load(key_value.value)
+    return msg
+
+
+def serialize_msg_payload(msg):
+    """
+    This method serializes the payload values of the payload KeyValue elements and returns the converted msg
+    Attention the msg is altered in this method
+    :param msg: so message with not yet serialized values in the payload
+    :type msg: SoMessage
+    :return: altered msg with serialized payload
+    """
+    for key_value in msg.payload:
+        key_value.value = yaml.dump(key_value.value)
+    return msg

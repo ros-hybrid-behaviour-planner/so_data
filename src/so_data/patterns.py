@@ -137,16 +137,13 @@ class DecisionPattern(object):
                     msg = self.create_message(val)
 
                     # spread gradient (only if data is available)
-                    self.send_message(msg)
+                    self._broadcaster.send_data(msg)
 
             else:
                 rospy.logerr("DecisionPattern(%s):: Spread not possible. Calculation failed ...", str(type(self)))
 
         else:
             rospy.logerr("DecisionPattern(%s):: Spread not possible. Own position unknown ...",  str(type(self)))
-
-    def send_message(self, msg):
-        self._broadcaster.send_data(msg)
 
     def get_pos(self):
         """
@@ -155,6 +152,11 @@ class DecisionPattern(object):
         return self._buffer.get_own_pose()
 
     def create_message(self, val):
+        """
+        creating a SoMessage with the given value as payload. Payload is serialized in this function
+        :param val: arbirtary payload value
+        :return: created SoMessage
+        """
 
         msg = SoMessage()
         msg.header.frame_id = self.frame

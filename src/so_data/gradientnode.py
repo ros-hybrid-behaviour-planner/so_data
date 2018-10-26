@@ -56,6 +56,7 @@ def create_gradient(position, attraction=0, diffusion=3.0, q=Quaternion(),
     msg.ev_stamp = time
     msg.moving = moving
     msg.payload = payload
+
     return msg
 
 
@@ -89,10 +90,10 @@ if __name__ == '__main__':
 
     # artificial gradient - initialize spreading
     env = EnvironmentGradients()
-    gradient = SoBroadcaster()
+    so_broadcaster = SoBroadcaster()
 
     while not rospy.is_shutdown():
         # send gradients
-        gradient.send_data(env.gradients)
+        so_broadcaster.send_data(env.gradients)
 
         rate.sleep()

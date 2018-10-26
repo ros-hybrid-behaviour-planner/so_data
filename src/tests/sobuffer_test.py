@@ -1,7 +1,7 @@
 """
 Created on 14.11.2016
 
-@author: kaiser
+@author: kaiser, hrabia
 
 Unit test for sobuffer.py
 """
@@ -9,10 +9,12 @@ import unittest
 import numpy as np
 from copy import deepcopy
 import rospy
+import math
 from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from std_msgs.msg import Header
-from so_data.sobuffer import SoBuffer, AGGREGATION
+from so_data.sobuffer import SoBuffer, AGGREGATION, serialize_msg_payload, deserialize_msg_payload
+from diagnostic_msgs.msg import KeyValue
 
 
 class SoBufferTest(unittest.TestCase):
@@ -1085,6 +1087,44 @@ class SoBufferTest(unittest.TestCase):
                                     0, None, False, [])])
 
         self.assertEqual(bffr.static_list_angle(['Center'], 0, time=self.now), [])
+
+    def test_payload_serialization(self):
+
+        # simple payload
+
+        msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0, 0, None, True, [])
+        msg.payload.append(KeyValue("test", math.pi))
+
+        original_msg = deepcopy(msg)
+
+        serialized_msg = serialize_msg_payload(msg)
+
+        self.assertIsInstance(serialized_msg.payload[0].value, str, "payload not serialized")
+
+        deserialized_msg = deserialize_msg_payload(serialized_msg)
+
+        self.assertEqual(original_msg, deserialized_msg, "de/serialization failed")
+
+        # Complex payload
+
+        test_str = "FoooBArr\n"
+
+        test_float = math.pi
+
+        test_dict = {'bla': test_str, 'foo': test_float}
+
+        msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0, 0, None, True, [])
+        msg.payload.append(KeyValue("test", test_dict))
+
+        original_msg = deepcopy(msg)
+
+        serialized_msg = serialize_msg_payload(msg)
+
+        self.assertIsInstance(serialized_msg.payload[0].value, str, "payload not serialized")
+
+        deserialized_msg = deserialize_msg_payload(serialized_msg)
+
+        self.assertEqual(original_msg, deserialized_msg, "de/serialization failed")
 
 
 # run tests - start roscore before running tests
