@@ -9,8 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp 
   std_msgs
   geometry_msgs
-  diagnostic_msgs
-  message_generation 
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -71,7 +70,6 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    geometry_msgs
-   diagnostic_msgs
  )
 
 ################################################

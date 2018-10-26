@@ -40,17 +40,17 @@ class DecisionsTest(unittest.TestCase):
                 'robot1': [SoMessage(None, None, Vector3(2, 2, 0),
                                      Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0,
                                      0, None, True,
-                                     [KeyValue('dist', '7.0')])],
+                                     {'dist': 7.0})],
                 'robto2': [SoMessage(None, None, Vector3(1, 2, 0),
                                      Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
                                      0, None, True,
-                                     [KeyValue('dist', '4.0')])]
+                                     {'dist': 4.0})]
             }
         }
 
         bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 0), Quaternion(),
                                    Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
-                                   [KeyValue('dist', '5.0')])]
+                                   {'dist': 5.0})]
 
         self.assertEqual(morph.state, 'None')
         self.assertEqual(morph.calc_value()[0], np.sqrt(2) + 1)
@@ -68,19 +68,19 @@ class DecisionsTest(unittest.TestCase):
             'gossip': {
                 'robot1': [SoMessage(None, None, Vector3(2, 2, 0),
                                      Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', 1.0)])],
+                                     0, None, True, {'max': 1.0})],
                 'robot2': [SoMessage(None, None, Vector3(1, 2, 0),
                                      Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', 4.0)])],
+                                     0, None, True, {'max': 4.0})],
                 'robot4': [SoMessage(None, None, Vector3(5, 6, 0),
                                      Quaternion(), Vector3(), 1, 2.0, 1.0, 1.0,
-                                     0, None, True, [KeyValue('max', 8.9)])]
+                                     0, None, True, {'max': 8.9})]
             }
         }
 
         bffr._own_pos = [SoMessage(None, None, Vector3(1, 1, 0), Quaternion(),
                                    Vector3(), 1, 1.0, 1.0, 1.0, 0, None, False,
-                                   [KeyValue('max', '3.0')])]
+                                   {'max': '3.0'})]
 
         self.assertEqual(gossip.calc_value()[0], 4.0)
 
@@ -136,7 +136,7 @@ class DecisionsTest(unittest.TestCase):
 
         msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1,
                         1.0, 1.0, 1.0, 0, None, True, [])
-        msg.payload.append(KeyValue("test", test_dict))
+        msg.payload = test_dict
 
         original_msg = deepcopy(msg)
 
@@ -152,11 +152,11 @@ class DecisionsTest(unittest.TestCase):
 
         gradients = bffr.all_gradients()
 
-        self.assertEqual(gradients[0].payload[0].value, original_msg.payload[0].value)
+        self.assertEqual(gradients[0].payload, original_msg.payload)
 
         # other simple payload
 
-        msg.payload[0].value = np.pi
+        msg.payload = np.pi
         msg.parent_frame = 'float_msg'
 
         original_msg = deepcopy(msg)
@@ -167,7 +167,7 @@ class DecisionsTest(unittest.TestCase):
 
         gradients = bffr.all_gradients()
 
-        self.assertEqual(gradients[0].payload[0].value, original_msg.payload[0].value)
+        self.assertEqual(gradients[0].payload, original_msg.payload)
 
 
 # run tests - start roscore before running tests

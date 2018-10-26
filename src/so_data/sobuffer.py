@@ -153,11 +153,7 @@ class SoBuffer(object):
         store received soMessage using evaporation and aggregation
         :param msg: received gradient (soMessage)
         """
-        try:
-            deserialize_msg_payload(msg)
-        except Exception as e:
-            rospy.logwarn("_store_data_callback:%s", str(msg))
-            rospy.logerr(e)
+        deserialize_msg_payload(msg)
 
         self.store_data(msg, rospy.Time.now())
 
@@ -1087,9 +1083,12 @@ def deserialize_msg_payload(msg):
     :type msg: SoMessage
     :return: altered msg with deserialized payload
     """
-
-    for key_value in msg.payload:
-        key_value.value = yaml.load(key_value.value)
+    # TODO for some reason the messages are sometimes not serialized here, couldn't find the problem!?
+    # Following check avoids problems in such cases.
+    if isinstance(msg.payload, str):
+        msg.payload = yaml.load(msg.payload)
+    else:
+        rospy.logdebug("Trying to deserialize not serialized payload. Msg: %s", str(msg))
     return msg
 
 
@@ -1101,6 +1100,5 @@ def serialize_msg_payload(msg):
     :type msg: SoMessage
     :return: altered msg with serialized payload
     """
-    for key_value in msg.payload:
-        key_value.value = yaml.dump(key_value.value)
+    msg.payload = yaml.dump(msg.payload)
     return msg

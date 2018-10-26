@@ -183,6 +183,6 @@ class DecisionPattern(object):
 
         msg.moving = True  # set to moving as gradient is tied to agent
 
-        msg.payload.append(KeyValue(self.key, val[0]))
+        msg.payload = {self.key: val[0]}
 
         return msg

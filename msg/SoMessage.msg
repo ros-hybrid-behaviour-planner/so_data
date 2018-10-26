@@ -17,5 +17,5 @@ time ev_stamp  # evaporation time stamp
 # indicates whether data is from a moving object (e.g. robot)
 bool moving
 
-# payload
-diagnostic_msgs/KeyValue[] payload
+# payload encoded as yaml
+string payload

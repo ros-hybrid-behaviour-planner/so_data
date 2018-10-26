@@ -14,7 +14,6 @@ from so_data.msg import SoMessage
 from geometry_msgs.msg import Vector3, Quaternion
 from std_msgs.msg import Header
 from so_data.sobuffer import SoBuffer, AGGREGATION, serialize_msg_payload, deserialize_msg_payload
-from diagnostic_msgs.msg import KeyValue
 
 
 class SoBufferTest(unittest.TestCase):
@@ -1093,13 +1092,13 @@ class SoBufferTest(unittest.TestCase):
         # simple payload
 
         msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0, 0, None, True, [])
-        msg.payload.append(KeyValue("test", math.pi))
+        msg.payload = math.pi
 
         original_msg = deepcopy(msg)
 
         serialized_msg = serialize_msg_payload(msg)
 
-        self.assertIsInstance(serialized_msg.payload[0].value, str, "payload not serialized")
+        self.assertIsInstance(serialized_msg.payload, str, "payload not serialized")
 
         deserialized_msg = deserialize_msg_payload(serialized_msg)
 
@@ -1114,13 +1113,13 @@ class SoBufferTest(unittest.TestCase):
         test_dict = {'bla': test_str, 'foo': test_float}
 
         msg = SoMessage(None, None, Vector3(2, 2, 0), Quaternion(), Vector3(), 1, 1.0, 1.0, 1.0, 0, None, True, [])
-        msg.payload.append(KeyValue("test", test_dict))
+        msg.payload = test_dict
 
         original_msg = deepcopy(msg)
 
         serialized_msg = serialize_msg_payload(msg)
 
-        self.assertIsInstance(serialized_msg.payload[0].value, str, "payload not serialized")
+        self.assertIsInstance(serialized_msg.payload, str, "payload not serialized")
 
         deserialized_msg = deserialize_msg_payload(serialized_msg)
 

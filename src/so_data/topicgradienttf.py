@@ -26,7 +26,7 @@ class TopicGradientTf(object):
     def __init__(self, topic, frame, id, message_type=None, p=Vector3(),
                  attraction=-1, diffusion=1.0, goal_radius=0.5, ev_factor=1.0,
                  ev_time=0, quaternion=Quaternion(),
-                 moving=True, payload=None, direction=Vector3(1, 0, 0)):
+                 moving=True, payload='', direction=Vector3(1, 0, 0)):
         """
         subscription to topic and variable initialization
         :param topic: topic to subscribe to
@@ -60,8 +60,6 @@ class TopicGradientTf(object):
         self.ev_time = ev_time
         self.direction = direction
         self.moving = moving
-        if payload is None:
-            payload = []
         self.payload = payload
 
         if message_type is None:

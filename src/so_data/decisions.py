@@ -83,12 +83,11 @@ class MorphogenesisBarycenter(DecisionPattern):
             neighbors += 1
 
             # sum of distances of neighbor
-            keys = [i.key for i in el.payload]
-            index = keys.index(self.key)
-            ndist = el.payload[index].value
-            # neighbor dist larger than own dist
-            if ndist > dist:
-                count += 1
+            if isinstance(el.payload, dict):
+                ndist = el.payload.get(self.key, dist)
+                # neighbor dist larger than own dist
+                if ndist > dist:
+                    count += 1
 
         # set state
         state = 'None'
@@ -154,12 +153,10 @@ class GossipMax(DecisionPattern):
         tmp_max = self.value
 
         for el in values:
-            k = [i.key for i in el.payload]
-            index = k.index(self.key)
-
-            tmp = el.payload[index].value
-            if tmp_max < tmp:
-                tmp_max = tmp
+            if isinstance(el.payload, dict):
+                tmp = el.payload.get(self.key, tmp_max)
+                if tmp_max < tmp:
+                    tmp_max = tmp
 
         return [tmp_max, self.state]
 
