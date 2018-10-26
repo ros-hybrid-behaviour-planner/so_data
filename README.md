@@ -71,7 +71,7 @@ time ev_stamp
 
 bool moving
 
-diagnostic_msgs/KeyValue[] payload
+string payload
 ```
 
 * **header**: standard ROS header 
@@ -91,7 +91,7 @@ diagnostic_msgs/KeyValue[] payload
   * **ev_time**: delta time `>= 0` in which evaporation is applied 
   * **ev_stamp**: time stamp used for evaporation calculations; should be set equal to header time stamp initially 
 * **moving**: gradient is moving (True) or static (False)
-* **payload**: array of key-value-pairs to store payload data 
+* **payload**: payload data is string that holds arbitrary data serialized as yaml.
 
 
 ###### reserved frameIDs:
