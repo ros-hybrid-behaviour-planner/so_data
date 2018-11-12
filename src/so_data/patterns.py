@@ -154,7 +154,7 @@ class DecisionPattern(object):
     def create_message(self, val):
         """
         creating a SoMessage with the given value as payload. Payload is serialized in this function
-        :param val: arbirtary payload value
+        :param val: arbitrary payload value, value is considered to be a tuple of (value,state)
         :return: created SoMessage
         """
 
