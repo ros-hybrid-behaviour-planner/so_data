@@ -19,7 +19,7 @@ class PoseStampedTopicGradientTf(TopicGradientTf):
     class to transform pose topic (geometry_msgs.msg.PoseStamped) to a
     soMessage for use in a ROS node
     """
-    def __init__(self, topic, id, message_type=geometry_msgs.msg.PoseStamped,
+    def __init__(self, topic,frame, id, message_type=geometry_msgs.msg.PoseStamped,
                  **kwargs):
         """
         initialization
@@ -28,7 +28,7 @@ class PoseStampedTopicGradientTf(TopicGradientTf):
         :param message_type: message type of topic
         :param kwargs: keyword arguments to specify other params of SoMessage
         """
-        super(PoseStampedTopicGradientTf, self).__init__(topic, id,
+        super(PoseStampedTopicGradientTf, self).__init__(topic, frame, id,
                                                          message_type,
                                                          **kwargs)
 
@@ -57,14 +57,14 @@ class CallbackPoseStampedTopicGradientTf(PoseStampedTopicGradientTf):
     """
     class to transform poseStamped topic to soMessage & send it within callback
     """
-    def __init__(self, topic, id, **kwargs):
+    def __init__(self, topic,frame, id, **kwargs):
         """
         initialization
         :param topic: topic to subscribe to
         :param id: soMessage id used for parent frame
         :param kwargs: keyword arguments to specify other params of SoMessage
         """
-        super(CallbackPoseStampedTopicGradientTf, self).__init__(topic,
+        super(CallbackPoseStampedTopicGradientTf, self).__init__(topic,frame,
                                                                  id, **kwargs)
 
     def callback(self, pose):
